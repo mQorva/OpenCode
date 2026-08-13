@@ -159,3 +159,39 @@ const table = sqliteTable("session", {
 - Keep delivery vocabulary explicit. Prompts steer by default and promote at the next safe provider-turn boundary while the current drain requires continuation. An explicit `queue` input remains pending until the Session would otherwise become idle; promote one queued input at that boundary, then reevaluate continuation before promoting another. Promoting any new user input resets the selected agent's provider-turn allowance; a batch of steers resets it once.
 - Keep EventV2 replay owner claims separate from clustered Session execution ownership.
 - Keep the System Context algebra, registry, and built-ins in `src/system-context`; keep Context Source producers with their observed domains, and keep Session History selection plus Context Epoch persistence Session-owned.
+
+## mQorva Product Fork Contract
+
+These rules apply to the mQorva product fork in addition to all upstream rules above. Read `docs/product/plan.md`, `docs/product/execution-status.md`, `docs/architecture/decisions.md`, and `docs/upstream/base.md` before planning or changing product behavior.
+
+1. This product remains a full OpenCode fork with Git history. Do not convert it into a submodule or a one-time source import.
+2. `upstream` is the official `anomalyco/opencode` repository. `origin` is reserved for the future mQorva fork and must never point to upstream.
+3. Integrate upstream through a dedicated update branch and reviewable merge. Do not reset, overwrite, or auto-resolve away product changes.
+4. Keep changes to Core, Server, Protocol, Schema, SDK, and Client generic and minimal. Product-specific behavior belongs in product packages or explicit adapters.
+5. The existing Electron desktop shell, local server, SDK connection, updater, and OS integration are the technical baseline until the reference build and UI inventory prove a different decision is needed.
+6. The target UI is calm, modern, project- and task-centered. Do not turn it into a CLI-near, VS Code-like, or JSON-first interface.
+7. Normal provider, model, project, and product settings must be graphical. Raw configuration is allowed only as an explicitly advanced import/export or diagnostics facility.
+8. Search for and reuse existing controls, services, and helpers before adding UI or logic. Consolidate repeated behavior unless a concrete product difference prevents it.
+9. Map projects, tasks, runs, events, approvals, diffs, and accounts through the documented product domain and adapter boundary. Do not scatter direct dependencies on volatile OpenCode internals through the UI.
+10. Treat OpenRouter keys, direct provider API keys, and subscription/OAuth access as distinct credential contracts in code and UI.
+11. OpenRouter is a mandatory provider path. Provider and account changes must include it in their verification matrix.
+12. Never commit or print API keys, OAuth secrets, tokens, or local session data.
+13. Do not edit generated SDK, Client, or Schema artifacts directly. Change the source and run the repository generator.
+14. Run checks and tests from their package directories according to upstream rules. Never bypass the root test guard.
+15. Report source inspection, typecheck, build, packaging, desktop start, UI verification, and real provider execution as separate evidence.
+16. Preserve the upstream MIT license, copyright, and third-party notices. Add product notices without implying affiliation with the official OpenCode team.
+17. Isolate generic upstream-capable fixes from branding and product behavior in small understandable changes.
+18. Update the architecture decisions, product plan, execution status, and this contract together when an approved decision changes.
+19. Inspect current code before deciding. If code cannot resolve a material ambiguity, stop at the affected decision gate and ask the product owner.
+20. German UI text and German documentation must follow standard German spelling and the repository's established terminology.
+21. Build repair is bounded: at most three meaningful fixes for one stable root cause and eight total fixes in one AP-03/AP-04 run. Then stop with a complete diagnostic handoff; never claim a failed build as complete.
+
+### Agent Execution
+
+- The orchestrator owns architecture, contracts, integration, review, and acceptance.
+- Luna workers receive a written goal, read scope, exclusive write scope, non-goals, checks, acceptance criteria, stop conditions, and handoff format.
+- Missing write scope or acceptance criteria makes a worker task read-only.
+- Use parallel writers only for disjoint files and contracts. Root manifests, lockfiles, generated contracts, shared tokens, and architecture records have a single writer.
+- Do not overwrite or clean unrelated user or agent changes.
+- Resume at the first unfinished ready package in `docs/product/execution-status.md`; do not repeat accepted work.
+- Product naming, public repositories, licensing changes, paid services, productive credentials, subscription authentication, signing, and publication require explicit owner approval.
