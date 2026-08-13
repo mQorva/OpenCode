@@ -10,12 +10,12 @@ Status vocabulary: `planned`, `ready`, `in-progress`, `review`, `rework`, `accep
 | AP-01 | accepted | Full `upstream/dev` history checked out at `8a55ba75b5b01fa1bbf1578a0a176cfc2a81d558`; official remote renamed to `upstream`; `origin` deliberately absent. |
 | AP-02 | accepted | Root contract, product plan, architecture decisions, upstream base, and resumable execution status are present and verified. |
 | AP-03 | in-progress | Fresh install, package typechecks, App build, standalone Windows build with smoke test, Electron build, and installer are successful. One visible Windows desktop start remains. |
-| AP-04 | review | Build causes were repaired within the bounded loop; Windows x64 CLI, Desktop build, NSIS installer, and blockmap succeed. Visible desktop runtime evidence remains with AP-03. |
+| AP-04 | accepted | Build causes were repaired within the bounded loop; Windows x64 CLI, Desktop build, NSIS installer, and blockmap succeed. Visible desktop runtime evidence is tracked separately by AP-03. |
 | AP-05 | accepted | `scripts/setup.ps1`, `check.ps1`, `build.ps1`, and `package.ps1` passed parser review and real end-to-end execution. |
-| AP-06 | in-progress | Read-only inventory of project/task/session, provider/settings, diff/approval/terminal, persistence, and desktop integration has started with separated Luna assignments. |
-| AP-07 | planned | Decide renderer strategy from AP-06 evidence. |
-| AP-08 | planned | Define product domain and adapter contract. |
-| AP-09 | planned | Implement product domain and persistence. |
+| AP-06 | accepted | Four separated inventories cover project/task/session persistence, providers/settings, integrated coding workspace, and Electron/renderer architecture; consolidated evidence is in `current-ui-inventory.md`. |
+| AP-07 | accepted | Retain and incrementally consolidate the existing Solid renderer behind a product adapter; no second renderer or replacement desktop shell. |
+| AP-08 | accepted | Durable Project -> Task -> Run contract, lifecycle, concurrency, completion evidence, adapter boundary, errors, and compatibility mapping are defined in `product-domain-contract.md`. |
+| AP-09 | in-progress | Implement product schemas, restrictive persistence, lifecycle service, API surface, and adapter skeleton. |
 | AP-10 | planned | Define OpenRouter account and provider contract. |
 | AP-11 | planned | Implement and verify complete OpenRouter integration. |
 | AP-12 | planned | Implement project navigation and task list. |
@@ -32,9 +32,9 @@ Status vocabulary: `planned`, `ready`, `in-progress`, `review`, `rework`, `accep
 
 ## Current critical path
 
-1. Run AP-03/AP-04 against a fresh dependency installation.
-2. Complete AP-06 and make AP-07 from consolidated evidence.
-3. Keep product-domain and UI implementation gated behind AP-07/AP-08.
+1. Complete AP-08 and review the product-domain contract.
+2. Implement AP-09 without coupling product screens directly to OpenCode internals.
+3. Complete the visible AP-03 desktop start after owner confirmation.
 
 ## Bounded AP-03/AP-04 repair ledger
 
