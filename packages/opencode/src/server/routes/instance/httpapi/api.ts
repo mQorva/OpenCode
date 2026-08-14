@@ -15,6 +15,7 @@ import { ExperimentalApi } from "./groups/experimental"
 import { FileApi } from "./groups/file"
 import { InstanceApi } from "./groups/instance"
 import { McpApi } from "./groups/mcp"
+import { OpenRouterAccountApi } from "./groups/openrouter-account"
 import { PermissionApi } from "./groups/permission"
 import { ProjectApi } from "./groups/project"
 import { ProjectCopyApi } from "./groups/project-copy"
@@ -65,6 +66,7 @@ export const InstanceHttpApi = HttpApi.make("opencode-instance")
   .addHttpApi(FileApi)
   .addHttpApi(InstanceApi)
   .addHttpApi(McpApi)
+  .addHttpApi(OpenRouterAccountApi)
   .addHttpApi(ProjectApi)
   .addHttpApi(ProjectCopyApi)
   .addHttpApi(ProductTaskApi)

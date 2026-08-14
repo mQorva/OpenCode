@@ -57,6 +57,16 @@ export interface Interface {
     readonly value: Value
     readonly label?: string
   }) => Effect.Effect<Info, ProtectedSecret.Error>
+  /** Places encoded credential material in protected storage without changing active metadata. */
+  readonly stageProtected: (value: Value) => Effect.Effect<ProtectedSecret.ID, ProtectedSecret.Error>
+  /** Commits a staged protected reference as the active credential for an integration. */
+  readonly commitProtected: (input: {
+    readonly integrationID: Integration.ID
+    readonly secretRef: ProtectedSecret.ID
+    readonly label?: string
+  }) => Effect.Effect<Info, ProtectedSecret.Error>
+  /** Removes protected material that was staged but not committed. */
+  readonly discardProtected: (secretRef: ProtectedSecret.ID) => Effect.Effect<void, ProtectedSecret.Error>
   /** Updates the label or secret value of a stored credential. */
   readonly update: (
     id: ID,
@@ -77,7 +87,7 @@ const layer = Layer.effect(
     const encode = Schema.encodeSync(Schema.fromJsonString(Value))
     const decodeProtected = Schema.decodeUnknownEffect(Schema.fromJsonString(Value))
     const stored = (row: typeof CredentialTable.$inferSelect) => {
-      if (!row.integration_id) return
+      if (!row.integration_id) return undefined
       return new Info({
         id: row.id,
         integrationID: row.integration_id,
@@ -89,6 +99,53 @@ const layer = Layer.effect(
 
     const removeSecret = (ref: ProtectedSecret.ID | null) =>
       ref ? secrets.remove(ref).pipe(Effect.catchTag("ProtectedSecret.NotFound", () => Effect.void)) : Effect.void
+
+    const commitProtected = Effect.fn("Credential.commitProtected")(function* (input: {
+      readonly integrationID: Integration.ID
+      readonly secretRef: ProtectedSecret.ID
+      readonly label?: string
+    }) {
+      const previous = yield* db
+        .select({ secretRef: CredentialTable.secret_ref })
+        .from(CredentialTable)
+        .where(eq(CredentialTable.integration_id, input.integrationID))
+        .all()
+        .pipe(Effect.orDie)
+      const credential = new Info({
+        id: ID.create(),
+        integrationID: input.integrationID,
+        label: input.label ?? "default",
+        protected: true,
+      })
+      yield* db
+        .transaction((tx) =>
+          Effect.gen(function* () {
+            yield* tx.delete(CredentialTable).where(eq(CredentialTable.integration_id, input.integrationID)).run()
+            yield* tx
+              .insert(CredentialTable)
+              .values({
+                id: credential.id,
+                integration_id: credential.integrationID,
+                label: credential.label,
+                value: null,
+                secret_ref: input.secretRef,
+              })
+              .run()
+          }),
+        )
+        .pipe(
+          Effect.onExit((exit) =>
+            exit._tag === "Failure" ? removeSecret(input.secretRef).pipe(Effect.catch(() => Effect.void)) : Effect.void,
+          ),
+          Effect.orDie,
+        )
+      yield* Effect.forEach(
+        previous,
+        (item) => (item.secretRef && item.secretRef !== input.secretRef ? removeSecret(item.secretRef) : Effect.void),
+        { discard: true },
+      ).pipe(Effect.catch(() => Effect.void))
+      return credential
+    })
 
     return Service.of({
       all: Effect.fn("Credential.all")(function* () {
@@ -165,48 +222,20 @@ const layer = Layer.effect(
         )
         return credential
       }),
+      stageProtected: Effect.fn("Credential.stageProtected")(function* (value) {
+        return yield* secrets.put(encode(value))
+      }),
+      commitProtected,
       createProtected: Effect.fn("Credential.createProtected")(function* (input) {
-        const previous = yield* db
-          .select({ secretRef: CredentialTable.secret_ref })
-          .from(CredentialTable)
-          .where(eq(CredentialTable.integration_id, input.integrationID))
-          .all()
-          .pipe(Effect.orDie)
         const secretRef = yield* secrets.put(encode(input.value))
-        const credential = new Info({
-          id: ID.create(),
+        return yield* commitProtected({
           integrationID: input.integrationID,
-          label: input.label ?? "default",
-          protected: true,
+          label: input.label,
+          secretRef,
         })
-        yield* db
-          .transaction((tx) =>
-            Effect.gen(function* () {
-              yield* tx.delete(CredentialTable).where(eq(CredentialTable.integration_id, input.integrationID)).run()
-              yield* tx
-                .insert(CredentialTable)
-                .values({
-                  id: credential.id,
-                  integration_id: credential.integrationID,
-                  label: credential.label,
-                  value: null,
-                  secret_ref: secretRef,
-                })
-                .run()
-            }),
-          )
-          .pipe(
-            Effect.onExit((exit) =>
-              exit._tag === "Failure" ? removeSecret(secretRef).pipe(Effect.catch(() => Effect.void)) : Effect.void,
-            ),
-            Effect.orDie,
-          )
-        yield* Effect.forEach(
-          previous,
-          (item) => (item.secretRef && item.secretRef !== secretRef ? removeSecret(item.secretRef) : Effect.void),
-          { discard: true },
-        ).pipe(Effect.catch(() => Effect.void))
-        return credential
+      }),
+      discardProtected: Effect.fn("Credential.discardProtected")(function* (secretRef) {
+        yield* removeSecret(secretRef)
       }),
       update: Effect.fn("Credential.update")(function* (id, updates) {
         if (!updates.label && !updates.value) return

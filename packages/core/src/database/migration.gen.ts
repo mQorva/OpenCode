@@ -42,5 +42,6 @@ export const migrations = (
     import("./migration/20260622202450_simplify_session_input"),
     import("./migration/20260813235146_product_tasks"),
     import("./migration/20260814003135_protected_credentials"),
+    import("./migration/20260814004839_openrouter_accounts"),
   ])
 ).map((module) => module.default) satisfies DatabaseMigration.Migration[]

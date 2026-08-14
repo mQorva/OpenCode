@@ -104,6 +104,30 @@ describe("Credential", () => {
     }),
   )
 
+  it.effect("stages and discards replacement secrets without changing the active credential", () =>
+    Effect.gen(function* () {
+      const values = new Map<string, string>()
+      ProtectedSecret.install({
+        put: (ref, value) => Effect.sync(() => void values.set(ref, value)),
+        get: (ref) => Effect.succeed(values.get(ref)),
+        remove: (ref) => Effect.sync(() => values.delete(ref)),
+      })
+      const credentials = yield* Credential.Service
+      const integrationID = Integration.ID.make("openrouter")
+      const active = yield* credentials.createProtected({
+        integrationID,
+        value: Credential.Key.make({ type: "key", key: "active-secret" }),
+      })
+      const staged = yield* credentials.stageProtected(Credential.Key.make({ type: "key", key: "candidate-secret" }))
+
+      expect(yield* credentials.resolve(active.id)).toEqual(Credential.Key.make({ type: "key", key: "active-secret" }))
+      expect(values.size).toBe(2)
+      yield* credentials.discardProtected(staged)
+      expect(values.size).toBe(1)
+      expect(yield* credentials.resolve(active.id)).toEqual(Credential.Key.make({ type: "key", key: "active-secret" }))
+    }),
+  )
+
   it.effect("rejects malformed protected values", () =>
     Effect.gen(function* () {
       const values = new Map<string, string>()

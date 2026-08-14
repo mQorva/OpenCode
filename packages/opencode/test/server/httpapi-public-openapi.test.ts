@@ -347,4 +347,20 @@ describe("PublicApi OpenAPI v2 errors", () => {
       "ProjectNotFoundError",
     )
   })
+
+  test("documents protected OpenRouter account routes without secret response fields", () => {
+    const spec = OpenApi.fromApi(PublicApi) as OpenApiSpec
+
+    expect(spec.paths["/product/provider/openrouter/account"]?.get).toBeDefined()
+    expect(spec.paths["/product/provider/openrouter/account"]?.delete).toBeDefined()
+    expect(spec.paths["/product/provider/openrouter/account/connect"]?.post).toBeDefined()
+    expect(spec.paths["/product/provider/openrouter/account/verify"]?.post).toBeDefined()
+    expect(spec.paths["/product/provider/openrouter/models"]?.get).toBeDefined()
+    expect(spec.paths["/product/provider/openrouter/models/refresh"]?.post).toBeDefined()
+
+    const accountSchema = JSON.stringify(spec.components.schemas.OpenRouterAccountAccount)
+    expect(accountSchema).not.toContain('"key"')
+    expect(accountSchema).not.toContain("apiKey")
+    expect(accountSchema).not.toContain("secretRef")
+  })
 })

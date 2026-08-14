@@ -56,6 +56,7 @@ import { LayerNode } from "@opencode-ai/core/effect/layer-node"
 import { httpClient } from "@opencode-ai/core/effect/app-node-platform"
 import { EventV2 } from "@opencode-ai/core/event"
 import { ModelsDev } from "@opencode-ai/core/models-dev"
+import { OpenRouterAccountService } from "@opencode-ai/core/openrouter-account"
 import { Npm } from "@opencode-ai/core/npm"
 import { PermissionSaved } from "@opencode-ai/core/permission/saved"
 import { ProjectV2 } from "@opencode-ai/core/project"
@@ -91,6 +92,7 @@ import { fileHandlers } from "./handlers/file"
 import { globalHandlers } from "./handlers/global"
 import { instanceHandlers } from "./handlers/instance"
 import { mcpHandlers } from "./handlers/mcp"
+import { openRouterAccountHandlers } from "./handlers/openrouter-account"
 import { permissionHandlers } from "./handlers/permission"
 import { projectHandlers } from "./handlers/project"
 import { projectCopyHandlers } from "./handlers/project-copy"
@@ -160,6 +162,7 @@ const instanceApiRoutes = HttpApiBuilder.layer(InstanceHttpApi).pipe(
     fileHandlers,
     instanceHandlers,
     mcpHandlers,
+    openRouterAccountHandlers,
     projectHandlers,
     projectCopyHandlers,
     productTaskHandlers,
@@ -226,6 +229,7 @@ const app = LayerNode.group([
   Snapshot.node,
   Plugin.node,
   ModelsDev.node,
+  OpenRouterAccountService.node,
   Provider.node,
   ProviderAuth.node,
   Agent.node,
