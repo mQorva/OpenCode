@@ -125,6 +125,7 @@ function HomeProjectTasksView(props: HomeProjectTasksViewProps) {
                 onArchive={(task) => withTarget((target) => void props.tasks.task.archive(target, task))}
                 onRestore={(task) => withTarget((target) => void props.tasks.task.restore(target, task))}
                 onReopen={(task) => withTarget((target) => void props.tasks.task.reopen(target, task))}
+                onOpenWorkspace={(task) => withTarget((target) => void props.tasks.task.openWorkspace(target, task))}
                 language={language}
               />
               <Show when={props.tasks.data.includeArchived() || active().length > 0}>
@@ -150,6 +151,7 @@ function HomeProjectTasksView(props: HomeProjectTasksViewProps) {
                     onArchive={(task) => withTarget((target) => void props.tasks.task.archive(target, task))}
                     onRestore={(task) => withTarget((target) => void props.tasks.task.restore(target, task))}
                     onReopen={(task) => withTarget((target) => void props.tasks.task.reopen(target, task))}
+                    onOpenWorkspace={(task) => withTarget((target) => void props.tasks.task.openWorkspace(target, task))}
                     language={language}
                   />
                 </Show>
@@ -176,6 +178,7 @@ function TaskSection(props: {
   onArchive: (task: ProductTaskInfo) => void
   onRestore: (task: ProductTaskInfo) => void
   onReopen: (task: ProductTaskInfo) => void
+  onOpenWorkspace: (task: ProductTaskInfo) => void
 }) {
   return (
     <Show when={props.tasks.length > 0}>
@@ -201,6 +204,7 @@ function TaskRow(
     onArchive: (task: ProductTaskInfo) => void
     onRestore: (task: ProductTaskInfo) => void
     onReopen: (task: ProductTaskInfo) => void
+    onOpenWorkspace: (task: ProductTaskInfo) => void
   },
 ) {
   const archived = () => !!props.task.archivedAt
@@ -222,6 +226,11 @@ function TaskRow(
           </Show>
         </div>
         <div class="flex shrink-0 items-center gap-1">
+          <Show when={!archived()}>
+            <ButtonV2 variant="ghost-muted" size="small" onClick={() => props.onOpenWorkspace(props.task)}>
+              {props.language.t("home.tasks.workspace")}
+            </ButtonV2>
+          </Show>
           <ButtonV2 variant="ghost-muted" size="small" onClick={() => props.onEdit(props.task)}>
             {props.language.t("common.edit")}
           </ButtonV2>

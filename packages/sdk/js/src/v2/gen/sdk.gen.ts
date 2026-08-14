@@ -173,6 +173,8 @@ import type {
   ProductTaskReopenResponses,
   ProductTaskRestoreErrors,
   ProductTaskRestoreResponses,
+  ProductTaskStartRunErrors,
+  ProductTaskStartRunResponses,
   ProductTaskTransitionRunErrors,
   ProductTaskTransitionRunResponses,
   ProductTaskUpdateErrors,
@@ -3068,6 +3070,56 @@ export class ProductTask extends HeyApiClient {
     return (options?.client ?? this.client).post<ProductTaskBeginRunResponses, ProductTaskBeginRunErrors, ThrowOnError>(
       {
         url: "/product/task/{taskID}/run",
+        ...options,
+        ...params,
+        headers: {
+          "Content-Type": "application/json",
+          ...options?.headers,
+          ...params.headers,
+        },
+      },
+    )
+  }
+
+  public startRun<ThrowOnError extends boolean = false>(
+    parameters: {
+      taskID: string
+      expectedVersion?: number
+      trigger?: ProductRunTrigger
+      sessionID?: string
+      messageID?: string
+      directory?: string
+      agent?: string
+      model?: {
+        providerID: string
+        modelID: string
+        variant?: string
+      }
+      prompt?: PromptInput
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "taskID" },
+            { in: "body", key: "expectedVersion" },
+            { in: "body", key: "trigger" },
+            { in: "body", key: "sessionID" },
+            { in: "body", key: "messageID" },
+            { in: "body", key: "directory" },
+            { in: "body", key: "agent" },
+            { in: "body", key: "model" },
+            { in: "body", key: "prompt" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<ProductTaskStartRunResponses, ProductTaskStartRunErrors, ThrowOnError>(
+      {
+        url: "/product/task/{taskID}/run/session",
         ...options,
         ...params,
         headers: {

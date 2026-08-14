@@ -27,6 +27,33 @@ describe("tab migration", () => {
     expect(migrateTabs(null, server)).toEqual([])
     expect(migrateTabs({}, server)).toEqual([])
   })
+
+  test("preserves valid product task draft identity for an idempotent start", () => {
+    const productTask = {
+      taskID: "ptask_1",
+      expectedVersion: 2,
+      trigger: "retry" as const,
+      sessionID: "ses_1",
+      messageID: "msg_1",
+    }
+    const draft = { type: "draft", draftID: "d1", server, directory: "/tmp", productTask } as const
+
+    expect(migrateTabs([draft], server)).toEqual([draft])
+  })
+
+  test("drops malformed product task identity without dropping the draft", () => {
+    const draft = {
+      type: "draft",
+      draftID: "d1",
+      server,
+      directory: "/tmp",
+      productTask: { taskID: "ptask_1", expectedVersion: 0, trigger: "retry", sessionID: "ses_1", messageID: "msg_1" },
+    }
+
+    expect(migrateTabs([draft], server)).toEqual([
+      { type: "draft", draftID: "d1", server, directory: "/tmp", worktree: undefined, productTask: undefined },
+    ])
+  })
 })
 
 describe("tab memory", () => {

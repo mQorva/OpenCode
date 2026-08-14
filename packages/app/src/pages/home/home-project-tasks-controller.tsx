@@ -2,7 +2,9 @@ import type { ProductTaskInfo } from "@opencode-ai/sdk/v2/types"
 import { createMemo, createResource, createSignal } from "solid-js"
 import { useLanguage } from "@/context/language"
 import { ServerConnection } from "@/context/server"
+import { useTabs } from "@/context/tabs"
 import { errorMessage } from "@/pages/layout/helpers"
+import { Identifier } from "@/utils/id"
 import { showToast } from "@/utils/toast"
 import type { HomeController } from "./home-controller"
 
@@ -15,10 +17,12 @@ type TaskTarget = {
   server: ServerConnection.Any
   serverKey: ServerConnection.Key
   projectID: string
+  directory: string
 }
 
 export function createHomeProjectTasksController(home: HomeController) {
   const language = useLanguage()
+  const tabs = useTabs()
   const [includeArchived, setIncludeArchived] = createSignal(false)
   const source = createMemo(() => {
     const server = home.server.focused()
@@ -52,6 +56,14 @@ export function createHomeProjectTasksController(home: HomeController) {
   const sameTarget = (target: TaskTarget) => {
     const value = source()
     return value?.serverKey === target.serverKey && value.projectID === target.projectID
+  }
+
+  const openSession = (target: TaskTarget, sessionID: string) => {
+    const context = home.server.context(target.server)
+    context.projects.open(target.directory)
+    context.projects.touch(target.directory)
+    const tab = tabs.addSessionTab({ server: target.serverKey, sessionId: sessionID })
+    tabs.select(tab)
   }
 
   const refetchAfterFailure = async (target: TaskTarget) => {
@@ -149,8 +161,46 @@ export function createHomeProjectTasksController(home: HomeController) {
 
   const target = (): TaskTarget | undefined => {
     const value = source()
-    if (!value) return undefined
-    return { server: value.server, serverKey: value.serverKey, projectID: value.projectID }
+    const project = home.project.selected()
+    if (!value || !project) return undefined
+    return { server: value.server, serverKey: value.serverKey, projectID: value.projectID, directory: project.worktree }
+  }
+
+  const openWorkspace = async (target: TaskTarget, task: ProductTaskInfo) => {
+    const context = home.server.context(target.server)
+    try {
+      const runsResult = await context.sdk.client.productTask.listRuns({ taskID: task.id })
+      if (runsResult.error) throw runsResult.error
+      const runs = runsResult.data ?? []
+      const latest = runs.at(-1)
+      const existing = task.activeRunID ? runs.find((run) => run.id === task.activeRunID) : latest
+      if (task.status !== "ready") {
+        if (!existing?.sessionID) throw new Error(language.t("home.tasks.workspaceUnavailable"))
+        openSession(target, existing.sessionID)
+        return true
+      }
+      const trigger = !latest ? "new" : latest.status === "succeeded" ? "reopen" : "retry"
+      context.projects.open(target.directory)
+      context.projects.touch(target.directory)
+      await tabs.newDraft(
+        {
+          server: target.serverKey,
+          directory: target.directory,
+          productTask: {
+            taskID: task.id,
+            expectedVersion: task.version,
+            trigger,
+            sessionID: Identifier.ascending("session"),
+            messageID: Identifier.ascending("message"),
+          },
+        },
+        task.description.trim() || task.title,
+      )
+      return true
+    } catch (cause) {
+      notifyFailure(cause)
+      return false
+    }
   }
 
   return {
@@ -165,7 +215,7 @@ export function createHomeProjectTasksController(home: HomeController) {
       includeArchived,
       toggleArchived: () => setIncludeArchived((value) => !value),
     },
-    task: { create, update, archive, restore, reopen },
+    task: { create, update, archive, restore, reopen, openWorkspace },
   }
 }
 

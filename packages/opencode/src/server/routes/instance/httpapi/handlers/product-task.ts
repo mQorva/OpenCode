@@ -1,4 +1,11 @@
 import { ProductTask } from "@opencode-ai/core/product-task"
+import { AbsolutePath } from "@opencode-ai/core/schema"
+import { AgentV2 } from "@opencode-ai/core/agent"
+import { SessionV2 } from "@opencode-ai/core/session"
+import { SessionMessage } from "@opencode-ai/core/session/message"
+import { ModelV2 } from "@opencode-ai/core/model"
+import { ProviderV2 } from "@opencode-ai/core/provider"
+import { Session } from "@/session/session"
 import { ProductRun } from "@opencode-ai/schema/product-run"
 import { ProductTask as ProductTaskSchema } from "@opencode-ai/schema/product-task"
 import { Effect } from "effect"
@@ -9,6 +16,7 @@ import {
   BeginRunPayload,
   CreateTaskPayload,
   LinkSessionPayload,
+  StartRunPayload,
   TransitionRunPayload,
   UpdateTaskPayload,
 } from "../groups/product-task"
@@ -32,6 +40,8 @@ const mapProductTaskError = <A>(effect: Effect.Effect<A, ProductTask.Error>) =>
 export const productTaskHandlers = HttpApiBuilder.group(InstanceHttpApi, "product-task", (handlers) =>
   Effect.gen(function* () {
     const productTask = yield* ProductTask.Service
+    const sessions = yield* SessionV2.Service
+    const legacySessions = yield* Session.Service
 
     const list = Effect.fn("ProductTaskHttpApi.list")(
       (ctx: {
@@ -91,6 +101,62 @@ export const productTaskHandlers = HttpApiBuilder.group(InstanceHttpApi, "produc
       )
     })
 
+    const startRun = Effect.fn("ProductTaskHttpApi.startRun")(function* (ctx: {
+      params: { taskID: ProductTaskSchema.ID }
+      payload: typeof StartRunPayload.Type
+    }) {
+      const task = yield* mapProductTaskError(productTask.getTask(ctx.params.taskID))
+      const sessionRecorded = yield* sessions
+        .get(ctx.payload.sessionID)
+        .pipe(Effect.as(true), Effect.catch(() => Effect.succeed(false)))
+      const session = yield* sessions.create({
+        id: ctx.payload.sessionID,
+        agent: AgentV2.ID.make(ctx.payload.agent),
+        model: {
+          id: ModelV2.ID.make(ctx.payload.model.modelID),
+          providerID: ProviderV2.ID.make(ctx.payload.model.providerID),
+          variant: ctx.payload.model.variant ? ModelV2.VariantID.make(ctx.payload.model.variant) : undefined,
+        },
+        location: { directory: AbsolutePath.make(ctx.payload.directory) },
+      })
+      const started = yield* mapProductTaskError(
+        productTask.startRun(
+          ctx.params.taskID,
+          ctx.payload.expectedVersion,
+          ctx.payload.trigger,
+          ctx.payload.sessionID,
+        ),
+      ).pipe(
+        Effect.catch((error) =>
+          (sessionRecorded ? Effect.void : legacySessions.remove(session.id).pipe(Effect.catch(() => Effect.void))).pipe(
+            Effect.andThen(Effect.fail(error)),
+          ),
+        ),
+      )
+      const run =
+        started.run.status === "queued"
+          ? yield* sessions
+              .prompt({
+                id: SessionMessage.ID.make(ctx.payload.messageID),
+                sessionID: ctx.payload.sessionID,
+                prompt: ctx.payload.prompt,
+              })
+              .pipe(
+                Effect.andThen(mapProductTaskError(productTask.transitionRun(started.run.id, "running"))),
+                Effect.catch(() =>
+                  mapProductTaskError(productTask.transitionRun(started.run.id, "cancelled")).pipe(
+                    Effect.andThen(Effect.fail(unknown())),
+                  ),
+                ),
+              )
+          : started.run
+      return {
+        task: yield* mapProductTaskError(productTask.getTask(task.id)),
+        run,
+        session: yield* legacySessions.get(session.id).pipe(Effect.orDie),
+      }
+    })
+
     const listRuns = Effect.fn("ProductTaskHttpApi.listRuns")((ctx: { params: { taskID: ProductTaskSchema.ID } }) =>
       mapProductTaskError(productTask.listRuns(ctx.params.taskID)),
     )
@@ -135,6 +201,7 @@ export const productTaskHandlers = HttpApiBuilder.group(InstanceHttpApi, "produc
       .handle("archive", archive)
       .handle("restore", restore)
       .handle("beginRun", beginRun)
+      .handle("startRun", startRun)
       .handle("listRuns", listRuns)
       .handle("getRun", getRun)
       .handle("linkSession", linkSession)

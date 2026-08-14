@@ -162,4 +162,37 @@ describe("ProductTask", () => {
       expect(archive._tag).toBe("ProductTask.ConflictError")
     }),
   )
+
+  it.effect("starts a linked queued task atomically and makes a lost-response retry idempotent", () =>
+    Effect.gen(function* () {
+      yield* seed()
+      const service = yield* ProductTask.Service
+      const task = yield* service.createTask({ projectID, title: "Atomic task" })
+      const sessionID = SessionSchema.ID.create()
+      yield* session(sessionID)
+
+      const started = yield* service.startRun(task.id, task.version, "new", sessionID)
+      expect(started).toMatchObject({ created: true, run: { taskID: task.id, sessionID, status: "queued", trigger: "new" } })
+      expect((yield* service.getTask(task.id)).activeRunID).toBe(started.run.id)
+
+      const retried = yield* service.startRun(task.id, task.version, "new", sessionID)
+      expect(retried).toEqual({ run: started.run, created: false })
+      expect(yield* service.listRuns(task.id)).toHaveLength(1)
+    }),
+  )
+
+  it.effect("rejects an invalid start session without creating an active run", () =>
+    Effect.gen(function* () {
+      yield* seed()
+      const service = yield* ProductTask.Service
+      const task = yield* service.createTask({ projectID, title: "Protected atomic task" })
+      const sessionID = SessionSchema.ID.create()
+      yield* session(sessionID, otherProjectID)
+
+      const failure = yield* service.startRun(task.id, task.version, "new", sessionID).pipe(Effect.flip)
+      expect(failure._tag).toBe("ProductTask.ConflictError")
+      expect(yield* service.listRuns(task.id)).toHaveLength(0)
+      expect((yield* service.getTask(task.id)).status).toBe("ready")
+    }),
+  )
 })

@@ -353,6 +353,7 @@ export function createPromptSubmit(input: PromptSubmitInput) {
     const projectDirectory = sdk().directory
     const permissionState = permission.currentServerState()
     const isNewSession = !params.id
+    const productTask = isNewSession && search.draftId ? tabs.draft(search.draftId).productTask : undefined
     const shouldAutoAccept = isNewSession && input.autoAccept()
     const worktreeSelection = input.newSessionWorktree?.() || "main"
 
@@ -399,21 +400,113 @@ export function createPromptSubmit(input: PromptSubmitInput) {
     }
 
     let session = input.info()
+    let productTaskStarted = false
     if (!session && isNewSession) {
-      const created = await sdk()
-        .api.session.create({
-          agent: currentAgent.name,
-          model: { id: currentModel.id, providerID: currentModel.provider.id, variant },
-          location: { directory: sessionDirectory },
-        })
-        .then(normalizeSessionInfo)
-        .catch((err) => {
-          showToast({
-            title: language.t("prompt.toast.sessionCreateFailed.title"),
-            description: errorMessage(err),
+      const created = productTask
+        ? await (async () => {
+            if (WorktreeState.get(sdk().scope, sessionDirectory)?.status === "pending") {
+              let timeoutID: number | undefined
+              const timeout = new Promise<{ status: "failed"; message: string }>((resolve) => {
+                timeoutID = window.setTimeout(
+                  () => resolve({ status: "failed", message: language.t("workspace.error.stillPreparing") }),
+                  5 * 60 * 1000,
+                )
+              })
+              const prepared = await Promise.race([WorktreeState.wait(sdk().scope, sessionDirectory), timeout]).finally(
+                () => {
+                  if (timeoutID !== undefined) window.clearTimeout(timeoutID)
+                },
+              )
+              if (prepared.status === "failed") throw new Error(prepared.message)
+            }
+            const encodedImages = await Promise.all(
+              images.map(async (attachment) => ({
+                ...attachment,
+                dataUrl: await blobDataUrl(attachment.blob, attachment.mime),
+              })),
+            )
+            const { requestParts } = buildRequestParts({
+              prompt: currentPrompt,
+              context,
+              images: encodedImages,
+              text,
+              sessionID: productTask.sessionID,
+              messageID: productTask.messageID,
+              sessionDirectory,
+            })
+            const result = await sdk().client.productTask.startRun({
+              taskID: productTask.taskID,
+              expectedVersion: productTask.expectedVersion,
+              trigger: productTask.trigger,
+              sessionID: productTask.sessionID,
+              messageID: productTask.messageID,
+              directory: sessionDirectory,
+              agent: currentAgent.name,
+              model: {
+                providerID: currentModel.provider.id,
+                modelID: currentModel.id,
+                variant,
+              },
+              prompt: {
+                text: requestParts.flatMap((part) => (part.type === "text" ? [part.text] : [])).join("\n"),
+                files: requestParts.flatMap((part) => {
+                  if (part.type !== "file") return []
+                  const source = part.source?.text
+                  return [{
+                    uri: part.url,
+                    name: part.filename,
+                    source: source ? { start: source.start, end: source.end, text: source.value } : undefined,
+                  }]
+                }),
+                agents: requestParts.flatMap((part) =>
+                  part.type === "agent"
+                    ? [{
+                        name: part.name,
+                        source: part.source
+                          ? { start: part.source.start, end: part.source.end, text: part.source.value }
+                          : undefined,
+                      }]
+                    : [],
+                ),
+              },
+            })
+            if (result.error) throw result.error
+            if (!result.data) throw new Error(language.t("common.requestFailed"))
+            productTaskStarted = true
+            return normalizeSessionInfo(result.data.session)
+          })().catch(async (err) => {
+            const current = await sdk().client.productTask.get({ taskID: productTask.taskID }).catch(() => undefined)
+            if (current?.data?.status === "ready" && search.draftId) {
+              tabs.updateDraft(search.draftId, {
+                productTask: {
+                  taskID: productTask.taskID,
+                  expectedVersion: current.data.version,
+                  trigger: "retry",
+                  sessionID: Identifier.ascending("session"),
+                  messageID: Identifier.ascending("message"),
+                },
+              })
+            }
+            showToast({
+              title: language.t("home.tasks.startFailed"),
+              description: errorMessage(err),
+            })
+            return undefined
           })
-          return undefined
-        })
+        : await sdk()
+            .api.session.create({
+              agent: currentAgent.name,
+              model: { id: currentModel.id, providerID: currentModel.provider.id, variant },
+              location: { directory: sessionDirectory },
+            })
+            .then(normalizeSessionInfo)
+            .catch((err) => {
+              showToast({
+                title: language.t("prompt.toast.sessionCreateFailed.title"),
+                description: errorMessage(err),
+              })
+              return undefined
+            })
       if (created) {
         seed(sessionDirectory, created)
         session = created
@@ -477,6 +570,13 @@ export function createPromptSubmit(input: PromptSubmitInput) {
         input.queueScroll()
       })
       return true
+    }
+
+    if (productTaskStarted) {
+      input.onSubmit?.()
+      clearContext(submission.target())
+      clearInput()
+      return
     }
 
     if (!isNewSession && mode === "normal" && input.shouldQueue?.()) {

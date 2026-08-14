@@ -19,7 +19,7 @@ Status vocabulary: `planned`, `ready`, `in-progress`, `review`, `rework`, `accep
 | AP-10 | accepted    | OpenRouter credential kinds, protected storage, paste-key and PKCE flows, verification, usage/credits/model sources, UI, errors, export, and diagnostics are defined in `openrouter-account-contract.md` from current official documentation.                                                                                                                                  |
 | AP-11 | in-progress | Protected Windows secret storage, paste-key and PKCE flows, safe account/model projections, local API, generated SDK, engine credential projection, account metadata, key replacement, catalog details, and OpenRouter-filtered model selection pass focused checks and production builds. One explicitly approved live verification remains. |
 | AP-12 | accepted    | The graphical project task list is integrated into the existing home renderer and generated ProductTask client, including create, edit, archive, restore, reopen, archived visibility, and explicit task/session navigation. Focused lint, App typecheck, 722 App tests, and the App production build pass.                                                                                  |
-| AP-13 | planned     | Implement task workspace.                                                                                                                                                                                                                                                                                                                                                      |
+| AP-13 | in-progress | A task can open the existing integrated session workspace through one resumable server start command. Root session, queued run, initial prompt admission, running transition, compatible session projection, deterministic retry identity, and existing chat/files/terminal navigation are integrated. Permission/question/run recovery projection remains.                                      |
 | AP-14 | planned     | Implement diff, review, and completion workspace.                                                                                                                                                                                                                                                                                                                              |
 | AP-15 | planned     | Implement graphical settings.                                                                                                                                                                                                                                                                                                                                                  |
 | AP-16 | planned     | Add selected direct API providers.                                                                                                                                                                                                                                                                                                                                             |
@@ -32,7 +32,7 @@ Status vocabulary: `planned`, `ready`, `in-progress`, `review`, `rework`, `accep
 
 ## Current critical path
 
-1. Build AP-13 task workspace and safe task-run/session orchestration against the accepted ProductTask HttpApi adapter.
+1. Complete AP-13 permission, question, interruption, and run-recovery projection in the integrated task workspace.
 2. Complete the one explicitly approved live AP-11 OpenRouter verification.
 3. Complete the visible AP-03 desktop start after owner confirmation.
 
@@ -109,6 +109,23 @@ Status vocabulary: `planned`, `ready`, `in-progress`, `review`, `rework`, `accep
 - Limit: 3 distinct failure causes; loop closed green at 1 of 3.
 - Cause 1: The upstream parity test required every new product key in all 64 locale dictionaries, although only German and English product translations exist. The policy now explicitly permits English runtime fallback for the `home.tasks.*` and `settings.openrouter.*` namespaces in other upstream locales.
 - Evidence: German and English contain complete product keys; all 5 parity tests pass with 979 expectations; the complete App test suite passes.
+
+### AP-13 task-workspace implementation ledger
+
+- Limit: 3 distinct failure causes; loop closed green at 3 of 3.
+- Cause 1: The first handler version used unbranded agent/variant values and Effect combinator names not present in the pinned version. Values now enter through the established branded constructors and repository Effect operators.
+- Cause 2: The OpenAPI test assumed a `required` flag that Effect does not emit for the existing product mutation bodies. It now verifies the actual request-body and response contract.
+- Cause 3: The first aggregate UI patch used an outdated German translation context and was safely rejected without partial changes. The patch was reapplied against the existing `Erneut öffnen` key.
+- Evidence: Core, OpenCode, generated SDK, and App typechecks pass; 5 ProductTask tests and 20 public OpenAPI tests pass; generated SDK is current.
+
+### AP-13 task-workspace review ledger
+
+- Limit: 3 distinct failure causes; loop closed green at 3 of 3.
+- Cause 1: Focused Oxlint was initially launched below the repository root and interpreted the root type-aware configuration as a nested configuration. The corrected root-scoped run has zero errors; its six warnings are pre-existing findings on unchanged lines.
+- Cause 2: Independent review found the first green start contract insufficiently resumable. The final flow persists a linked `queued` run, admits the deterministic initial message, transitions to `running` only afterward, returns the compatible session projection directly, cleans newly created sessions after pre-run rejection, and closes prompt failures as `cancelled` so a new deterministic retry can start from the refreshed task version.
+- Cause 3: The first direct API response used the Core session projection, whose revert/diff shape differs from the existing graphical workspace contract. The endpoint now returns the established compatible session projection and the renderer no longer requires a fallible follow-up read before navigation.
+- Evidence: all four affected typechecks pass; 5 ProductTask tests, 20 public OpenAPI tests, 724 App unit tests with 3,021 expectations, and 41 browser-oriented App tests with 100 expectations pass; the App production build exits with code 0.
+- Remaining AP-13 boundary: Session chat, events, permissions, questions, files, and terminal are reused rather than duplicated. ProductTask status still needs explicit permission/question/interruption and restart-reconciliation projection; session `idle` is not treated as completion.
 
 ## Bounded AP-03/AP-04 repair ledger
 

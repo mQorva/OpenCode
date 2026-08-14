@@ -2465,6 +2465,12 @@ export type UnknownError1 = {
   ref?: string
 }
 
+export type PromptInput = {
+  text: string
+  files?: Array<PromptInputFileAttachment>
+  agents?: Array<PromptAgentAttachment>
+}
+
 export type PtyNotFoundError = {
   _tag: "PtyNotFoundError"
   ptyID: string
@@ -2723,12 +2729,6 @@ export type SessionNotFoundError = {
   _tag: "SessionNotFoundError"
   sessionID: string
   message: string
-}
-
-export type PromptInput = {
-  text: string
-  files?: Array<PromptInputFileAttachment>
-  agents?: Array<PromptAgentAttachment>
 }
 
 export type ServiceUnavailableError = {
@@ -4045,6 +4045,13 @@ export type ProductRunInfo = {
   completionSummary?: ProductRunCompletionSummary
 }
 
+export type PromptInputFileAttachment = {
+  uri: string
+  name?: string
+  description?: string
+  source?: PromptSource
+}
+
 export type PtyTicketConnectToken = {
   ticket: string
   expires_in: number
@@ -4123,13 +4130,6 @@ export type SessionV2Info = {
   location: LocationRef
   subpath?: string
   revert?: RevertState
-}
-
-export type PromptInputFileAttachment = {
-  uri: string
-  name?: string
-  description?: string
-  source?: PromptSource
 }
 
 export type SessionInputAdmitted = {
@@ -9688,6 +9688,62 @@ export type ProductTaskBeginRunResponses = {
 }
 
 export type ProductTaskBeginRunResponse = ProductTaskBeginRunResponses[keyof ProductTaskBeginRunResponses]
+
+export type ProductTaskStartRunData = {
+  body?: {
+    expectedVersion: number
+    trigger: ProductRunTrigger
+    sessionID: string
+    messageID: string
+    directory: string
+    agent: string
+    model: {
+      providerID: string
+      modelID: string
+      variant?: string
+    }
+    prompt: PromptInput
+  }
+  path: {
+    taskID: string
+  }
+  query?: never
+  url: "/product/task/{taskID}/run/session"
+}
+
+export type ProductTaskStartRunErrors = {
+  /**
+   * InvalidRequestError
+   */
+  400: InvalidRequestError
+  /**
+   * NotFoundError
+   */
+  404: NotFoundError
+  /**
+   * ConflictError
+   */
+  409: ConflictError
+  /**
+   * UnknownError
+   */
+  500: UnknownError1
+}
+
+export type ProductTaskStartRunError = ProductTaskStartRunErrors[keyof ProductTaskStartRunErrors]
+
+export type ProductTaskStartRunResponses = {
+  /**
+   * Started product run linked to a root session
+   */
+  200: {
+    task: ProductTaskInfo
+    run: ProductRunInfo
+    session: Session
+  }
+}
+
+export type ProductTaskStartRunResponse = ProductTaskStartRunResponses[keyof ProductTaskStartRunResponses]
 
 export type ProductTaskGetRunData = {
   body?: never

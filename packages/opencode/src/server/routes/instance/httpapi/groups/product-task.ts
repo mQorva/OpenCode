@@ -1,5 +1,8 @@
 import { ProductRun } from "@opencode-ai/schema/product-run"
 import { ProductTask } from "@opencode-ai/schema/product-task"
+import { SessionMessage } from "@opencode-ai/schema/session-message"
+import { PromptInput } from "@opencode-ai/schema/prompt-input"
+import { Session } from "@/session/session"
 import { Schema } from "effect"
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, OpenApi } from "effect/unstable/httpapi"
 import { ApiNotFoundError, ConflictError, InvalidRequestError, UnknownError } from "../errors"
@@ -35,6 +38,27 @@ export const LinkSessionPayload = Schema.Struct({
   sessionID: ProductRun.CompletionSummary.fields.rootSessionID,
 })
 
+export const StartRunPayload = Schema.Struct({
+  ...ExpectedVersionPayload.fields,
+  trigger: ProductRun.Info.fields.trigger,
+  sessionID: ProductRun.CompletionSummary.fields.rootSessionID,
+  messageID: SessionMessage.ID,
+  directory: Schema.String,
+  agent: Schema.String,
+  model: Schema.Struct({
+    providerID: Schema.String,
+    modelID: Schema.String,
+    variant: Schema.optional(Schema.String),
+  }),
+  prompt: PromptInput.Prompt,
+})
+
+export const StartRunResult = Schema.Struct({
+  task: ProductTask.Info,
+  run: ProductRun.Info,
+  session: Session.Info,
+})
+
 export const TransitionRunPayload = Schema.Struct({
   target: ProductRun.Info.fields.status,
   failureCode: Schema.optional(ProductRun.Info.fields.failureCode),
@@ -52,6 +76,7 @@ export const ProductTaskPaths = {
   archive: `${root}/task/:taskID/archive`,
   restore: `${root}/task/:taskID/restore`,
   beginRun: `${root}/task/:taskID/run`,
+  startRun: `${root}/task/:taskID/run/session`,
   listRuns: `${root}/task/:taskID/run`,
   accept: `${root}/task/:taskID/accept`,
   reopen: `${root}/task/:taskID/reopen`,
@@ -102,6 +127,12 @@ export const ProductTaskApi = HttpApi.make("product-task").add(
         params: { taskID: ProductTask.Info.fields.id },
         payload: BeginRunPayload,
         success: described(ProductRun.Info, "Queued product run"),
+        error: ProductTaskErrors,
+      }),
+      HttpApiEndpoint.post("startRun", ProductTaskPaths.startRun, {
+        params: { taskID: ProductTask.Info.fields.id },
+        payload: StartRunPayload,
+        success: described(StartRunResult, "Started product run linked to a root session"),
         error: ProductTaskErrors,
       }),
       HttpApiEndpoint.get("listRuns", ProductTaskPaths.listRuns, {

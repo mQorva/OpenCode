@@ -68,6 +68,11 @@ export type RunTransitionData = {
   readonly completionSummary?: ProductRun.CompletionSummary
 }
 
+export type StartRunResult = {
+  readonly run: ProductRun.Info
+  readonly created: boolean
+}
+
 export interface Interface {
   readonly listTasks: (
     projectID: ProjectV2.ID,
@@ -83,6 +88,12 @@ export interface Interface {
     expectedVersion: number,
     trigger: ProductRun.Trigger,
   ) => Effect.Effect<ProductRun.Info, Error>
+  readonly startRun: (
+    taskID: ProductTask.ID,
+    expectedVersion: number,
+    trigger: ProductRun.Trigger,
+    sessionID: SessionSchema.ID,
+  ) => Effect.Effect<StartRunResult, Error>
   readonly linkSession: (runID: ProductRun.ID, sessionID: SessionSchema.ID) => Effect.Effect<ProductRun.Info, Error>
   readonly listRuns: (taskID: ProductTask.ID) => Effect.Effect<ProductRun.Info[], Error>
   readonly getRun: (runID: ProductRun.ID) => Effect.Effect<ProductRun.Info, Error>
@@ -381,6 +392,73 @@ const layer = Layer.effect(
               .get()
             if (!updated) return yield* staleVersion(expectedVersion, task.version)
             return runInfo(run)
+          }),
+        ).pipe(Effect.mapError(transactionError))
+      }),
+
+      startRun: Effect.fn("ProductTask.startRun")(function* (taskID, expectedVersion, trigger, sessionID) {
+        return yield* db.transaction((tx) =>
+          Effect.gen(function* () {
+            const task = yield* tx.select().from(ProductTaskTable).where(eq(ProductTaskTable.id, taskID)).get()
+            if (!task) return yield* taskNotFound()
+            const session = yield* tx.select().from(SessionTable).where(eq(SessionTable.id, sessionID)).get()
+            if (!session) return yield* sessionNotFound()
+            if (session.project_id !== task.project_id || session.parent_id !== null)
+              return yield* new ConflictError({ message: "Die Sitzung gehört nicht zur Aufgabenhierarchie." })
+
+            const existing = yield* tx
+              .select()
+              .from(ProductRunTable)
+              .where(eq(ProductRunTable.session_id, sessionID))
+              .get()
+            if (existing) {
+              if (existing.task_id === taskID && activeRunStatuses.includes(existing.status))
+                return { run: runInfo(existing), created: false }
+              return yield* new ConflictError({ message: "Die Sitzung ist bereits verknüpft." })
+            }
+
+            yield* checkVersion(task, expectedVersion)
+            if (task.time_archived !== null)
+              return yield* new ConflictError({ message: "Archivierte Aufgaben können nicht gestartet werden." })
+            if (task.status !== "ready" && task.status !== "review")
+              return yield* invalid("Der Lauf kann aus diesem Aufgabenstatus nicht gestartet werden.")
+            const activeRuns = yield* tx
+              .select({ id: ProductRunTable.id })
+              .from(ProductRunTable)
+              .where(and(eq(ProductRunTable.task_id, taskID), inArray(ProductRunTable.status, activeRunStatuses)))
+              .all()
+            if (task.active_run_id !== null || activeRuns.length > 0)
+              return yield* new ConflictError({ message: "Für die Aufgabe läuft bereits ein Lauf." })
+
+            const now = Date.now()
+            const latest = yield* tx
+              .select({ sequence: ProductRunTable.sequence })
+              .from(ProductRunTable)
+              .where(eq(ProductRunTable.task_id, taskID))
+              .orderBy(desc(ProductRunTable.sequence))
+              .limit(1)
+              .get()
+            const runID = ProductRun.ID.create()
+            const run = yield* tx
+              .insert(ProductRunTable)
+              .values({
+                id: runID,
+                task_id: taskID,
+                sequence: (latest?.sequence ?? 0) + 1,
+                session_id: sessionID,
+                status: "queued",
+                trigger,
+              })
+              .returning()
+              .get()
+            const updated = yield* tx
+              .update(ProductTaskTable)
+              .set({ status: "active", active_run_id: runID, version: task.version + 1, time_updated: now })
+              .where(and(eq(ProductTaskTable.id, taskID), eq(ProductTaskTable.version, expectedVersion)))
+              .returning()
+              .get()
+            if (!updated) return yield* staleVersion(expectedVersion, task.version)
+            return { run: runInfo(run), created: true }
           }),
         ).pipe(Effect.mapError(transactionError))
       }),

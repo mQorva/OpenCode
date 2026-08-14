@@ -363,4 +363,14 @@ describe("PublicApi OpenAPI v2 errors", () => {
     expect(accountSchema).not.toContain("apiKey")
     expect(accountSchema).not.toContain("secretRef")
   })
+
+  test("documents the atomic product task workspace start route", () => {
+    const spec = OpenApi.fromApi(PublicApi) as OpenApiSpec
+    const operation = spec.paths["/product/task/{taskID}/run/session"]?.post
+
+    expect(operation).toBeDefined()
+    expect(operation?.requestBody).toBeDefined()
+    expect(operation?.responses?.["200"]).toBeDefined()
+    expect(operation?.responses?.["409"]).toBeDefined()
+  })
 })
