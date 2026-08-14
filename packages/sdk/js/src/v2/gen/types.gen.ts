@@ -2421,6 +2421,14 @@ export type McpServerNotFoundError = {
   message: string
 }
 
+export type OpenRouterActionError = {
+  _tag: "OpenRouterActionError"
+  category: OpenRouterAccountProviderErrorCategory
+  message: string
+  httpStatus?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+  retryAfter?: number | "NaN" | "Infinity" | "-Infinity" | "Infinity" | "-Infinity" | "NaN"
+}
+
 export type Project = {
   id: string
   worktree: string
@@ -2436,6 +2444,25 @@ export type ProjectNotFoundError = {
   _tag: "ProjectNotFoundError"
   projectID: string
   message: string
+}
+
+export type NotFoundError = {
+  name: "NotFoundError"
+  data: {
+    message: string
+  }
+}
+
+export type ConflictError = {
+  _tag: "ConflictError"
+  message: string
+  resource?: string
+}
+
+export type UnknownError1 = {
+  _tag: "UnknownError"
+  message: string
+  ref?: string
 }
 
 export type PtyNotFoundError = {
@@ -2537,13 +2564,6 @@ export type ProviderAuthError1 = {
     field?: string
     message?: string
     kind?: string
-  }
-}
-
-export type NotFoundError = {
-  name: "NotFoundError"
-  data: {
-    message: string
   }
 }
 
@@ -2711,12 +2731,6 @@ export type PromptInput = {
   agents?: Array<PromptAgentAttachment>
 }
 
-export type ConflictError = {
-  _tag: "ConflictError"
-  message: string
-  resource?: string
-}
-
 export type ServiceUnavailableError = {
   _tag: "ServiceUnavailableError"
   message: string
@@ -2730,7 +2744,7 @@ export type MessageNotFoundError = {
   message: string
 }
 
-export type UnknownError1 = {
+export type UnknownError2 = {
   _tag: "UnknownError"
   message: string
   ref?: string
@@ -3844,10 +3858,192 @@ export type ConfigV2ExperimentalPolicy = {
   resource: string
 }
 
+export type OpenRouterAccountCredentialKind = "openrouter_api_key" | "openrouter_pkce_key" | "openrouter_management_key"
+
+export type OpenRouterAccountConnectionState = "unconfigured" | "verifying" | "connected" | "attention" | "disconnected"
+
+export type OpenRouterAccountLimitReset = "daily" | "weekly" | "monthly"
+
+export type OpenRouterAccountKeyMetadata = {
+  label: string
+  creatorUserId?: string
+  isFreeTier: boolean
+  isManagementKey: boolean
+  isProvisioningKey: boolean
+  includeByokInLimit?: boolean
+  limit?: number
+  limitRemaining?: number
+  limitReset?: OpenRouterAccountLimitReset
+  usage: number
+  usageDaily: number
+  usageWeekly: number
+  usageMonthly: number
+  byokUsage?: number
+  byokUsageDaily?: number
+  byokUsageWeekly?: number
+  byokUsageMonthly?: number
+  expiresAt?: number
+}
+
+export type OpenRouterAccountAccount = {
+  id: string
+  provider: "openrouter"
+  kind: OpenRouterAccountCredentialKind
+  state: OpenRouterAccountConnectionState
+  label: string
+  keyMetadata?: OpenRouterAccountKeyMetadata
+  verifiedAt?: number
+  fetchedAt: number
+}
+
+export type OpenRouterAccountProviderErrorCategory =
+  | "validation"
+  | "secret_storage"
+  | "auth_cancelled"
+  | "auth_callback"
+  | "provider_auth"
+  | "provider_payment"
+  | "provider_permission"
+  | "provider_rate_limit"
+  | "provider_timeout"
+  | "provider_unavailable"
+  | "provider_protocol"
+  | "persistence"
+  | "engine_configuration"
+
+export type OpenRouterAccountPkceAttemptStatus = "pending" | "complete" | "failed" | "cancelled" | "expired"
+
+export type OpenRouterAccountProviderError = {
+  category: OpenRouterAccountProviderErrorCategory
+  message: string
+  httpStatus?: number
+  retryAfter?: number
+}
+
+export type OpenRouterAccountPkceAttempt = {
+  id: string
+  status: OpenRouterAccountPkceAttemptStatus
+  authorizationUrl?: string
+  createdAt: number
+  expiresAt: number
+  error?: OpenRouterAccountProviderError
+}
+
+export type OpenRouterAccountModality = "text" | "image" | "audio" | "file" | "embeddings"
+
+export type OpenRouterAccountModalities = {
+  input: Array<OpenRouterAccountModality>
+  output: Array<OpenRouterAccountModality>
+}
+
+export type OpenRouterAccountCapabilities = {
+  tools: boolean
+  reasoning: boolean
+  structuredOutputs: boolean
+}
+
+export type OpenRouterAccountPricing = {
+  prompt: string
+  completion: string
+  request?: string
+  image?: string
+}
+
+export type OpenRouterAccountModel = {
+  slug: string
+  name: string
+  contextLength: number
+  modalities: OpenRouterAccountModalities
+  supportedParameters: Array<string>
+  capabilities: OpenRouterAccountCapabilities
+  pricing: OpenRouterAccountPricing
+}
+
+export type OpenRouterAccountModelCatalog = {
+  fetchedAt: number
+  models: Array<OpenRouterAccountModel>
+}
+
 export type ProjectDirectories = Array<{
   directory: string
   strategy?: string
 }>
+
+export type ProductTaskStatus = "ready" | "active" | "waiting" | "review" | "completed" | "cancelled"
+
+export type ProductTaskInfo = {
+  id: string
+  projectID: string
+  title: string
+  description: string
+  status: ProductTaskStatus
+  position: number
+  version: number
+  activeRunID?: string
+  createdAt: number
+  updatedAt: number
+  completedAt?: number
+  cancelledAt?: number
+  archivedAt?: number
+}
+
+export type ProductRunTrigger = "new" | "continue" | "retry" | "reopen"
+
+export type ProductRunStatus =
+  | "queued"
+  | "running"
+  | "waiting_permission"
+  | "waiting_input"
+  | "succeeded"
+  | "failed"
+  | "cancelled"
+  | "interrupted"
+
+export type ProductRunCompletionSummaryCheck = {
+  name: string
+  status: "passed" | "failed" | "skipped" | "unknown"
+  source: "reported" | "suggested"
+  message?: string
+}
+
+export type ProductRunCompletionSummary = {
+  rootSessionID: string
+  childSessionIDs: Array<string>
+  finalAssistantSummary: string
+  changedFiles: Array<SnapshotFileDiff>
+  diff: {
+    additions: number
+    deletions: number
+    files: number
+  }
+  outstandingPermissionIDs: Array<string>
+  outstandingQuestionIDs: Array<string>
+  checks: Array<ProductRunCompletionSummaryCheck>
+  usage: {
+    input: number
+    output: number
+    reasoning: number
+    cache: {
+      read: number
+      write: number
+    }
+    cost: number
+  }
+}
+
+export type ProductRunInfo = {
+  id: string
+  taskID: string
+  sequence: number
+  sessionID?: string
+  status: ProductRunStatus
+  trigger: ProductRunTrigger
+  startedAt?: number
+  finishedAt?: number
+  failureCode?: string
+  failureMessage?: string
+  completionSummary?: ProductRunCompletionSummary
+}
 
 export type PtyTicketConnectToken = {
   ticket: string
@@ -8702,6 +8898,279 @@ export type McpDisconnectResponses = {
 
 export type McpDisconnectResponse = McpDisconnectResponses[keyof McpDisconnectResponses]
 
+export type OpenrouterAccountRemoveData = {
+  body?: never
+  path?: never
+  query?: never
+  url: "/product/provider/openrouter/account"
+}
+
+export type OpenrouterAccountRemoveErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * OpenRouterActionError
+   */
+  422: OpenRouterActionError
+}
+
+export type OpenrouterAccountRemoveError = OpenrouterAccountRemoveErrors[keyof OpenrouterAccountRemoveErrors]
+
+export type OpenrouterAccountRemoveResponses = {
+  /**
+   * Removed OpenRouter account
+   */
+  200: unknown
+}
+
+export type OpenrouterAccountGetData = {
+  body?: never
+  path?: never
+  query?: never
+  url: "/product/provider/openrouter/account"
+}
+
+export type OpenrouterAccountGetErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * OpenRouterActionError
+   */
+  422: OpenRouterActionError
+}
+
+export type OpenrouterAccountGetError = OpenrouterAccountGetErrors[keyof OpenrouterAccountGetErrors]
+
+export type OpenrouterAccountGetResponses = {
+  /**
+   * OpenRouter account projection
+   */
+  200: OpenRouterAccountAccount
+}
+
+export type OpenrouterAccountGetResponse = OpenrouterAccountGetResponses[keyof OpenrouterAccountGetResponses]
+
+export type OpenrouterAccountConnectData = {
+  body?: {
+    key: string
+    label?: string
+  }
+  path?: never
+  query?: never
+  url: "/product/provider/openrouter/account/connect"
+}
+
+export type OpenrouterAccountConnectErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * OpenRouterActionError
+   */
+  422: OpenRouterActionError
+}
+
+export type OpenrouterAccountConnectError = OpenrouterAccountConnectErrors[keyof OpenrouterAccountConnectErrors]
+
+export type OpenrouterAccountConnectResponses = {
+  /**
+   * Connected OpenRouter account
+   */
+  200: OpenRouterAccountAccount
+}
+
+export type OpenrouterAccountConnectResponse =
+  OpenrouterAccountConnectResponses[keyof OpenrouterAccountConnectResponses]
+
+export type OpenrouterAccountStartPkceData = {
+  body?: never
+  path?: never
+  query?: never
+  url: "/product/provider/openrouter/account/pkce"
+}
+
+export type OpenrouterAccountStartPkceErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * OpenRouterActionError
+   */
+  422: OpenRouterActionError
+}
+
+export type OpenrouterAccountStartPkceError = OpenrouterAccountStartPkceErrors[keyof OpenrouterAccountStartPkceErrors]
+
+export type OpenrouterAccountStartPkceResponses = {
+  /**
+   * Started OpenRouter PKCE connection
+   */
+  200: OpenRouterAccountPkceAttempt
+}
+
+export type OpenrouterAccountStartPkceResponse =
+  OpenrouterAccountStartPkceResponses[keyof OpenrouterAccountStartPkceResponses]
+
+export type OpenrouterAccountCancelPkceData = {
+  body?: never
+  path: {
+    attemptID: string
+  }
+  query?: never
+  url: "/product/provider/openrouter/account/pkce/{attemptID}"
+}
+
+export type OpenrouterAccountCancelPkceErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * OpenRouterActionError
+   */
+  422: OpenRouterActionError
+}
+
+export type OpenrouterAccountCancelPkceError =
+  OpenrouterAccountCancelPkceErrors[keyof OpenrouterAccountCancelPkceErrors]
+
+export type OpenrouterAccountCancelPkceResponses = {
+  /**
+   * Cancelled OpenRouter PKCE connection
+   */
+  200: OpenRouterAccountPkceAttempt
+}
+
+export type OpenrouterAccountCancelPkceResponse =
+  OpenrouterAccountCancelPkceResponses[keyof OpenrouterAccountCancelPkceResponses]
+
+export type OpenrouterAccountGetPkceData = {
+  body?: never
+  path: {
+    attemptID: string
+  }
+  query?: never
+  url: "/product/provider/openrouter/account/pkce/{attemptID}"
+}
+
+export type OpenrouterAccountGetPkceErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * OpenRouterActionError
+   */
+  422: OpenRouterActionError
+}
+
+export type OpenrouterAccountGetPkceError = OpenrouterAccountGetPkceErrors[keyof OpenrouterAccountGetPkceErrors]
+
+export type OpenrouterAccountGetPkceResponses = {
+  /**
+   * OpenRouter PKCE connection status
+   */
+  200: OpenRouterAccountPkceAttempt
+}
+
+export type OpenrouterAccountGetPkceResponse =
+  OpenrouterAccountGetPkceResponses[keyof OpenrouterAccountGetPkceResponses]
+
+export type OpenrouterAccountVerifyData = {
+  body?: never
+  path?: never
+  query?: never
+  url: "/product/provider/openrouter/account/verify"
+}
+
+export type OpenrouterAccountVerifyErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * OpenRouterActionError
+   */
+  422: OpenRouterActionError
+}
+
+export type OpenrouterAccountVerifyError = OpenrouterAccountVerifyErrors[keyof OpenrouterAccountVerifyErrors]
+
+export type OpenrouterAccountVerifyResponses = {
+  /**
+   * Verified OpenRouter account
+   */
+  200: OpenRouterAccountAccount
+}
+
+export type OpenrouterAccountVerifyResponse = OpenrouterAccountVerifyResponses[keyof OpenrouterAccountVerifyResponses]
+
+export type OpenrouterAccountModelsData = {
+  body?: never
+  path?: never
+  query?: never
+  url: "/product/provider/openrouter/models"
+}
+
+export type OpenrouterAccountModelsErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * OpenRouterActionError
+   */
+  422: OpenRouterActionError
+}
+
+export type OpenrouterAccountModelsError = OpenrouterAccountModelsErrors[keyof OpenrouterAccountModelsErrors]
+
+export type OpenrouterAccountModelsResponses = {
+  /**
+   * Cached OpenRouter model catalog
+   */
+  200: OpenRouterAccountModelCatalog
+}
+
+export type OpenrouterAccountModelsResponse = OpenrouterAccountModelsResponses[keyof OpenrouterAccountModelsResponses]
+
+export type OpenrouterAccountRefreshModelsData = {
+  body?: never
+  path?: never
+  query?: never
+  url: "/product/provider/openrouter/models/refresh"
+}
+
+export type OpenrouterAccountRefreshModelsErrors = {
+  /**
+   * Bad request
+   */
+  400: BadRequestError
+  /**
+   * OpenRouterActionError
+   */
+  422: OpenRouterActionError
+}
+
+export type OpenrouterAccountRefreshModelsError =
+  OpenrouterAccountRefreshModelsErrors[keyof OpenrouterAccountRefreshModelsErrors]
+
+export type OpenrouterAccountRefreshModelsResponses = {
+  /**
+   * Refreshed OpenRouter model catalog
+   */
+  200: OpenRouterAccountModelCatalog
+}
+
+export type OpenrouterAccountRefreshModelsResponse =
+  OpenrouterAccountRefreshModelsResponses[keyof OpenrouterAccountRefreshModelsResponses]
+
 export type ProjectListData = {
   body?: never
   path?: never
@@ -8889,6 +9358,543 @@ export type ExperimentalProjectCopyGenerateNameResponses = {
 
 export type ExperimentalProjectCopyGenerateNameResponse =
   ExperimentalProjectCopyGenerateNameResponses[keyof ExperimentalProjectCopyGenerateNameResponses]
+
+export type ProductTaskListData = {
+  body?: never
+  path: {
+    projectID: string
+  }
+  query?: {
+    includeArchived?: boolean | "true" | "false"
+  }
+  url: "/product/project/{projectID}/task"
+}
+
+export type ProductTaskListErrors = {
+  /**
+   * InvalidRequestError
+   */
+  400: InvalidRequestError
+  /**
+   * NotFoundError
+   */
+  404: NotFoundError
+  /**
+   * ConflictError
+   */
+  409: ConflictError
+  /**
+   * UnknownError
+   */
+  500: UnknownError1
+}
+
+export type ProductTaskListError = ProductTaskListErrors[keyof ProductTaskListErrors]
+
+export type ProductTaskListResponses = {
+  /**
+   * List of product tasks
+   */
+  200: Array<ProductTaskInfo>
+}
+
+export type ProductTaskListResponse = ProductTaskListResponses[keyof ProductTaskListResponses]
+
+export type ProductTaskCreateData = {
+  body?: {
+    title: string
+    description?: string
+    position?: number
+  }
+  path: {
+    projectID: string
+  }
+  query?: never
+  url: "/product/project/{projectID}/task"
+}
+
+export type ProductTaskCreateErrors = {
+  /**
+   * InvalidRequestError
+   */
+  400: InvalidRequestError
+  /**
+   * NotFoundError
+   */
+  404: NotFoundError
+  /**
+   * ConflictError
+   */
+  409: ConflictError
+  /**
+   * UnknownError
+   */
+  500: UnknownError1
+}
+
+export type ProductTaskCreateError = ProductTaskCreateErrors[keyof ProductTaskCreateErrors]
+
+export type ProductTaskCreateResponses = {
+  /**
+   * Created product task
+   */
+  200: ProductTaskInfo
+}
+
+export type ProductTaskCreateResponse = ProductTaskCreateResponses[keyof ProductTaskCreateResponses]
+
+export type ProductTaskGetData = {
+  body?: never
+  path: {
+    taskID: string
+  }
+  query?: never
+  url: "/product/task/{taskID}"
+}
+
+export type ProductTaskGetErrors = {
+  /**
+   * InvalidRequestError
+   */
+  400: InvalidRequestError
+  /**
+   * NotFoundError
+   */
+  404: NotFoundError
+  /**
+   * ConflictError
+   */
+  409: ConflictError
+  /**
+   * UnknownError
+   */
+  500: UnknownError1
+}
+
+export type ProductTaskGetError = ProductTaskGetErrors[keyof ProductTaskGetErrors]
+
+export type ProductTaskGetResponses = {
+  /**
+   * Product task
+   */
+  200: ProductTaskInfo
+}
+
+export type ProductTaskGetResponse = ProductTaskGetResponses[keyof ProductTaskGetResponses]
+
+export type ProductTaskUpdateData = {
+  body?: {
+    expectedVersion: number
+    title?: string
+    description?: string
+    position?: number
+  }
+  path: {
+    taskID: string
+  }
+  query?: never
+  url: "/product/task/{taskID}"
+}
+
+export type ProductTaskUpdateErrors = {
+  /**
+   * InvalidRequestError
+   */
+  400: InvalidRequestError
+  /**
+   * NotFoundError
+   */
+  404: NotFoundError
+  /**
+   * ConflictError
+   */
+  409: ConflictError
+  /**
+   * UnknownError
+   */
+  500: UnknownError1
+}
+
+export type ProductTaskUpdateError = ProductTaskUpdateErrors[keyof ProductTaskUpdateErrors]
+
+export type ProductTaskUpdateResponses = {
+  /**
+   * Updated product task
+   */
+  200: ProductTaskInfo
+}
+
+export type ProductTaskUpdateResponse = ProductTaskUpdateResponses[keyof ProductTaskUpdateResponses]
+
+export type ProductTaskArchiveData = {
+  body?: {
+    expectedVersion: number
+  }
+  path: {
+    taskID: string
+  }
+  query?: never
+  url: "/product/task/{taskID}/archive"
+}
+
+export type ProductTaskArchiveErrors = {
+  /**
+   * InvalidRequestError
+   */
+  400: InvalidRequestError
+  /**
+   * NotFoundError
+   */
+  404: NotFoundError
+  /**
+   * ConflictError
+   */
+  409: ConflictError
+  /**
+   * UnknownError
+   */
+  500: UnknownError1
+}
+
+export type ProductTaskArchiveError = ProductTaskArchiveErrors[keyof ProductTaskArchiveErrors]
+
+export type ProductTaskArchiveResponses = {
+  /**
+   * Archived product task
+   */
+  200: ProductTaskInfo
+}
+
+export type ProductTaskArchiveResponse = ProductTaskArchiveResponses[keyof ProductTaskArchiveResponses]
+
+export type ProductTaskRestoreData = {
+  body?: {
+    expectedVersion: number
+  }
+  path: {
+    taskID: string
+  }
+  query?: never
+  url: "/product/task/{taskID}/restore"
+}
+
+export type ProductTaskRestoreErrors = {
+  /**
+   * InvalidRequestError
+   */
+  400: InvalidRequestError
+  /**
+   * NotFoundError
+   */
+  404: NotFoundError
+  /**
+   * ConflictError
+   */
+  409: ConflictError
+  /**
+   * UnknownError
+   */
+  500: UnknownError1
+}
+
+export type ProductTaskRestoreError = ProductTaskRestoreErrors[keyof ProductTaskRestoreErrors]
+
+export type ProductTaskRestoreResponses = {
+  /**
+   * Restored product task
+   */
+  200: ProductTaskInfo
+}
+
+export type ProductTaskRestoreResponse = ProductTaskRestoreResponses[keyof ProductTaskRestoreResponses]
+
+export type ProductTaskListRunsData = {
+  body?: never
+  path: {
+    taskID: string
+  }
+  query?: never
+  url: "/product/task/{taskID}/run"
+}
+
+export type ProductTaskListRunsErrors = {
+  /**
+   * InvalidRequestError
+   */
+  400: InvalidRequestError
+  /**
+   * NotFoundError
+   */
+  404: NotFoundError
+  /**
+   * ConflictError
+   */
+  409: ConflictError
+  /**
+   * UnknownError
+   */
+  500: UnknownError1
+}
+
+export type ProductTaskListRunsError = ProductTaskListRunsErrors[keyof ProductTaskListRunsErrors]
+
+export type ProductTaskListRunsResponses = {
+  /**
+   * List of product runs
+   */
+  200: Array<ProductRunInfo>
+}
+
+export type ProductTaskListRunsResponse = ProductTaskListRunsResponses[keyof ProductTaskListRunsResponses]
+
+export type ProductTaskBeginRunData = {
+  body?: {
+    expectedVersion: number
+    trigger: ProductRunTrigger
+  }
+  path: {
+    taskID: string
+  }
+  query?: never
+  url: "/product/task/{taskID}/run"
+}
+
+export type ProductTaskBeginRunErrors = {
+  /**
+   * InvalidRequestError
+   */
+  400: InvalidRequestError
+  /**
+   * NotFoundError
+   */
+  404: NotFoundError
+  /**
+   * ConflictError
+   */
+  409: ConflictError
+  /**
+   * UnknownError
+   */
+  500: UnknownError1
+}
+
+export type ProductTaskBeginRunError = ProductTaskBeginRunErrors[keyof ProductTaskBeginRunErrors]
+
+export type ProductTaskBeginRunResponses = {
+  /**
+   * Queued product run
+   */
+  200: ProductRunInfo
+}
+
+export type ProductTaskBeginRunResponse = ProductTaskBeginRunResponses[keyof ProductTaskBeginRunResponses]
+
+export type ProductTaskGetRunData = {
+  body?: never
+  path: {
+    runID: string
+  }
+  query?: never
+  url: "/product/run/{runID}"
+}
+
+export type ProductTaskGetRunErrors = {
+  /**
+   * InvalidRequestError
+   */
+  400: InvalidRequestError
+  /**
+   * NotFoundError
+   */
+  404: NotFoundError
+  /**
+   * ConflictError
+   */
+  409: ConflictError
+  /**
+   * UnknownError
+   */
+  500: UnknownError1
+}
+
+export type ProductTaskGetRunError = ProductTaskGetRunErrors[keyof ProductTaskGetRunErrors]
+
+export type ProductTaskGetRunResponses = {
+  /**
+   * Product run
+   */
+  200: ProductRunInfo
+}
+
+export type ProductTaskGetRunResponse = ProductTaskGetRunResponses[keyof ProductTaskGetRunResponses]
+
+export type ProductTaskLinkSessionData = {
+  body?: {
+    sessionID: string
+  }
+  path: {
+    runID: string
+  }
+  query?: never
+  url: "/product/run/{runID}/session"
+}
+
+export type ProductTaskLinkSessionErrors = {
+  /**
+   * InvalidRequestError
+   */
+  400: InvalidRequestError
+  /**
+   * NotFoundError
+   */
+  404: NotFoundError
+  /**
+   * ConflictError
+   */
+  409: ConflictError
+  /**
+   * UnknownError
+   */
+  500: UnknownError1
+}
+
+export type ProductTaskLinkSessionError = ProductTaskLinkSessionErrors[keyof ProductTaskLinkSessionErrors]
+
+export type ProductTaskLinkSessionResponses = {
+  /**
+   * Product run linked to session
+   */
+  200: ProductRunInfo
+}
+
+export type ProductTaskLinkSessionResponse = ProductTaskLinkSessionResponses[keyof ProductTaskLinkSessionResponses]
+
+export type ProductTaskTransitionRunData = {
+  body?: {
+    target: ProductRunStatus
+    failureCode?: string
+    failureMessage?: string
+    completionSummary?: ProductRunCompletionSummary
+  }
+  path: {
+    runID: string
+  }
+  query?: never
+  url: "/product/run/{runID}/transition"
+}
+
+export type ProductTaskTransitionRunErrors = {
+  /**
+   * InvalidRequestError
+   */
+  400: InvalidRequestError
+  /**
+   * NotFoundError
+   */
+  404: NotFoundError
+  /**
+   * ConflictError
+   */
+  409: ConflictError
+  /**
+   * UnknownError
+   */
+  500: UnknownError1
+}
+
+export type ProductTaskTransitionRunError = ProductTaskTransitionRunErrors[keyof ProductTaskTransitionRunErrors]
+
+export type ProductTaskTransitionRunResponses = {
+  /**
+   * Updated product run
+   */
+  200: ProductRunInfo
+}
+
+export type ProductTaskTransitionRunResponse =
+  ProductTaskTransitionRunResponses[keyof ProductTaskTransitionRunResponses]
+
+export type ProductTaskAcceptData = {
+  body?: {
+    expectedVersion: number
+  }
+  path: {
+    taskID: string
+  }
+  query?: never
+  url: "/product/task/{taskID}/accept"
+}
+
+export type ProductTaskAcceptErrors = {
+  /**
+   * InvalidRequestError
+   */
+  400: InvalidRequestError
+  /**
+   * NotFoundError
+   */
+  404: NotFoundError
+  /**
+   * ConflictError
+   */
+  409: ConflictError
+  /**
+   * UnknownError
+   */
+  500: UnknownError1
+}
+
+export type ProductTaskAcceptError = ProductTaskAcceptErrors[keyof ProductTaskAcceptErrors]
+
+export type ProductTaskAcceptResponses = {
+  /**
+   * Accepted product task
+   */
+  200: ProductTaskInfo
+}
+
+export type ProductTaskAcceptResponse = ProductTaskAcceptResponses[keyof ProductTaskAcceptResponses]
+
+export type ProductTaskReopenData = {
+  body?: {
+    expectedVersion: number
+  }
+  path: {
+    taskID: string
+  }
+  query?: never
+  url: "/product/task/{taskID}/reopen"
+}
+
+export type ProductTaskReopenErrors = {
+  /**
+   * InvalidRequestError
+   */
+  400: InvalidRequestError
+  /**
+   * NotFoundError
+   */
+  404: NotFoundError
+  /**
+   * ConflictError
+   */
+  409: ConflictError
+  /**
+   * UnknownError
+   */
+  500: UnknownError1
+}
+
+export type ProductTaskReopenError = ProductTaskReopenErrors[keyof ProductTaskReopenErrors]
+
+export type ProductTaskReopenResponses = {
+  /**
+   * Reopened product task
+   */
+  200: ProductTaskInfo
+}
+
+export type ProductTaskReopenResponse = ProductTaskReopenResponses[keyof ProductTaskReopenResponses]
 
 export type PtyShellsData = {
   body?: never
@@ -11702,7 +12708,7 @@ export type V2SessionRevertStageErrors = {
   /**
    * UnknownError
    */
-  500: UnknownError1
+  500: UnknownError2
 }
 
 export type V2SessionRevertStageError = V2SessionRevertStageErrors[keyof V2SessionRevertStageErrors]
@@ -11743,7 +12749,7 @@ export type V2SessionRevertClearErrors = {
   /**
    * UnknownError
    */
-  500: UnknownError1
+  500: UnknownError2
 }
 
 export type V2SessionRevertClearError = V2SessionRevertClearErrors[keyof V2SessionRevertClearErrors]
@@ -11817,7 +12823,7 @@ export type V2SessionContextErrors = {
   /**
    * UnknownError
    */
-  500: UnknownError1
+  500: UnknownError2
 }
 
 export type V2SessionContextError = V2SessionContextErrors[keyof V2SessionContextErrors]
@@ -12017,7 +13023,7 @@ export type V2SessionMessagesErrors = {
   /**
    * UnknownError
    */
-  500: UnknownError1
+  500: UnknownError2
 }
 
 export type V2SessionMessagesError = V2SessionMessagesErrors[keyof V2SessionMessagesErrors]

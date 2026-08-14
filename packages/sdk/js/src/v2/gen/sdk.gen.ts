@@ -113,6 +113,24 @@ import type {
   McpStatusResponses,
   ModelRef,
   MoveSessionDestination,
+  OpenrouterAccountCancelPkceErrors,
+  OpenrouterAccountCancelPkceResponses,
+  OpenrouterAccountConnectErrors,
+  OpenrouterAccountConnectResponses,
+  OpenrouterAccountGetErrors,
+  OpenrouterAccountGetPkceErrors,
+  OpenrouterAccountGetPkceResponses,
+  OpenrouterAccountGetResponses,
+  OpenrouterAccountModelsErrors,
+  OpenrouterAccountModelsResponses,
+  OpenrouterAccountRefreshModelsErrors,
+  OpenrouterAccountRefreshModelsResponses,
+  OpenrouterAccountRemoveErrors,
+  OpenrouterAccountRemoveResponses,
+  OpenrouterAccountStartPkceErrors,
+  OpenrouterAccountStartPkceResponses,
+  OpenrouterAccountVerifyErrors,
+  OpenrouterAccountVerifyResponses,
   OutputFormat,
   Part as Part2,
   PartDeleteErrors,
@@ -130,6 +148,35 @@ import type {
   PermissionRuleset,
   PermissionV2Reply,
   PermissionV2Source,
+  ProductRunCompletionSummary,
+  ProductRunStatus,
+  ProductRunTrigger,
+  ProductTaskAcceptErrors,
+  ProductTaskAcceptResponses,
+  ProductTaskArchiveErrors,
+  ProductTaskArchiveResponses,
+  ProductTaskBeginRunErrors,
+  ProductTaskBeginRunResponses,
+  ProductTaskCreateErrors,
+  ProductTaskCreateResponses,
+  ProductTaskGetErrors,
+  ProductTaskGetResponses,
+  ProductTaskGetRunErrors,
+  ProductTaskGetRunResponses,
+  ProductTaskLinkSessionErrors,
+  ProductTaskLinkSessionResponses,
+  ProductTaskListErrors,
+  ProductTaskListResponses,
+  ProductTaskListRunsErrors,
+  ProductTaskListRunsResponses,
+  ProductTaskReopenErrors,
+  ProductTaskReopenResponses,
+  ProductTaskRestoreErrors,
+  ProductTaskRestoreResponses,
+  ProductTaskTransitionRunErrors,
+  ProductTaskTransitionRunResponses,
+  ProductTaskUpdateErrors,
+  ProductTaskUpdateResponses,
   ProjectCommands,
   ProjectCurrentErrors,
   ProjectCurrentResponses,
@@ -2527,6 +2574,126 @@ export class Mcp extends HeyApiClient {
   }
 }
 
+export class OpenrouterAccount extends HeyApiClient {
+  public remove<ThrowOnError extends boolean = false>(options?: Options<never, ThrowOnError>) {
+    return (options?.client ?? this.client).delete<
+      OpenrouterAccountRemoveResponses,
+      OpenrouterAccountRemoveErrors,
+      ThrowOnError
+    >({ url: "/product/provider/openrouter/account", ...options })
+  }
+
+  public get<ThrowOnError extends boolean = false>(options?: Options<never, ThrowOnError>) {
+    return (options?.client ?? this.client).get<
+      OpenrouterAccountGetResponses,
+      OpenrouterAccountGetErrors,
+      ThrowOnError
+    >({ url: "/product/provider/openrouter/account", ...options })
+  }
+
+  public connect<ThrowOnError extends boolean = false>(
+    parameters?: {
+      key?: string
+      label?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "body", key: "key" },
+            { in: "body", key: "label" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<
+      OpenrouterAccountConnectResponses,
+      OpenrouterAccountConnectErrors,
+      ThrowOnError
+    >({
+      url: "/product/provider/openrouter/account/connect",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  public startPkce<ThrowOnError extends boolean = false>(options?: Options<never, ThrowOnError>) {
+    return (options?.client ?? this.client).post<
+      OpenrouterAccountStartPkceResponses,
+      OpenrouterAccountStartPkceErrors,
+      ThrowOnError
+    >({ url: "/product/provider/openrouter/account/pkce", ...options })
+  }
+
+  public cancelPkce<ThrowOnError extends boolean = false>(
+    parameters: {
+      attemptID: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams([parameters], [{ args: [{ in: "path", key: "attemptID" }] }])
+    return (options?.client ?? this.client).delete<
+      OpenrouterAccountCancelPkceResponses,
+      OpenrouterAccountCancelPkceErrors,
+      ThrowOnError
+    >({
+      url: "/product/provider/openrouter/account/pkce/{attemptID}",
+      ...options,
+      ...params,
+    })
+  }
+
+  public getPkce<ThrowOnError extends boolean = false>(
+    parameters: {
+      attemptID: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams([parameters], [{ args: [{ in: "path", key: "attemptID" }] }])
+    return (options?.client ?? this.client).get<
+      OpenrouterAccountGetPkceResponses,
+      OpenrouterAccountGetPkceErrors,
+      ThrowOnError
+    >({
+      url: "/product/provider/openrouter/account/pkce/{attemptID}",
+      ...options,
+      ...params,
+    })
+  }
+
+  public verify<ThrowOnError extends boolean = false>(options?: Options<never, ThrowOnError>) {
+    return (options?.client ?? this.client).post<
+      OpenrouterAccountVerifyResponses,
+      OpenrouterAccountVerifyErrors,
+      ThrowOnError
+    >({ url: "/product/provider/openrouter/account/verify", ...options })
+  }
+
+  public models<ThrowOnError extends boolean = false>(options?: Options<never, ThrowOnError>) {
+    return (options?.client ?? this.client).get<
+      OpenrouterAccountModelsResponses,
+      OpenrouterAccountModelsErrors,
+      ThrowOnError
+    >({ url: "/product/provider/openrouter/models", ...options })
+  }
+
+  public refreshModels<ThrowOnError extends boolean = false>(options?: Options<never, ThrowOnError>) {
+    return (options?.client ?? this.client).post<
+      OpenrouterAccountRefreshModelsResponses,
+      OpenrouterAccountRefreshModelsErrors,
+      ThrowOnError
+    >({ url: "/product/provider/openrouter/models/refresh", ...options })
+  }
+}
+
 export class Project extends HeyApiClient {
   /**
    * List all projects
@@ -2690,6 +2857,373 @@ export class Project extends HeyApiClient {
       url: "/project/{projectID}/directories",
       ...options,
       ...params,
+    })
+  }
+}
+
+export class ProductTask extends HeyApiClient {
+  public list<ThrowOnError extends boolean = false>(
+    parameters: {
+      projectID: string
+      includeArchived?: boolean | "true" | "false"
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "projectID" },
+            { in: "query", key: "includeArchived" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).get<ProductTaskListResponses, ProductTaskListErrors, ThrowOnError>({
+      url: "/product/project/{projectID}/task",
+      ...options,
+      ...params,
+    })
+  }
+
+  public create<ThrowOnError extends boolean = false>(
+    parameters: {
+      projectID: string
+      title?: string
+      description?: string
+      position?: number
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "projectID" },
+            { in: "body", key: "title" },
+            { in: "body", key: "description" },
+            { in: "body", key: "position" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<ProductTaskCreateResponses, ProductTaskCreateErrors, ThrowOnError>({
+      url: "/product/project/{projectID}/task",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  public get<ThrowOnError extends boolean = false>(
+    parameters: {
+      taskID: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams([parameters], [{ args: [{ in: "path", key: "taskID" }] }])
+    return (options?.client ?? this.client).get<ProductTaskGetResponses, ProductTaskGetErrors, ThrowOnError>({
+      url: "/product/task/{taskID}",
+      ...options,
+      ...params,
+    })
+  }
+
+  public update<ThrowOnError extends boolean = false>(
+    parameters: {
+      taskID: string
+      expectedVersion?: number
+      title?: string
+      description?: string
+      position?: number
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "taskID" },
+            { in: "body", key: "expectedVersion" },
+            { in: "body", key: "title" },
+            { in: "body", key: "description" },
+            { in: "body", key: "position" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).patch<ProductTaskUpdateResponses, ProductTaskUpdateErrors, ThrowOnError>({
+      url: "/product/task/{taskID}",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  public archive<ThrowOnError extends boolean = false>(
+    parameters: {
+      taskID: string
+      expectedVersion?: number
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "taskID" },
+            { in: "body", key: "expectedVersion" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<ProductTaskArchiveResponses, ProductTaskArchiveErrors, ThrowOnError>({
+      url: "/product/task/{taskID}/archive",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  public restore<ThrowOnError extends boolean = false>(
+    parameters: {
+      taskID: string
+      expectedVersion?: number
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "taskID" },
+            { in: "body", key: "expectedVersion" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<ProductTaskRestoreResponses, ProductTaskRestoreErrors, ThrowOnError>({
+      url: "/product/task/{taskID}/restore",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  public listRuns<ThrowOnError extends boolean = false>(
+    parameters: {
+      taskID: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams([parameters], [{ args: [{ in: "path", key: "taskID" }] }])
+    return (options?.client ?? this.client).get<ProductTaskListRunsResponses, ProductTaskListRunsErrors, ThrowOnError>({
+      url: "/product/task/{taskID}/run",
+      ...options,
+      ...params,
+    })
+  }
+
+  public beginRun<ThrowOnError extends boolean = false>(
+    parameters: {
+      taskID: string
+      expectedVersion?: number
+      trigger?: ProductRunTrigger
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "taskID" },
+            { in: "body", key: "expectedVersion" },
+            { in: "body", key: "trigger" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<ProductTaskBeginRunResponses, ProductTaskBeginRunErrors, ThrowOnError>(
+      {
+        url: "/product/task/{taskID}/run",
+        ...options,
+        ...params,
+        headers: {
+          "Content-Type": "application/json",
+          ...options?.headers,
+          ...params.headers,
+        },
+      },
+    )
+  }
+
+  public getRun<ThrowOnError extends boolean = false>(
+    parameters: {
+      runID: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams([parameters], [{ args: [{ in: "path", key: "runID" }] }])
+    return (options?.client ?? this.client).get<ProductTaskGetRunResponses, ProductTaskGetRunErrors, ThrowOnError>({
+      url: "/product/run/{runID}",
+      ...options,
+      ...params,
+    })
+  }
+
+  public linkSession<ThrowOnError extends boolean = false>(
+    parameters: {
+      runID: string
+      sessionID?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "runID" },
+            { in: "body", key: "sessionID" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<
+      ProductTaskLinkSessionResponses,
+      ProductTaskLinkSessionErrors,
+      ThrowOnError
+    >({
+      url: "/product/run/{runID}/session",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  public transitionRun<ThrowOnError extends boolean = false>(
+    parameters: {
+      runID: string
+      target?: ProductRunStatus
+      failureCode?: string
+      failureMessage?: string
+      completionSummary?: ProductRunCompletionSummary
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "runID" },
+            { in: "body", key: "target" },
+            { in: "body", key: "failureCode" },
+            { in: "body", key: "failureMessage" },
+            { in: "body", key: "completionSummary" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<
+      ProductTaskTransitionRunResponses,
+      ProductTaskTransitionRunErrors,
+      ThrowOnError
+    >({
+      url: "/product/run/{runID}/transition",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  public accept<ThrowOnError extends boolean = false>(
+    parameters: {
+      taskID: string
+      expectedVersion?: number
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "taskID" },
+            { in: "body", key: "expectedVersion" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<ProductTaskAcceptResponses, ProductTaskAcceptErrors, ThrowOnError>({
+      url: "/product/task/{taskID}/accept",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  public reopen<ThrowOnError extends boolean = false>(
+    parameters: {
+      taskID: string
+      expectedVersion?: number
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "taskID" },
+            { in: "body", key: "expectedVersion" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).post<ProductTaskReopenResponses, ProductTaskReopenErrors, ThrowOnError>({
+      url: "/product/task/{taskID}/reopen",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
     })
   }
 }
@@ -7167,9 +7701,19 @@ export class OpencodeClient extends HeyApiClient {
     return (this._mcp ??= new Mcp({ client: this.client }))
   }
 
+  private _openrouterAccount?: OpenrouterAccount
+  get openrouterAccount(): OpenrouterAccount {
+    return (this._openrouterAccount ??= new OpenrouterAccount({ client: this.client }))
+  }
+
   private _project?: Project
   get project(): Project {
     return (this._project ??= new Project({ client: this.client }))
+  }
+
+  private _productTask?: ProductTask
+  get productTask(): ProductTask {
+    return (this._productTask ??= new ProductTask({ client: this.client }))
   }
 
   private _pty?: Pty

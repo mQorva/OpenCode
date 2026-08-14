@@ -11,6 +11,7 @@ import { useServerSync } from "@/context/server-sync"
 import { DialogConnectProvider, useProviderConnectController } from "../dialog-connect-provider"
 import { DialogCustomProvider } from "../dialog-custom-provider"
 import { SettingsListV2 } from "./parts/list"
+import { DialogOpenRouterAccount } from "./dialog-openrouter-account"
 import "./settings-v2.css"
 
 type ProviderSource = "env" | "api" | "config" | "custom"
@@ -42,6 +43,10 @@ export const SettingsProvidersV2: Component<{
   const providerConnect = useProviderConnectController({ onBack: props.onBack })
 
   const connect = (provider?: string) => {
+    if (provider === "openrouter") {
+      void dialog.show(() => <DialogOpenRouterAccount />)
+      return
+    }
     providerConnect.select(provider)
     void dialog.show(() => <DialogConnectProvider directory={props.directory} controller={providerConnect} />)
   }
@@ -181,9 +186,22 @@ export const SettingsProvidersV2: Component<{
                         </span>
                       }
                     >
-                      <ButtonV2 size="normal" variant="ghost-muted" onClick={() => void disconnect(item.id, item.name)}>
-                        {language.t("common.disconnect")}
-                      </ButtonV2>
+                      <Show
+                        when={item.id === "openrouter"}
+                        fallback={
+                          <ButtonV2
+                            size="normal"
+                            variant="ghost-muted"
+                            onClick={() => void disconnect(item.id, item.name)}
+                          >
+                            {language.t("common.disconnect")}
+                          </ButtonV2>
+                        }
+                      >
+                        <ButtonV2 size="normal" variant="ghost-muted" onClick={() => connect("openrouter")}>
+                          {language.t("settings.openrouter.manage")}
+                        </ButtonV2>
+                      </Show>
                     </Show>
                   </div>
                 )}
