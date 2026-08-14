@@ -1,4 +1,5 @@
 import { OpenRouterAccountService } from "@opencode-ai/core/openrouter-account"
+import { OpenRouterAccount } from "@opencode-ai/schema/openrouter-account"
 import { Effect } from "effect"
 import { HttpApiBuilder } from "effect/unstable/httpapi"
 import { InstanceHttpApi } from "../api"
@@ -24,6 +25,13 @@ export const openRouterAccountHandlers = HttpApiBuilder.group(InstanceHttpApi, "
       .handle("get", () => mapError(account.get()).pipe(Effect.map((value) => value ?? null)))
       .handle("connect", (ctx: { payload: typeof ConnectPayload.Type }) =>
         mapError(account.connectKey({ ...ctx.payload, kind: "openrouter_api_key" })),
+      )
+      .handle("startPkce", () => mapError(account.startPkce()))
+      .handle("getPkce", (ctx: { params: { attemptID: OpenRouterAccount.PkceAttemptID } }) =>
+        mapError(account.getPkceAttempt(ctx.params.attemptID)),
+      )
+      .handle("cancelPkce", (ctx: { params: { attemptID: OpenRouterAccount.PkceAttemptID } }) =>
+        mapError(account.cancelPkce(ctx.params.attemptID)),
       )
       .handle("verify", () => mapError(account.verify()))
       .handle("remove", () => mapError(account.remove()))

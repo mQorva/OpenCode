@@ -25,6 +25,8 @@ export const ConnectPayload = Schema.Struct({
 export const OpenRouterAccountPaths = {
   account: `${root}/account`,
   connect: `${root}/account/connect`,
+  pkce: `${root}/account/pkce`,
+  pkceAttempt: `${root}/account/pkce/:attemptID`,
   verify: `${root}/account/verify`,
   models: `${root}/models`,
   refreshModels: `${root}/models/refresh`,
@@ -40,6 +42,20 @@ export const OpenRouterAccountApi = HttpApi.make("openrouter-account").add(
       HttpApiEndpoint.post("connect", OpenRouterAccountPaths.connect, {
         payload: ConnectPayload,
         success: described(OpenRouterAccount.Account, "Connected OpenRouter account"),
+        error: OpenRouterActionError,
+      }),
+      HttpApiEndpoint.post("startPkce", OpenRouterAccountPaths.pkce, {
+        success: described(OpenRouterAccount.PkceAttempt, "Started OpenRouter PKCE connection"),
+        error: OpenRouterActionError,
+      }),
+      HttpApiEndpoint.get("getPkce", OpenRouterAccountPaths.pkceAttempt, {
+        params: { attemptID: OpenRouterAccount.PkceAttemptID },
+        success: described(OpenRouterAccount.PkceAttempt, "OpenRouter PKCE connection status"),
+        error: OpenRouterActionError,
+      }),
+      HttpApiEndpoint.delete("cancelPkce", OpenRouterAccountPaths.pkceAttempt, {
+        params: { attemptID: OpenRouterAccount.PkceAttemptID },
+        success: described(OpenRouterAccount.PkceAttempt, "Cancelled OpenRouter PKCE connection"),
         error: OpenRouterActionError,
       }),
       HttpApiEndpoint.post("verify", OpenRouterAccountPaths.verify, {

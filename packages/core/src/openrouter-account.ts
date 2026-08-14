@@ -7,8 +7,10 @@ import { Context, DateTime, Effect, Layer, Schema } from "effect"
 import { Credential } from "./credential"
 import { Database } from "./database/database"
 import { makeGlobalNode } from "./effect/app-node"
+import { EventV2 } from "./event"
 import { OpenRouterClient } from "./openrouter-client"
 import { OpenRouterAccountTable, OpenRouterModelCatalogTable, OpenRouterModelTable } from "./openrouter-account/sql"
+import { OpenRouterPKCE } from "./openrouter-pkce"
 
 const accountID = OpenRouterAccount.ID.make("openrouter_default")
 const catalogID = "openrouter_default"
@@ -33,6 +35,9 @@ export interface Interface {
   readonly verify: () => Effect.Effect<OpenRouterAccount.Account, Error>
   readonly models: () => Effect.Effect<OpenRouterAccount.ModelCatalog | undefined, Error>
   readonly refreshModels: () => Effect.Effect<OpenRouterAccount.ModelCatalog, Error>
+  readonly startPkce: () => Effect.Effect<OpenRouterAccount.PkceAttempt, Error>
+  readonly getPkceAttempt: (id: OpenRouterAccount.PkceAttemptID) => Effect.Effect<OpenRouterAccount.PkceAttempt, Error>
+  readonly cancelPkce: (id: OpenRouterAccount.PkceAttemptID) => Effect.Effect<OpenRouterAccount.PkceAttempt, Error>
   readonly remove: () => Effect.Effect<void, Error>
 }
 
@@ -41,6 +46,8 @@ export class Service extends Context.Service<Service, Interface>()("@opencode/Op
 const message = (category: OpenRouterAccount.ProviderErrorCategory) => {
   if (category === "validation") return "Die OpenRouter-Zugangsdaten sind unvollständig."
   if (category === "secret_storage") return "Der geschützte Zugang konnte nicht verarbeitet werden."
+  if (category === "auth_cancelled") return "Die OpenRouter-Anmeldung wurde abgebrochen."
+  if (category === "auth_callback") return "Die OpenRouter-Anmeldung konnte nicht abgeschlossen werden."
   if (category === "provider_auth") return "OpenRouter hat den Zugang nicht akzeptiert."
   if (category === "provider_payment") return "OpenRouter meldet ein Guthaben- oder Zahlungsthema."
   if (category === "provider_permission") return "Der Zugang hat für diese OpenRouter-Aktion keine Berechtigung."
@@ -81,6 +88,18 @@ const layer = Layer.effect(
     const { db } = yield* Database.Service
     const credentials = yield* Credential.Service
     const client = yield* OpenRouterClient.Service
+    const pkce = yield* OpenRouterPKCE.Service
+    const events = yield* EventV2.Service
+    type Attempt = {
+      readonly id: OpenRouterAccount.PkceAttemptID
+      readonly createdAt: number
+      readonly expiresAt: number
+      readonly authorizationUrl: string
+      readonly cancel: Effect.Effect<void, OpenRouterPKCE.ListenerError>
+      status: OpenRouterAccount.PkceAttemptStatus
+      error?: Error
+    }
+    const attempts = new Map<OpenRouterAccount.PkceAttemptID, Attempt>()
 
     const accountFromRow = (row: typeof OpenRouterAccountTable.$inferSelect) => {
       const hasMetadata = row.key_label !== null
@@ -284,45 +303,80 @@ const layer = Layer.effect(
       ).pipe(Effect.catch(() => Effect.void))
     })
 
+    const connectKey = Effect.fn("OpenRouterAccount.connectKey")(function* (input: ConnectInput) {
+      const key = input.key.trim()
+      const label = input.label?.trim()
+      if (!key || (input.label !== undefined && !label)) return yield* failure("validation")
+      const kind = input.kind ?? "openrouter_api_key"
+      if (kind === "openrouter_management_key") return yield* failure("validation")
+
+      const staged = yield* secret(
+        credentials.stageProtected(Credential.Key.make({ type: "key", key, metadata: { origin: kind } })),
+      )
+      const metadata = yield* verifyKey(key).pipe(
+        Effect.onExit((exit) =>
+          exit._tag === "Failure"
+            ? credentials.discardProtected(staged).pipe(Effect.catch(() => Effect.void))
+            : Effect.void,
+        ),
+      )
+      const existing = (yield* credentials.list(integrationID))[0]
+      if (existing?.protected) {
+        yield* secret(
+          credentials.update(existing.id, {
+            label: label ?? metadata.label,
+            value: Credential.Key.make({ type: "key", key, metadata: { origin: kind } }),
+          }),
+        )
+        yield* secret(credentials.discardProtected(staged))
+      } else {
+        yield* secret(
+          credentials.commitProtected({
+            integrationID,
+            label: label ?? metadata.label,
+            secretRef: staged,
+          }),
+        )
+      }
+      const account = yield* saveVerified(metadata, kind, label ?? metadata.label)
+      yield* events.publish(Integration.Event.ConnectionUpdated, { integrationID })
+      yield* events.publish(Integration.Event.Updated, {})
+      return account
+    })
+
+    const attemptProjection = (attempt: Attempt) =>
+      OpenRouterAccount.PkceAttempt.make({
+        id: attempt.id,
+        status: attempt.status,
+        authorizationUrl: attempt.status === "pending" ? attempt.authorizationUrl : undefined,
+        createdAt: DateTime.makeUnsafe(attempt.createdAt),
+        expiresAt: DateTime.makeUnsafe(attempt.expiresAt),
+        error: attempt.error
+          ? {
+              category: attempt.error.category,
+              message: attempt.error.message,
+              httpStatus: attempt.error.httpStatus,
+              retryAfter: attempt.error.retryAfter,
+            }
+          : undefined,
+      })
+
+    const getAttempt = (id: OpenRouterAccount.PkceAttemptID) => {
+      const attempt = attempts.get(id)
+      return attempt ? Effect.succeed(attempt) : Effect.fail(failure("validation"))
+    }
+
+    const pkceFailure = (error: OpenRouterPKCE.Error | OpenRouterClient.ProviderError | Error) => {
+      if (error instanceof Error) return error
+      if (error instanceof OpenRouterClient.ProviderError) return clientFailure(error)
+      if (error instanceof OpenRouterPKCE.Cancelled) return failure("auth_cancelled")
+      if (error instanceof OpenRouterPKCE.Timeout) return failure("provider_timeout")
+      return failure("auth_callback")
+    }
+
     return Service.of({
       get: getAccount,
-      connectKey: Effect.fn("OpenRouterAccount.connectKey")(function* (input) {
-        const key = input.key.trim()
-        const label = input.label?.trim()
-        if (!key || (input.label !== undefined && !label)) return yield* failure("validation")
-        const kind = input.kind ?? "openrouter_api_key"
-        if (kind === "openrouter_management_key") return yield* failure("validation")
-
-        const staged = yield* secret(
-          credentials.stageProtected(Credential.Key.make({ type: "key", key, metadata: { origin: kind } })),
-        )
-        const metadata = yield* verifyKey(key).pipe(
-          Effect.onExit((exit) =>
-            exit._tag === "Failure"
-              ? credentials.discardProtected(staged).pipe(Effect.catch(() => Effect.void))
-              : Effect.void,
-          ),
-        )
-        const existing = (yield* credentials.list(integrationID))[0]
-        if (existing?.protected) {
-          yield* secret(
-            credentials.update(existing.id, {
-              label: label ?? metadata.label,
-              value: Credential.Key.make({ type: "key", key, metadata: { origin: kind } }),
-            }),
-          )
-          yield* secret(credentials.discardProtected(staged))
-        } else {
-          yield* secret(
-            credentials.commitProtected({
-              integrationID,
-              label: label ?? metadata.label,
-              secretRef: staged,
-            }),
-          )
-        }
-        return yield* saveVerified(metadata, kind, label ?? metadata.label)
-      }),
+      connectKey,
       verify: Effect.fn("OpenRouterAccount.verify")(function* () {
         const { key } = yield* resolvedKey()
         const current = yield* getAccount()
@@ -377,6 +431,55 @@ const layer = Layer.effect(
         )
         return OpenRouterAccount.ModelCatalog.make({ fetchedAt: DateTime.makeUnsafe(fetchedAt), models: projected })
       }),
+      startPkce: Effect.fn("OpenRouterAccount.startPkce")(function* () {
+        const flow = yield* pkce.start().pipe(Effect.mapError(() => failure("auth_callback")))
+        const now = Date.now()
+        const attempt: Attempt = {
+          id: OpenRouterAccount.PkceAttemptID.create(),
+          status: "pending",
+          authorizationUrl: flow.authorizationUrl,
+          createdAt: now,
+          expiresAt: now + OpenRouterPKCE.DEFAULT_TIMEOUT_MS,
+          cancel: flow.cancel,
+        }
+        attempts.set(attempt.id, attempt)
+        Effect.runFork(
+          flow.wait.pipe(
+            Effect.flatMap((result) => client.exchange(result.code, result.codeVerifier)),
+            Effect.flatMap((exchange) =>
+              connectKey({ key: exchange.key, kind: "openrouter_pkce_key", label: "OpenRouter" }),
+            ),
+            Effect.match({
+              onFailure: (cause) => {
+                const error = pkceFailure(cause)
+                attempt.status =
+                  error.category === "auth_cancelled"
+                    ? "cancelled"
+                    : cause instanceof OpenRouterPKCE.Timeout
+                      ? "expired"
+                      : "failed"
+                attempt.error = error
+              },
+              onSuccess: () => {
+                attempt.status = "complete"
+                attempt.error = undefined
+              },
+            }),
+          ),
+        )
+        return attemptProjection(attempt)
+      }),
+      getPkceAttempt: Effect.fn("OpenRouterAccount.getPkceAttempt")(function* (id) {
+        return attemptProjection(yield* getAttempt(id))
+      }),
+      cancelPkce: Effect.fn("OpenRouterAccount.cancelPkce")(function* (id) {
+        const attempt = yield* getAttempt(id)
+        if (attempt.status !== "pending") return attemptProjection(attempt)
+        attempt.status = "cancelled"
+        attempt.error = failure("auth_cancelled")
+        yield* attempt.cancel.pipe(Effect.mapError(() => failure("auth_callback")))
+        return attemptProjection(attempt)
+      }),
       remove: Effect.fn("OpenRouterAccount.remove")(function* () {
         for (const credential of yield* credentials.list(integrationID)) {
           yield* secret(credentials.remove(credential.id))
@@ -390,6 +493,8 @@ const layer = Layer.effect(
             }),
           ),
         )
+        yield* events.publish(Integration.Event.ConnectionUpdated, { integrationID })
+        yield* events.publish(Integration.Event.Updated, {})
       }),
     })
   }),
@@ -398,5 +503,5 @@ const layer = Layer.effect(
 export const node = makeGlobalNode({
   service: Service,
   layer,
-  deps: [Database.node, Credential.node, OpenRouterClient.node],
+  deps: [Database.node, Credential.node, OpenRouterClient.node, OpenRouterPKCE.node, EventV2.node],
 })

@@ -4,6 +4,7 @@ import { Credential } from "@opencode-ai/core/credential"
 import { CredentialTable } from "@opencode-ai/core/credential/sql"
 import { Database } from "@opencode-ai/core/database/database"
 import { LayerNode } from "@opencode-ai/core/effect/layer-node"
+import { Integration } from "@opencode-ai/core/integration"
 import { OpenRouterAccountService } from "@opencode-ai/core/openrouter-account"
 import { OpenRouterAccountTable, OpenRouterModelCatalogTable } from "@opencode-ai/core/openrouter-account/sql"
 import { OpenRouterClient } from "@opencode-ai/core/openrouter-client"
@@ -41,18 +42,21 @@ const remoteModel: OpenRouterClient.Model = {
 
 let currentKey: OpenRouterClient.Interface["currentKey"] = () => Effect.succeed(metadata)
 let models: OpenRouterClient.Interface["models"] = () => Effect.succeed({ models: [remoteModel], rejected: 1 })
+let exchange: OpenRouterClient.Interface["exchange"] = () => Effect.die("unexpected PKCE exchange")
 
 const clientLayer = Layer.succeed(
   OpenRouterClient.Service,
   OpenRouterClient.Service.of({
     currentKey: (key) => currentKey(key),
     models: (key) => models(key),
+    exchange: (code, verifier) => exchange(code, verifier),
   }),
 )
 
-const layer = LayerNode.compile(LayerNode.group([Database.node, Credential.node, OpenRouterAccountService.node]), [
-  [OpenRouterClient.node, clientLayer],
-] as const)
+const layer = LayerNode.compile(
+  LayerNode.group([Database.node, Credential.node, Integration.node, OpenRouterAccountService.node]),
+  [[OpenRouterClient.node, clientLayer]] as const,
+)
 const it = testEffect(layer)
 
 let protectedValues = new Map<string, string>()
@@ -62,6 +66,7 @@ afterEach(() => {
   protectedValues = new Map()
   currentKey = () => Effect.succeed(metadata)
   models = () => Effect.succeed({ models: [remoteModel], rejected: 1 })
+  exchange = () => Effect.die("unexpected PKCE exchange")
 })
 
 const installSecrets = () =>
@@ -69,6 +74,16 @@ const installSecrets = () =>
     put: (ref, value) => Effect.sync(() => void protectedValues.set(ref, value)),
     get: (ref) => Effect.succeed(protectedValues.get(ref)),
     remove: (ref) => Effect.sync(() => protectedValues.delete(ref)),
+  })
+
+const waitForAttempt = (service: OpenRouterAccountService.Interface, id: Parameters<typeof service.getPkceAttempt>[0]) =>
+  Effect.gen(function* () {
+    for (let index = 0; index < 50; index++) {
+      const attempt = yield* service.getPkceAttempt(id)
+      if (attempt.status !== "pending") return attempt
+      yield* Effect.sleep("10 millis")
+    }
+    return yield* Effect.die("PKCE attempt did not settle")
   })
 
 describe("OpenRouterAccount", () => {
@@ -79,6 +94,7 @@ describe("OpenRouterAccount", () => {
       currentKey = (key) => Effect.sync(() => ((verified = key), metadata))
       const service = yield* OpenRouterAccountService.Service
       const credentials = yield* Credential.Service
+      const integrations = yield* Integration.Service
       const { db } = yield* Database.Service
 
       const account = yield* service.connectKey({ key: "  actual-secret  ", label: "Arbeit" })
@@ -89,6 +105,11 @@ describe("OpenRouterAccount", () => {
       const credential = (yield* credentials.all())[0]
       expect(credential?.protected).toBe(true)
       expect(credential?.value).toBeUndefined()
+      expect(
+        yield* integrations.connection.resolve({ type: "credential", id: credential.id, label: credential.label }),
+      ).toEqual(
+        Credential.Key.make({ type: "key", key: "actual-secret", metadata: { origin: "openrouter_api_key" } }),
+      )
       const credentialRow = yield* db.select().from(CredentialTable).get().pipe(Effect.orDie)
       const accountRow = yield* db.select().from(OpenRouterAccountTable).get().pipe(Effect.orDie)
       expect(credentialRow?.value).toBeNull()
@@ -156,6 +177,78 @@ describe("OpenRouterAccount", () => {
       failRemoval = false
       yield* service.remove()
       expect(yield* service.get()).toBeUndefined()
+      expect(protectedValues.size).toBe(0)
+    }),
+  )
+
+  it.effect("connects through PKCE without exposing or persisting exchanged secrets", () =>
+    Effect.gen(function* () {
+      installSecrets()
+      let received: { code: string; verifier: string } | undefined
+      exchange = (code, verifier) =>
+        Effect.sync(() => {
+          received = { code, verifier }
+          return { key: "exchanged-secret", user_id: "user-1" }
+        })
+      const service = yield* OpenRouterAccountService.Service
+      const credentials = yield* Credential.Service
+      const { db } = yield* Database.Service
+
+      const started = yield* service.startPkce()
+      expect(started.status).toBe("pending")
+      expect(JSON.stringify(started)).not.toContain("verifier")
+      const callback = new URL(new URL(started.authorizationUrl!).searchParams.get("callback_url")!)
+      callback.searchParams.set("code", "one-time-code")
+      expect((yield* Effect.tryPromise(() => fetch(callback))).status).toBe(200)
+
+      const complete = yield* waitForAttempt(service, started.id)
+      expect(complete.status).toBe("complete")
+      expect(received?.code).toBe("one-time-code")
+      expect(received?.verifier).toMatch(/^[A-Za-z0-9_-]+$/)
+      expect(JSON.stringify(complete)).not.toContain("exchanged-secret")
+      const credential = (yield* credentials.all())[0]
+      expect(credential?.protected).toBe(true)
+      expect((yield* db.select().from(CredentialTable).get().pipe(Effect.orDie))?.value).toBeNull()
+      expect(yield* service.get()).toMatchObject({ kind: "openrouter_pkce_key", state: "connected" })
+    }),
+  )
+
+  it.effect("reports rejected PKCE exchange safely and supports cancellation", () =>
+    Effect.gen(function* () {
+      installSecrets()
+      exchange = () => Effect.fail(new OpenRouterClient.ProviderError({ category: "auth_callback", status: 403 }))
+      const service = yield* OpenRouterAccountService.Service
+      const rejected = yield* service.startPkce()
+      const callback = new URL(new URL(rejected.authorizationUrl!).searchParams.get("callback_url")!)
+      callback.searchParams.set("code", "rejected-code")
+      yield* Effect.tryPromise(() => fetch(callback))
+      const failed = yield* waitForAttempt(service, rejected.id)
+      expect(failed).toMatchObject({ status: "failed", error: { category: "auth_callback", httpStatus: 403 } })
+      expect(JSON.stringify(failed)).not.toContain("rejected-code")
+
+      const pending = yield* service.startPkce()
+      const cancelled = yield* service.cancelPkce(pending.id)
+      expect(cancelled).toMatchObject({ status: "cancelled", error: { category: "auth_cancelled" } })
+      expect((yield* service.getPkceAttempt(pending.id)).status).toBe("cancelled")
+    }),
+  )
+
+  it.effect("reports protected-store failure after PKCE without retaining the exchanged key", () =>
+    Effect.gen(function* () {
+      ProtectedSecret.install({
+        put: () => Effect.fail(new Error("unavailable")),
+        get: () => Effect.succeed(undefined),
+        remove: () => Effect.void,
+      })
+      exchange = () => Effect.succeed({ key: "must-not-leak" })
+      const service = yield* OpenRouterAccountService.Service
+      const started = yield* service.startPkce()
+      const callback = new URL(new URL(started.authorizationUrl!).searchParams.get("callback_url")!)
+      callback.searchParams.set("code", "one-time-code")
+      yield* Effect.tryPromise(() => fetch(callback))
+      const failed = yield* waitForAttempt(service, started.id)
+      expect(failed).toMatchObject({ status: "failed", error: { category: "secret_storage" } })
+      expect(JSON.stringify(failed)).not.toContain("must-not-leak")
       expect(protectedValues.size).toBe(0)
     }),
   )

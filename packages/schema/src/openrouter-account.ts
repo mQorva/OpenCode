@@ -1,7 +1,8 @@
 export * as OpenRouterAccount from "./openrouter-account"
 
 import { Schema } from "effect"
-import { DateTimeUtcFromMillis, NonNegativeInt, PositiveInt, optional } from "./schema"
+import { ascending } from "./identifier"
+import { DateTimeUtcFromMillis, NonNegativeInt, PositiveInt, optional, statics } from "./schema"
 
 const NonNegativeFinite = Schema.Finite.check(Schema.isGreaterThanOrEqualTo(0))
 const NonNegativePrice = Schema.NumberFromString.check(Schema.isGreaterThanOrEqualTo(0))
@@ -131,3 +132,24 @@ export const ProviderError = Schema.Struct({
   retryAfter: NonNegativeInt.pipe(optional),
 }).annotate({ identifier: "OpenRouterAccount.ProviderError" })
 export interface ProviderError extends Schema.Schema.Type<typeof ProviderError> {}
+
+export const PkceAttemptID = Schema.String.check(Schema.isStartsWith("orpka_")).pipe(
+  Schema.brand("OpenRouterAccount.PkceAttemptID"),
+  statics((schema) => ({ create: () => schema.make("orpka_" + ascending()) })),
+)
+export type PkceAttemptID = typeof PkceAttemptID.Type
+
+export const PkceAttemptStatus = Schema.Literals(["pending", "complete", "failed", "cancelled", "expired"]).annotate({
+  identifier: "OpenRouterAccount.PkceAttemptStatus",
+})
+export type PkceAttemptStatus = typeof PkceAttemptStatus.Type
+
+export const PkceAttempt = Schema.Struct({
+  id: PkceAttemptID,
+  status: PkceAttemptStatus,
+  authorizationUrl: Schema.String.pipe(optional),
+  createdAt: DateTimeUtcFromMillis,
+  expiresAt: DateTimeUtcFromMillis,
+  error: ProviderError.pipe(optional),
+}).annotate({ identifier: "OpenRouterAccount.PkceAttempt" })
+export interface PkceAttempt extends Schema.Schema.Type<typeof PkceAttempt> {}

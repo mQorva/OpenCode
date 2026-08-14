@@ -47,9 +47,14 @@ const RemoteModel = Schema.Struct({
 })
 
 const ModelListEnvelope = Schema.Struct({ data: Schema.Array(Schema.Unknown) })
+const ExchangeResponse = Schema.Struct({
+  key: Schema.String,
+  user_id: Schema.optional(Schema.NullOr(Schema.String)),
+})
 
 export type KeyMetadata = (typeof CurrentKeyResponse.Type)["data"]
 export type Model = typeof RemoteModel.Type
+export type Exchange = typeof ExchangeResponse.Type
 
 export type ModelCatalog = {
   readonly models: readonly Model[]
@@ -57,6 +62,7 @@ export type ModelCatalog = {
 }
 
 export const ErrorCategory = Schema.Literals([
+  "auth_callback",
   "provider_auth",
   "provider_payment",
   "provider_permission",
@@ -80,6 +86,7 @@ export class ProviderError extends Schema.TaggedErrorClass<ProviderError>()("Ope
 export interface Interface {
   readonly currentKey: (key: string) => Effect.Effect<KeyMetadata, ProviderError>
   readonly models: (key: string) => Effect.Effect<ModelCatalog, ProviderError>
+  readonly exchange: (code: string, verifier: string) => Effect.Effect<Exchange, ProviderError>
 }
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/OpenRouterClient") {}
@@ -130,6 +137,41 @@ const layer = Layer.effect(
       )
     })
 
+    const exchangeRequest = Effect.fn("OpenRouterClient.exchangeRequest")(function* (code: string, verifier: string) {
+      const response = yield* HttpClientRequest.post(`${endpoint}/auth/keys`).pipe(
+        HttpClientRequest.acceptJson,
+        HttpClientRequest.bodyJson({ code, code_verifier: verifier, code_challenge_method: "S256" }),
+        Effect.flatMap(http.execute),
+        Effect.timeout(timeout),
+        Effect.mapError(
+          (error) =>
+            new ProviderError({
+              category: error._tag === "TimeoutError" ? "provider_timeout" : "provider_unavailable",
+            }),
+        ),
+      )
+      if (response.status < 200 || response.status >= 300) {
+        const category =
+          response.status === 400 || response.status === 401 || response.status === 403
+            ? "auth_callback"
+            : statusCategory(response.status)
+        return yield* new ProviderError({
+          category,
+          status: response.status,
+          retryAfterSeconds: retryAfter(response.headers["retry-after"]),
+        })
+      }
+      const body = yield* response.json.pipe(
+        Effect.mapError(() => new ProviderError({ category: "provider_protocol", status: response.status })),
+      )
+      const decoded = yield* Schema.decodeUnknownEffect(ExchangeResponse)(body).pipe(
+        Effect.mapError(() => new ProviderError({ category: "provider_protocol", status: response.status })),
+      )
+      if (!decoded.key.trim())
+        return yield* new ProviderError({ category: "provider_protocol", status: response.status })
+      return decoded
+    })
+
     return Service.of({
       currentKey: Effect.fn("OpenRouterClient.currentKey")(function* (key) {
         const body = yield* request("/key", key)
@@ -158,6 +200,7 @@ const layer = Layer.effect(
         }
         return { models, rejected }
       }),
+      exchange: exchangeRequest,
     })
   }),
 )

@@ -99,4 +99,35 @@ describe("OpenRouterClient", () => {
       expect(error.message).not.toContain("rate limited")
     }),
   )
+
+  testEffect(
+    layer(
+      mock((request) => {
+        expect(request.url).toBe("https://openrouter.ai/api/v1/auth/keys")
+        expect(request.method).toBe("POST")
+        expect(request.headers.authorization).toBeUndefined()
+        return response(request, { key: "issued-key", user_id: "user_123" })
+      }),
+    ),
+  ).effect("exchanges a PKCE code without requiring an existing bearer key", () =>
+    Effect.gen(function* () {
+      const client = yield* OpenRouterClient.Service
+      expect(yield* client.exchange("authorization-code", "code-verifier")).toEqual({
+        key: "issued-key",
+        user_id: "user_123",
+      })
+    }),
+  )
+
+  testEffect(layer(mock((request) => response(request, { error: "invalid code" }, 403)))).effect(
+    "classifies rejected PKCE exchanges separately",
+    () =>
+      Effect.gen(function* () {
+        const client = yield* OpenRouterClient.Service
+        const error = yield* client.exchange("bad-code", "code-verifier").pipe(Effect.flip)
+        expect(error.category).toBe("auth_callback")
+        expect(error.status).toBe(403)
+        expect(error.message).not.toContain("bad-code")
+      }),
+  )
 })

@@ -17,7 +17,7 @@ Status vocabulary: `planned`, `ready`, `in-progress`, `review`, `rework`, `accep
 | AP-08 | accepted    | Durable Project -> Task -> Run contract, lifecycle, concurrency, completion evidence, adapter boundary, errors, and compatibility mapping are defined in `product-domain-contract.md`.                                                                                                                                                                                         |
 | AP-09 | accepted    | Product schemas, restrictive migration, lifecycle service, HttpApi adapter, Windows-safe generator fix, and focused DB/OpenAPI tests pass.                                                                                                                                                                                                                                     |
 | AP-10 | accepted    | OpenRouter credential kinds, protected storage, paste-key and PKCE flows, verification, usage/credits/model sources, UI, errors, export, and diagnostics are defined in `openrouter-account-contract.md` from current official documentation.                                                                                                                                  |
-| AP-11 | in-progress | Protected Windows secret storage plus paste-key account service, safe verification/model projections, current-key and model clients, durable safe metadata/cache, typed local API routes, migrations, focused tests, typechecks, and Desktop production build pass. PKCE, renderer integration, engine projection proof, and one explicitly approved live verification remain. |
+| AP-11 | in-progress | Protected Windows secret storage, paste-key and PKCE account flows, safe verification/model projections, current-key/model/exchange clients, durable safe metadata/cache, typed local API routes, migrations, engine credential projection, focused tests, and typechecks pass. Renderer integration and one explicitly approved live verification remain. |
 | AP-12 | planned     | Implement project navigation and task list.                                                                                                                                                                                                                                                                                                                                    |
 | AP-13 | planned     | Implement task workspace.                                                                                                                                                                                                                                                                                                                                                      |
 | AP-14 | planned     | Implement diff, review, and completion workspace.                                                                                                                                                                                                                                                                                                                              |
@@ -32,7 +32,7 @@ Status vocabulary: `planned`, `ready`, `in-progress`, `review`, `rework`, `accep
 
 ## Current critical path
 
-1. Implement AP-11 protected OpenRouter account integration without persisting plaintext secrets.
+1. Complete the AP-11 graphical OpenRouter account and model workflow against the protected local API.
 2. Build AP-12 project/task navigation against the accepted ProductTask HttpApi adapter.
 3. Complete the visible AP-03 desktop start after owner confirmation.
 
@@ -66,6 +66,16 @@ Status vocabulary: `planned`, `ready`, `in-progress`, `review`, `rework`, `accep
 - Cause 1: The installed Effect HttpApi version names its DELETE builder `delete`, not `del`; the adapter now uses the repository's established form.
 - Evidence: OpenCode typecheck, 19 public OpenAPI tests including six OpenRouter routes and response-secret exclusions, Desktop typecheck, and complete Desktop production build pass.
 - Live boundary: No real OpenRouter credential or paid/provider request was used. Live verification remains an explicit owner gate.
+
+### AP-11 PKCE verification ledger
+
+- Limit: 3 distinct failure causes per contiguous loop.
+- PKCE primitive causes used: 3 of 3; loop closed green. State is bound through the documented callback URL rather than an undocumented authorization parameter; provider denial precedes missing-code classification; Effect listener lifecycle and types were corrected.
+- Account integration causes used: 0 of 3; loop closed green.
+- API adapter causes used: 0 of 3; loop closed green.
+- Final verification causes used: 1 of 3; loop closed green. The only failure was an incorrect OpenAPI test filter; the existing public OpenAPI test path was then selected once.
+- Evidence: Schema typecheck and 7 schema tests; Core typecheck and 20 focused PKCE/client/account tests; OpenCode typecheck and 19 public OpenAPI tests; generated client typecheck. Successful, rejected, cancelled, wrong-state, timeout, protected-store-failure, and secret-exclusion paths are covered.
+- Security boundary: callback verifier, state, one-time code, and exchanged key remain transient in the core process and are absent from API projections and persisted account/credential rows.
 
 ## Bounded AP-03/AP-04 repair ledger
 

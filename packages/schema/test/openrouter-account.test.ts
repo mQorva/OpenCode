@@ -115,4 +115,21 @@ describe("OpenRouter account schemas", () => {
     expect(error.httpStatus).toBeUndefined()
     expect(error.retryAfter).toBeUndefined()
   })
+
+  test("projects PKCE attempts without verifier, code, or state", () => {
+    const attempt = Schema.decodeUnknownSync(OpenRouterAccount.PkceAttempt)({
+      id: "orpka_test",
+      status: "pending",
+      authorizationUrl: "https://openrouter.ai/auth?callback_url=http%3A%2F%2F127.0.0.1%3A1234%2Fcallback",
+      createdAt: 1_754_064_000_000,
+      expiresAt: 1_754_064_600_000,
+      verifier: "private-verifier",
+      code: "private-code",
+      state: "private-state",
+    })
+    expect(String(attempt.id)).toBe("orpka_test")
+    expect(attempt).not.toHaveProperty("verifier")
+    expect(attempt).not.toHaveProperty("code")
+    expect(attempt).not.toHaveProperty("state")
+  })
 })
