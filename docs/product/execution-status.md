@@ -15,9 +15,9 @@ Status vocabulary: `planned`, `ready`, `in-progress`, `review`, `rework`, `accep
 | AP-06 | accepted | Four separated inventories cover project/task/session persistence, providers/settings, integrated coding workspace, and Electron/renderer architecture; consolidated evidence is in `current-ui-inventory.md`. |
 | AP-07 | accepted | Retain and incrementally consolidate the existing Solid renderer behind a product adapter; no second renderer or replacement desktop shell. |
 | AP-08 | accepted | Durable Project -> Task -> Run contract, lifecycle, concurrency, completion evidence, adapter boundary, errors, and compatibility mapping are defined in `product-domain-contract.md`. |
-| AP-09 | in-progress | Implement product schemas, restrictive persistence, lifecycle service, API surface, and adapter skeleton. |
-| AP-10 | planned | Define OpenRouter account and provider contract. |
-| AP-11 | planned | Implement and verify complete OpenRouter integration. |
+| AP-09 | accepted | Product schemas, restrictive migration, lifecycle service, HttpApi adapter, Windows-safe generator fix, and focused DB/OpenAPI tests pass. |
+| AP-10 | accepted | OpenRouter credential kinds, protected storage, paste-key and PKCE flows, verification, usage/credits/model sources, UI, errors, export, and diagnostics are defined in `openrouter-account-contract.md` from current official documentation. |
+| AP-11 | in-progress | Implement protected secret storage, OpenRouter account metadata/verification, PKCE, projections, and graphical adapter around the existing provider engine. |
 | AP-12 | planned | Implement project navigation and task list. |
 | AP-13 | planned | Implement task workspace. |
 | AP-14 | planned | Implement diff, review, and completion workspace. |
@@ -32,8 +32,8 @@ Status vocabulary: `planned`, `ready`, `in-progress`, `review`, `rework`, `accep
 
 ## Current critical path
 
-1. Complete AP-08 and review the product-domain contract.
-2. Implement AP-09 without coupling product screens directly to OpenCode internals.
+1. Implement AP-11 protected OpenRouter account integration without persisting plaintext secrets.
+2. Build AP-12 project/task navigation against the accepted ProductTask HttpApi adapter.
 3. Complete the visible AP-03 desktop start after owner confirmation.
 
 ## Bounded AP-03/AP-04 repair ledger
