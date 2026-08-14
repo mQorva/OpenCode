@@ -19,7 +19,7 @@ Status vocabulary: `planned`, `ready`, `in-progress`, `review`, `rework`, `accep
 | AP-10 | accepted    | OpenRouter credential kinds, protected storage, paste-key and PKCE flows, verification, usage/credits/model sources, UI, errors, export, and diagnostics are defined in `openrouter-account-contract.md` from current official documentation.                                                                                                                                  |
 | AP-11 | in-progress | Protected Windows secret storage, paste-key and PKCE flows, safe account/model projections, local API, generated SDK, engine credential projection, account metadata, key replacement, catalog details, and OpenRouter-filtered model selection pass focused checks and production builds. One explicitly approved live verification remains. |
 | AP-12 | accepted    | The graphical project task list is integrated into the existing home renderer and generated ProductTask client, including create, edit, archive, restore, reopen, archived visibility, and explicit task/session navigation. Focused lint, App typecheck, 722 App tests, and the App production build pass.                                                                                  |
-| AP-13 | in-progress | A task can open the existing integrated session workspace through one resumable server start command. Root session, queued run, initial prompt admission, running transition, compatible session projection, deterministic retry identity, and existing chat/files/terminal navigation are integrated. Permission/question/run recovery projection remains.                                      |
+| AP-13 | accepted    | A task opens the existing integrated session workspace through one resumable server start command. Root and child-session permission/question events project onto the durable run, simultaneous requests remain waiting until all are answered, rejections cancel safely, and startup reconciliation marks unfinished runs as interrupted without treating session idle as success.                |
 | AP-14 | planned     | Implement diff, review, and completion workspace.                                                                                                                                                                                                                                                                                                                              |
 | AP-15 | planned     | Implement graphical settings.                                                                                                                                                                                                                                                                                                                                                  |
 | AP-16 | planned     | Add selected direct API providers.                                                                                                                                                                                                                                                                                                                                             |
@@ -32,7 +32,7 @@ Status vocabulary: `planned`, `ready`, `in-progress`, `review`, `rework`, `accep
 
 ## Current critical path
 
-1. Complete AP-13 permission, question, interruption, and run-recovery projection in the integrated task workspace.
+1. Implement AP-14 diff, review, completion evidence, and explicit acceptance in the integrated task workspace.
 2. Complete the one explicitly approved live AP-11 OpenRouter verification.
 3. Complete the visible AP-03 desktop start after owner confirmation.
 
@@ -125,7 +125,22 @@ Status vocabulary: `planned`, `ready`, `in-progress`, `review`, `rework`, `accep
 - Cause 2: Independent review found the first green start contract insufficiently resumable. The final flow persists a linked `queued` run, admits the deterministic initial message, transitions to `running` only afterward, returns the compatible session projection directly, cleans newly created sessions after pre-run rejection, and closes prompt failures as `cancelled` so a new deterministic retry can start from the refreshed task version.
 - Cause 3: The first direct API response used the Core session projection, whose revert/diff shape differs from the existing graphical workspace contract. The endpoint now returns the established compatible session projection and the renderer no longer requires a fallible follow-up read before navigation.
 - Evidence: all four affected typechecks pass; 5 ProductTask tests, 20 public OpenAPI tests, 724 App unit tests with 3,021 expectations, and 41 browser-oriented App tests with 100 expectations pass; the App production build exits with code 0.
-- Remaining AP-13 boundary: Session chat, events, permissions, questions, files, and terminal are reused rather than duplicated. ProductTask status still needs explicit permission/question/interruption and restart-reconciliation projection; session `idle` is not treated as completion.
+- AP-13 boundary: Session chat, events, permissions, questions, files, and terminal are reused rather than duplicated. Explicit success evidence, diff review, and user acceptance remain AP-14 responsibilities; session `idle` is not treated as completion.
+
+### AP-13 run-lifecycle projection ledger
+
+- Limit: 3 distinct failure causes; loop closed green at 3 of 3.
+- Cause 1: The focused event test initially consumed `EventV2.Service` although the test layer exposed it only transitively to ProductTask. The shared test layer now exports the event service explicitly.
+- Cause 2: A first-event/first-reply projection would have resumed a run while another permission or question was still open. The projector now tracks request IDs per root session, follows child sessions to their root, permits permission/question wait-state changes, and resumes only after the last pending request is answered.
+- Cause 3: The public reconciliation method correctly exposes ProductTask errors, but directly yielding it during service construction widened the server layer's startup error contract. Startup reconciliation is now explicitly treated as mandatory infrastructure initialization at that boundary without leaking domain errors into route composition.
+- Recovery contract: Service startup transactionally marks every persisted `queued`, `running`, `waiting_permission`, or `waiting_input` run as `interrupted`, returns its task to `ready`, clears the active-run link, and is idempotent. Graceful shutdown is only best effort; session `idle` is deliberately not interpreted as success.
+- Evidence: Schema, Core, OpenCode, generated SDK, and App typechecks pass; all 7 focused ProductTask tests pass with 42 expectations; 21 ProductTask/public OpenAPI tests pass with 259 expectations; 724 App unit tests and 41 browser-oriented App tests pass; the App production build exits with code 0.
+
+### AP-13 run-lifecycle verification ledger
+
+- Limit: 3 distinct failure causes; loop closed green at 1 of 3.
+- Cause 1: A raw `bun test` bypassed the App package's Solid and browser conditions and therefore loaded Solid's server entry in DOM-dependent tests. The unchanged failing command was not repeated; the declared `bun run test` verification passed both configured suites.
+- Evidence: Focused Core and API suites are green; the configured App suites pass with 765 tests and 3,121 expectations; focused lint has zero errors; the App production build succeeds.
 
 ## Bounded AP-03/AP-04 repair ledger
 

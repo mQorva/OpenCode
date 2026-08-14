@@ -6,6 +6,7 @@ import { and, asc, desc, eq, inArray, isNull, ne, sql } from "drizzle-orm"
 import { Context, DateTime, Effect, Layer, Schema } from "effect"
 import { Database } from "./database/database"
 import { makeGlobalNode } from "./effect/app-node"
+import { EventV2 } from "./event"
 import { ProjectV2 } from "./project"
 import { ProjectTable } from "./project/sql"
 import { SessionSchema } from "./session/schema"
@@ -74,6 +75,7 @@ export type StartRunResult = {
 }
 
 export interface Interface {
+  readonly reconcileInterruptedRuns: () => Effect.Effect<number, Error>
   readonly listTasks: (
     projectID: ProjectV2.ID,
     includeArchived?: boolean,
@@ -212,6 +214,7 @@ const layer = Layer.effect(
   Service,
   Effect.gen(function* () {
     const { db } = yield* Database.Service
+    const events = yield* EventV2.Service
 
     const getTaskRow = (taskID: ProductTask.ID) =>
       db.select().from(ProductTaskTable).where(eq(ProductTaskTable.id, taskID)).get().pipe(Effect.orDie)
@@ -232,6 +235,45 @@ const layer = Layer.effect(
       getRunRow(runID).pipe(Effect.flatMap((row) => (row ? Effect.succeed(row) : Effect.fail(runNotFound()))))
 
     const result = Service.of({
+      reconcileInterruptedRuns: Effect.fn("ProductTask.reconcileInterruptedRuns")(function* () {
+        return yield* db.transaction((tx) =>
+          Effect.gen(function* () {
+            const rows = yield* tx
+              .select()
+              .from(ProductRunTable)
+              .where(inArray(ProductRunTable.status, activeRunStatuses))
+              .all()
+            let updated = 0
+            for (const run of rows) {
+              const now = Date.now()
+              const interrupted = yield* tx
+                .update(ProductRunTable)
+                .set({
+                  status: "interrupted",
+                  time_finished: now,
+                  failure_code: "process_restart",
+                  failure_message: "Der vorherige Ausführungsprozess wurde beendet, bevor ein Ergebnis bestätigt wurde.",
+                })
+                .where(and(eq(ProductRunTable.id, run.id), eq(ProductRunTable.status, run.status)))
+                .returning({ id: ProductRunTable.id })
+                .get()
+              if (!interrupted) continue
+              yield* tx
+                .update(ProductTaskTable)
+                .set({
+                  status: "ready",
+                  active_run_id: null,
+                  version: sql`${ProductTaskTable.version} + 1`,
+                  time_updated: now,
+                })
+                .where(eq(ProductTaskTable.active_run_id, run.id))
+                .run()
+              updated++
+            }
+            return updated
+          }),
+        ).pipe(Effect.mapError(transactionError))
+      }),
       listTasks: Effect.fn("ProductTask.listTasks")(function* (projectID, includeArchived = false) {
         yield* requireProject(projectID)
         const rows = yield* db
@@ -600,6 +642,121 @@ const layer = Layer.effect(
       }),
     })
 
+    yield* result.reconcileInterruptedRuns().pipe(Effect.orDie)
+
+    const eventSessionID = (event: EventV2.Payload) => {
+      const data: unknown = event.data
+      if (!data || typeof data !== "object" || !("sessionID" in data)) return undefined
+      const sessionID = Reflect.get(data, "sessionID")
+      return typeof sessionID === "string" ? SessionSchema.ID.make(sessionID) : undefined
+    }
+
+    const eventReply = (event: EventV2.Payload) => {
+      const data: unknown = event.data
+      if (!data || typeof data !== "object" || !("reply" in data)) return undefined
+      const reply = Reflect.get(data, "reply")
+      return typeof reply === "string" ? reply : undefined
+    }
+
+    const eventRequestID = (event: EventV2.Payload) => {
+      const data: unknown = event.data
+      if (!data || typeof data !== "object") return undefined
+      const key = event.type.endsWith(".asked") ? "id" : "requestID"
+      if (!(key in data)) return undefined
+      const requestID = Reflect.get(data, key)
+      return typeof requestID === "string" ? requestID : undefined
+    }
+
+    const rootSessionID = (sessionID: SessionSchema.ID) =>
+      Effect.gen(function* () {
+        let current = sessionID
+        const seen = new Set<string>()
+        for (let depth = 0; depth < 100; depth++) {
+          if (seen.has(current)) return undefined
+          seen.add(current)
+          const row = yield* db
+            .select({ parentID: SessionTable.parent_id })
+            .from(SessionTable)
+            .where(eq(SessionTable.id, current))
+            .get()
+            .pipe(Effect.orDie)
+          if (!row) return undefined
+          if (!row.parentID) return current
+          current = SessionSchema.ID.make(row.parentID)
+        }
+        return undefined
+      })
+
+    const pendingPermissions = new Map<string, Set<string>>()
+    const pendingQuestions = new Map<string, Set<string>>()
+    const pending = (map: Map<string, Set<string>>, root: SessionSchema.ID) => {
+      const existing = map.get(root)
+      if (existing) return existing
+      const created = new Set<string>()
+      map.set(root, created)
+      return created
+    }
+
+    const projectEvent = (event: EventV2.Payload) =>
+      Effect.gen(function* () {
+        if (
+          ![
+            "permission.v2.asked",
+            "permission.v2.replied",
+            "question.v2.asked",
+            "question.v2.replied",
+            "question.v2.rejected",
+          ].includes(event.type)
+        )
+          return
+        const sessionID = eventSessionID(event)
+        if (!sessionID) return
+        const root = yield* rootSessionID(sessionID)
+        if (!root) return
+        const requestID = eventRequestID(event)
+        if (!requestID) return
+        const permissions = pending(pendingPermissions, root)
+        const questions = pending(pendingQuestions, root)
+
+        if (event.type === "permission.v2.asked") permissions.add(requestID)
+        if (event.type === "permission.v2.replied") permissions.delete(requestID)
+        if (event.type === "question.v2.asked") questions.add(requestID)
+        if (event.type === "question.v2.replied" || event.type === "question.v2.rejected") questions.delete(requestID)
+
+        const rejected =
+          (event.type === "permission.v2.replied" && eventReply(event) === "reject") ||
+          event.type === "question.v2.rejected"
+        const to = rejected
+          ? "cancelled"
+          : event.type === "permission.v2.asked"
+            ? "waiting_permission"
+            : event.type === "question.v2.asked"
+              ? "waiting_input"
+              : questions.size > 0
+                ? "waiting_input"
+                : permissions.size > 0
+                  ? "waiting_permission"
+                  : "running"
+        const run = yield* db
+          .select({ id: ProductRunTable.id, status: ProductRunTable.status })
+          .from(ProductRunTable)
+          .where(eq(ProductRunTable.session_id, root))
+          .get()
+          .pipe(Effect.orDie)
+        if (!run || run.status === to || !["running", "waiting_permission", "waiting_input"].includes(run.status)) return
+        yield* result.transitionRun(ProductRun.ID.make(run.id), to)
+        if (to !== "cancelled") return
+        pendingPermissions.delete(root)
+        pendingQuestions.delete(root)
+      }).pipe(
+        Effect.catch((cause) =>
+          Effect.logWarning("product task event projection failed", { eventType: event.type, cause }),
+        ),
+      )
+
+    const unsubscribe = yield* events.listen(projectEvent)
+    yield* Effect.addFinalizer(() => unsubscribe)
+
     return result
   }),
 )
@@ -607,9 +764,11 @@ const layer = Layer.effect(
 function canTransition(from: ProductRun.Status, to: ProductRun.Status) {
   if (from === "queued") return to === "running" || to === "cancelled"
   if (from === "running") return ["waiting_permission", "waiting_input", "succeeded", "failed", "cancelled", "interrupted"].includes(to)
-  if (from === "waiting_permission") return ["running", "failed", "cancelled", "interrupted"].includes(to)
-  if (from === "waiting_input") return ["running", "succeeded", "failed", "cancelled", "interrupted"].includes(to)
+  if (from === "waiting_permission")
+    return ["running", "waiting_input", "failed", "cancelled", "interrupted"].includes(to)
+  if (from === "waiting_input")
+    return ["running", "waiting_permission", "succeeded", "failed", "cancelled", "interrupted"].includes(to)
   return false
 }
 
-export const node = makeGlobalNode({ service: Service, layer, deps: [Database.node] })
+export const node = makeGlobalNode({ service: Service, layer, deps: [Database.node, EventV2.node] })

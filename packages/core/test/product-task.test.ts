@@ -1,8 +1,9 @@
 import { describe, expect } from "bun:test"
-import { ProductRun, ProductTask as ProductTaskSchema } from "@opencode-ai/schema"
+import { Permission, ProductRun, Question } from "@opencode-ai/schema"
 import { ProductTask } from "@opencode-ai/core/product-task"
 import { Database } from "@opencode-ai/core/database/database"
 import { LayerNode } from "@opencode-ai/core/effect/layer-node"
+import { EventV2 } from "@opencode-ai/core/event"
 import { ProjectV2 } from "@opencode-ai/core/project"
 import { ProjectTable } from "@opencode-ai/core/project/sql"
 import { AbsolutePath } from "@opencode-ai/core/schema"
@@ -11,7 +12,7 @@ import { SessionTable } from "@opencode-ai/core/session/sql"
 import { Effect } from "effect"
 import { testEffect } from "./lib/effect"
 
-const it = testEffect(LayerNode.compile(LayerNode.group([Database.node, ProductTask.node])))
+const it = testEffect(LayerNode.compile(LayerNode.group([Database.node, EventV2.node, ProductTask.node])))
 
 const projectID = ProjectV2.ID.make("product-task-test-project")
 const otherProjectID = ProjectV2.ID.make("product-task-test-other")
@@ -193,6 +194,85 @@ describe("ProductTask", () => {
       expect(failure._tag).toBe("ProductTask.ConflictError")
       expect(yield* service.listRuns(task.id)).toHaveLength(0)
       expect((yield* service.getTask(task.id)).status).toBe("ready")
+    }),
+  )
+
+  it.effect("projects child-session permission and question events onto the active task run", () =>
+    Effect.gen(function* () {
+      yield* seed()
+      const service = yield* ProductTask.Service
+      const events = yield* EventV2.Service
+      const task = yield* service.createTask({ projectID, title: "Projected task" })
+      const rootSessionID = SessionSchema.ID.create()
+      const childSessionID = SessionSchema.ID.create()
+      yield* session(rootSessionID)
+      yield* session(childSessionID, projectID, rootSessionID)
+
+      const started = yield* service.startRun(task.id, task.version, "new", rootSessionID)
+      yield* service.transitionRun(started.run.id, "running")
+
+      const permissionID = Permission.ID.create()
+      yield* events.publish(Permission.Event.Asked, {
+        id: permissionID,
+        sessionID: childSessionID,
+        action: "edit",
+        resources: ["test.txt"],
+      })
+      expect((yield* service.getRun(started.run.id)).status).toBe("waiting_permission")
+      expect((yield* service.getTask(task.id)).status).toBe("waiting")
+
+      const secondPermissionID = Permission.ID.create()
+      yield* events.publish(Permission.Event.Asked, {
+        id: secondPermissionID,
+        sessionID: childSessionID,
+        action: "read",
+        resources: ["other.txt"],
+      })
+
+      yield* events.publish(Permission.Event.Replied, {
+        sessionID: childSessionID,
+        requestID: permissionID,
+        reply: "once",
+      })
+      expect((yield* service.getRun(started.run.id)).status).toBe("waiting_permission")
+
+      yield* events.publish(Permission.Event.Replied, {
+        sessionID: childSessionID,
+        requestID: secondPermissionID,
+        reply: "once",
+      })
+      expect((yield* service.getRun(started.run.id)).status).toBe("running")
+      expect((yield* service.getTask(task.id)).status).toBe("active")
+
+      const questionID = Question.ID.create()
+      yield* events.publish(Question.Event.Asked, {
+        id: questionID,
+        sessionID: childSessionID,
+        questions: [{ header: "Choice", question: "Continue?", options: [] }],
+      })
+      expect((yield* service.getRun(started.run.id)).status).toBe("waiting_input")
+      expect((yield* service.getTask(task.id)).status).toBe("waiting")
+
+      yield* events.publish(Question.Event.Rejected, { sessionID: childSessionID, requestID: questionID })
+      expect((yield* service.getRun(started.run.id)).status).toBe("cancelled")
+      expect((yield* service.getTask(task.id)).status).toBe("ready")
+    }),
+  )
+
+  it.effect("reconciles active runs as interrupted exactly once", () =>
+    Effect.gen(function* () {
+      yield* seed()
+      const service = yield* ProductTask.Service
+      const task = yield* service.createTask({ projectID, title: "Interrupted task" })
+      const sessionID = SessionSchema.ID.create()
+      yield* session(sessionID)
+      const started = yield* service.startRun(task.id, task.version, "new", sessionID)
+
+      expect(yield* service.reconcileInterruptedRuns()).toBe(1)
+      expect(yield* service.reconcileInterruptedRuns()).toBe(0)
+      expect((yield* service.getRun(started.run.id)).status).toBe("interrupted")
+      expect((yield* service.getTask(task.id)).status).toBe("ready")
+      expect((yield* service.getTask(task.id)).activeRunID).toBeUndefined()
     }),
   )
 })
