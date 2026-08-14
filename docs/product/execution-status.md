@@ -18,7 +18,7 @@ Status vocabulary: `planned`, `ready`, `in-progress`, `review`, `rework`, `accep
 | AP-09 | accepted    | Product schemas, restrictive migration, lifecycle service, HttpApi adapter, Windows-safe generator fix, and focused DB/OpenAPI tests pass.                                                                                                                                                                                                                                     |
 | AP-10 | accepted    | OpenRouter credential kinds, protected storage, paste-key and PKCE flows, verification, usage/credits/model sources, UI, errors, export, and diagnostics are defined in `openrouter-account-contract.md` from current official documentation.                                                                                                                                  |
 | AP-11 | in-progress | Protected Windows secret storage, paste-key and PKCE flows, safe account/model projections, local API, generated SDK, engine credential projection, account metadata, key replacement, catalog details, and OpenRouter-filtered model selection pass focused checks and production builds. One explicitly approved live verification remains. |
-| AP-12 | planned     | Implement project navigation and task list.                                                                                                                                                                                                                                                                                                                                    |
+| AP-12 | accepted    | The graphical project task list is integrated into the existing home renderer and generated ProductTask client, including create, edit, archive, restore, reopen, archived visibility, and explicit task/session navigation. Focused lint, App typecheck, 722 App tests, and the App production build pass.                                                                                  |
 | AP-13 | planned     | Implement task workspace.                                                                                                                                                                                                                                                                                                                                                      |
 | AP-14 | planned     | Implement diff, review, and completion workspace.                                                                                                                                                                                                                                                                                                                              |
 | AP-15 | planned     | Implement graphical settings.                                                                                                                                                                                                                                                                                                                                                  |
@@ -32,8 +32,8 @@ Status vocabulary: `planned`, `ready`, `in-progress`, `review`, `rework`, `accep
 
 ## Current critical path
 
-1. Complete the AP-11 graphical OpenRouter account and model workflow against the protected local API.
-2. Build AP-12 project/task navigation against the accepted ProductTask HttpApi adapter.
+1. Build AP-13 task workspace and safe task-run/session orchestration against the accepted ProductTask HttpApi adapter.
+2. Complete the one explicitly approved live AP-11 OpenRouter verification.
 3. Complete the visible AP-03 desktop start after owner confirmation.
 
 ## Bounded repair policy
@@ -94,6 +94,21 @@ Status vocabulary: `planned`, `ready`, `in-progress`, `review`, `rework`, `accep
 - A review suggestion to lowercase standalone German field labels was rejected because it conflicts with the repository rule requiring normal German capitalization at the start of independent UI labels.
 - Evidence: The existing model manager now supports an optional provider filter and leaves unfiltered behavior unchanged; focused lint is clean for new code, App typecheck passes, and the App production build passes.
 - UI scope: The account dialog now shows safe usage, remaining limit, verification and expiry timestamps, supports protected key replacement, displays searchable model capabilities/context/pricing, and opens model visibility management filtered to OpenRouter.
+
+### AP-12 graphical-task verification ledger
+
+- Limit: 3 distinct failure causes; loop closed green at 3 of 3.
+- Cause 1: Solid's resource refetch may return a value or a promise. Failure recovery now awaits it inside a guarded block instead of calling `.catch()` on an uncertain return type.
+- Cause 2: Dialogs and actions initially resolved the currently selected server and project only when the mutation ran. Every action now binds its original server/project target so a navigation change cannot write to another target.
+- Cause 3: A successful task mutation was initially coupled to a fallible follow-up read and could therefore be presented as failed. Mutation responses now update the local task projection directly; a refetch is reserved for reconciling actual mutation failures.
+- Evidence: focused lint has zero findings; App typecheck passes; all 722 App tests pass with 3,019 expectations; the App production build exits with code 0.
+- Scope boundary: Starting a task run is deliberately not part of AP-12. AP-13 must create and link a coding session through one safe orchestration path so a partial UI sequence cannot leave an orphaned active run.
+
+### Product i18n fallback verification ledger
+
+- Limit: 3 distinct failure causes; loop closed green at 1 of 3.
+- Cause 1: The upstream parity test required every new product key in all 64 locale dictionaries, although only German and English product translations exist. The policy now explicitly permits English runtime fallback for the `home.tasks.*` and `settings.openrouter.*` namespaces in other upstream locales.
+- Evidence: German and English contain complete product keys; all 5 parity tests pass with 979 expectations; the complete App test suite passes.
 
 ## Bounded AP-03/AP-04 repair ledger
 

@@ -7,6 +7,7 @@ export function HomeSessions(props: {
   sessions: HomeSessionsController
   search: HomeSessionSearchController
   scroll: HomeScrollController
+  onShowTasks?: () => void
 }) {
   return (
     <HomeSessionsView
@@ -42,6 +43,7 @@ export function HomeSessions(props: {
       onSearchSelectActive={props.search.result.selectActive}
       onSearchHighlight={props.search.result.highlight}
       onSearchSelect={props.search.result.select}
+      onShowTasks={props.onShowTasks}
     />
   )
 }

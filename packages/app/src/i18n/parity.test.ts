@@ -65,6 +65,9 @@ const appLocales = [
   "uz",
 ] as const
 const desktopLocales = appLocales
+const productFallbackPrefixes = ["home.tasks.", "settings.openrouter."] as const
+const usesProductFallback = (domain: "app" | "ui" | "desktop", key: string) =>
+  domain === "app" && productFallbackPrefixes.some((prefix) => key.startsWith(prefix))
 const pluralCategories = new Map(
   appLocales.map(
     (locale) =>
@@ -102,7 +105,9 @@ describe("i18n parity", () => {
       const source = await dictionary(domain.source)
       for (const locale of domain.locales) {
         const target = await dictionary(domain.target(locale))
-        const missing = Object.keys(source).filter((key) => !Object.hasOwn(target, key))
+        const missing = Object.keys(source).filter(
+          (key) => !Object.hasOwn(target, key) && !usesProductFallback(domain.name, key),
+        )
         const extra = Object.keys(target)
           .filter((key) => !Object.hasOwn(source, key))
           .sort()

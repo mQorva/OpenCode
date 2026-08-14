@@ -7,13 +7,23 @@ import { createHomeScrollController } from "./home/home-scroll-controller"
 import { createHomeSessionSearchController } from "./home/home-session-search-controller"
 import { createHomeSessionsController } from "./home/home-sessions-controller"
 import { HomeSessions } from "./home/home-sessions"
+import { createHomeProjectTasksController } from "./home/home-project-tasks-controller"
+import { HomeProjectTasks } from "./home/home-project-tasks-view"
+import { createEffect, createSignal, Show } from "solid-js"
 
 export function NewHome() {
   const home = createHomeController()
   const projects = createHomeProjectsController(home)
   const sessions = createHomeSessionsController(home)
+  const tasks = createHomeProjectTasksController(home)
   const search = createHomeSessionSearchController(home, sessions)
   const scroll = createHomeScrollController(sessions.data.groups)
+  const [projectView, setProjectView] = createSignal<"tasks" | "sessions">("tasks")
+
+  createEffect(() => {
+    const projectID = home.project.selected()?.id
+    setProjectView(projectID ? "tasks" : "sessions")
+  })
   return (
     <div
       class={`
@@ -36,7 +46,19 @@ export function NewHome() {
           `}
         >
           <HomeProjects projects={projects} scroll={scroll} />
-          <HomeSessions sessions={sessions} search={search} scroll={scroll} />
+          <Show
+            when={home.project.selected()?.id && projectView() === "tasks"}
+            fallback={
+              <HomeSessions
+                sessions={sessions}
+                search={search}
+                scroll={scroll}
+                onShowTasks={home.project.selected()?.id ? () => setProjectView("tasks") : undefined}
+              />
+            }
+          >
+            <HomeProjectTasks tasks={tasks} onShowSessions={() => setProjectView("sessions")} />
+          </Show>
           <HomeUtilityNav
             class="flex lg:hidden"
             onOpenSettings={projects.utility.settings}
