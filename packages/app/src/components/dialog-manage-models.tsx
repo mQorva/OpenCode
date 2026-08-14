@@ -116,7 +116,11 @@ export const DialogManageModels: Component = () => {
   )
 }
 
-export const DialogManageModelsV2: Component = () => {
+type DialogManageModelsV2Props = {
+  providerID?: string
+}
+
+export const DialogManageModelsV2: Component<DialogManageModelsV2Props> = (props) => {
   const local = useLocal()
   const language = useLanguage()
   const dialog = useDialog()
@@ -125,7 +129,12 @@ export const DialogManageModelsV2: Component = () => {
   const handleConnectProvider = () => {
     void dialog.show(() => <DialogConnectProvider directory={directory} />)
   }
-  const providerList = (providerID: string) => local.model.list().filter((x) => x.provider.id === providerID)
+  const modelList = () => {
+    const models = local.model.list()
+    if (!props.providerID) return models
+    return models.filter((x) => x.provider.id === props.providerID)
+  }
+  const providerList = (providerID: string) => modelList().filter((x) => x.provider.id === providerID)
   const providerVisible = (providerID: string) =>
     providerList(providerID).every((x) => local.model.visible({ modelID: x.id, providerID: x.provider.id }))
   const setProviderVisibility = (providerID: string, checked: boolean) => {
@@ -137,7 +146,7 @@ export const DialogManageModelsV2: Component = () => {
     local.model.setVisibility({ modelID: item.id, providerID: item.provider.id }, checked)
   }
   const list = useFilteredList<ModelItem>({
-    items: () => local.model.list(),
+    items: modelList,
     key: (x) => `${x.provider.id}:${x.id}`,
     filterKeys: ["provider.name", "name", "id"],
     sortBy: (a, b) => a.name.localeCompare(b.name),
