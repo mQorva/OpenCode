@@ -1,5 +1,6 @@
 import * as http from "node:http"
 import * as tls from "node:tls"
+import { installProtectedSecretAdapter, type ProtectedSecretMessageChannel } from "./protected-secret-bridge"
 
 type NodeHttpWithEnvProxy = typeof http & {
   setGlobalProxyFromEnv: () => void
@@ -27,8 +28,9 @@ type SidecarMessage =
   | { type: "error"; error: { message: string; stack?: string } }
 
 type ParentPort = {
-  postMessage(message: SidecarMessage): void
+  postMessage(message: unknown): void
   on(event: "message", listener: (event: { data: unknown }) => void): void
+  off(event: "message", listener: (event: { data: unknown }) => void): void
 }
 
 type Listener = {
@@ -37,6 +39,22 @@ type Listener = {
 
 const parentPort = getParentPort()
 let listener: Listener | undefined
+let uninstallProtectedSecrets: (() => void) | undefined
+const protectedSecretListeners = new Map<(message: unknown) => void, (event: { data: unknown }) => void>()
+const protectedSecretChannel: ProtectedSecretMessageChannel = {
+  postMessage: (message) => parentPort.postMessage(message),
+  on: (_event, handler) => {
+    const wrapped = (event: { data: unknown }) => handler(event.data)
+    protectedSecretListeners.set(handler, wrapped)
+    parentPort.on("message", wrapped)
+  },
+  off: (_event, handler) => {
+    const wrapped = protectedSecretListeners.get(handler)
+    if (!wrapped) return
+    protectedSecretListeners.delete(handler)
+    parentPort.off("message", wrapped)
+  },
+}
 
 parentPort.on("message", (event) => {
   const command = parseCommand(event.data)
@@ -50,6 +68,8 @@ parentPort.on("message", (event) => {
 
 async function start(command: StartCommand) {
   try {
+    uninstallProtectedSecrets?.()
+    uninstallProtectedSecrets = installProtectedSecretAdapter(protectedSecretChannel)
     prepareSidecarEnv(command.password, command.userDataPath)
     ensureLoopbackNoProxy()
     useSystemCertificates()
@@ -65,6 +85,8 @@ async function start(command: StartCommand) {
     })
     parentPort.postMessage({ type: "ready" })
   } catch (error) {
+    uninstallProtectedSecrets?.()
+    uninstallProtectedSecrets = undefined
     parentPort.postMessage({ type: "error", error: serializeError(error) })
     setImmediate(() => process.exit(1))
   }
@@ -75,6 +97,8 @@ async function stop() {
     await listener?.stop()
   } finally {
     listener = undefined
+    uninstallProtectedSecrets?.()
+    uninstallProtectedSecrets = undefined
     parentPort.postMessage({ type: "stopped" })
     setImmediate(() => process.exit(0))
   }

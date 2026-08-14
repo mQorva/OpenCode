@@ -1,11 +1,13 @@
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
-import { app, utilityProcess } from "electron"
+import { app, safeStorage, utilityProcess } from "electron"
 import type { Details } from "electron"
 import { getLogger } from "./logging"
 import { getUserShell, loadShellEnv } from "./shell-env"
 import { getStore } from "./store"
-import { DEFAULT_SERVER_URL_KEY } from "./store-keys"
+import { DEFAULT_SERVER_URL_KEY, PROTECTED_SECRETS_STORE } from "./store-keys"
+import { installProtectedSecretHost } from "./protected-secret-bridge"
+import { ProtectedSecretStore } from "./protected-secret-store"
 
 export type HealthCheck = { wait: Promise<void> }
 
@@ -67,6 +69,25 @@ export async function spawnLocalServer(
     serviceName: SIDECAR_SERVICE_NAME,
     stdio: "pipe",
   })
+  const protectedSecrets = getStore(PROTECTED_SECRETS_STORE)
+  const detachProtectedSecrets = installProtectedSecretHost(child, {
+    isEncryptionAvailable: () => safeStorage.isEncryptionAvailable(),
+    store: new ProtectedSecretStore(
+      {
+        isEncryptionAvailable: () => safeStorage.isEncryptionAvailable(),
+        encryptString: (value) => safeStorage.encryptString(value),
+        decryptString: (value) => safeStorage.decryptString(Buffer.from(value)),
+      },
+      {
+        get: (key) => {
+          const value = protectedSecrets.get(key)
+          return typeof value === "string" ? value : undefined
+        },
+        set: (key, value) => protectedSecrets.set(key, value),
+        delete: (key) => protectedSecrets.delete(key),
+      },
+    ),
+  })
   let exited = false
   const exit = defer<number>()
 
@@ -78,6 +99,7 @@ export async function spawnLocalServer(
   app.on("child-process-gone", onProcessGone)
   child.once("exit", (code) => {
     exited = true
+    detachProtectedSecrets()
     app.off("child-process-gone", onProcessGone)
     options.onExit?.(code)
     exit.resolve(code)

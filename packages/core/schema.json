@@ -1,9 +1,9 @@
 {
   "version": "7",
   "dialect": "sqlite",
-  "id": "427464a9-8823-4d43-b8c6-98d8ed21a38b",
+  "id": "37086e82-b0e7-4fa0-9eb1-a9aa632f757d",
   "prevIds": [
-    "f14a9b18-8207-487e-a3d3-227e629ba9ad"
+    "427464a9-8823-4d43-b8c6-98d8ed21a38b"
   ],
   "ddl": [
     {
@@ -412,11 +412,21 @@
     },
     {
       "type": "text",
-      "notNull": true,
+      "notNull": false,
       "autoincrement": false,
       "default": null,
       "generated": null,
       "name": "value",
+      "entityType": "columns",
+      "table": "credential"
+    },
+    {
+      "type": "text",
+      "notNull": false,
+      "autoincrement": false,
+      "default": null,
+      "generated": null,
+      "name": "secret_ref",
       "entityType": "columns",
       "table": "credential"
     },

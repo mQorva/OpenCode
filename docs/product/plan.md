@@ -43,31 +43,31 @@ The existing Electron Desktop, shared SolidJS App, SDK connection, local server 
 
 ## Work packages
 
-| ID | Result | Depends on |
-|---|---|---|
-| AP-00 | Product decisions and explicit decision gates | current owner direction |
-| AP-01 | Full fork, correct remotes, recorded base | AP-00 where required |
-| AP-02 | Root contract, plan, decisions, base, and resumable status | AP-01 |
-| AP-03 | Fresh unchanged baseline compiles and Windows desktop starts | AP-01 |
-| AP-04 | Build failures repaired within limits and package basis verified | AP-03 started |
-| AP-05 | Reproducible PowerShell setup/check/build/package contract | AP-04 |
-| AP-06 | Desktop and UI flow/component inventory | AP-03 |
-| AP-07 | Evidence-based renderer strategy decision | AP-06 |
-| AP-08 | Product domain and OpenCode adapter contract | AP-06, AP-07 |
-| AP-09 | Product domain and durable task persistence | AP-08 |
-| AP-10 | OpenRouter account/provider/security contract | AP-08 |
-| AP-11 | Complete graphical OpenRouter integration | AP-09, AP-10 |
-| AP-12 | Project navigation and durable task list | AP-09 |
-| AP-13 | Integrated task workspace | AP-09, AP-12 |
-| AP-14 | Diff, review, evidence, and completion workspace | AP-13 |
-| AP-15 | Complete graphical settings | AP-10, AP-12 |
-| AP-16 | Selected direct API providers | AP-11, AP-15 |
-| AP-17 | Approved Codex/Claude authentication paths | confirmed legal and technical access |
-| AP-18 | Upstream update automation and compatibility test merge | AP-05 and product changes |
-| AP-19 | Security, regression, performance, accessibility, and product review | release scope complete |
-| AP-20 | Installable and startable Windows distribution | AP-19, name/signing decisions |
-| AP-21 | Open-source publication | AP-20 and owner approval |
-| AP-22 | Verified macOS and Linux distributions | stable Windows baseline |
+| ID    | Result                                                               | Depends on                           |
+| ----- | -------------------------------------------------------------------- | ------------------------------------ |
+| AP-00 | Product decisions and explicit decision gates                        | current owner direction              |
+| AP-01 | Full fork, correct remotes, recorded base                            | AP-00 where required                 |
+| AP-02 | Root contract, plan, decisions, base, and resumable status           | AP-01                                |
+| AP-03 | Fresh unchanged baseline compiles and Windows desktop starts         | AP-01                                |
+| AP-04 | Build failures repaired within limits and package basis verified     | AP-03 started                        |
+| AP-05 | Reproducible PowerShell setup/check/build/package contract           | AP-04                                |
+| AP-06 | Desktop and UI flow/component inventory                              | AP-03                                |
+| AP-07 | Evidence-based renderer strategy decision                            | AP-06                                |
+| AP-08 | Product domain and OpenCode adapter contract                         | AP-06, AP-07                         |
+| AP-09 | Product domain and durable task persistence                          | AP-08                                |
+| AP-10 | OpenRouter account/provider/security contract                        | AP-08                                |
+| AP-11 | Complete graphical OpenRouter integration                            | AP-09, AP-10                         |
+| AP-12 | Project navigation and durable task list                             | AP-09                                |
+| AP-13 | Integrated task workspace                                            | AP-09, AP-12                         |
+| AP-14 | Diff, review, evidence, and completion workspace                     | AP-13                                |
+| AP-15 | Complete graphical settings                                          | AP-10, AP-12                         |
+| AP-16 | Selected direct API providers                                        | AP-11, AP-15                         |
+| AP-17 | Approved Codex/Claude authentication paths                           | confirmed legal and technical access |
+| AP-18 | Upstream update automation and compatibility test merge              | AP-05 and product changes            |
+| AP-19 | Security, regression, performance, accessibility, and product review | release scope complete               |
+| AP-20 | Installable and startable Windows distribution                       | AP-19, name/signing decisions        |
+| AP-21 | Open-source publication                                              | AP-20 and owner approval             |
+| AP-22 | Verified macOS and Linux distributions                               | stable Windows baseline              |
 
 ## Agent execution contract
 
@@ -93,6 +93,10 @@ An item is done only when acceptance criteria and relevant gates pass, blocking 
 ## Bounded baseline repair
 
 AP-03/AP-04 allow at most three meaningful repairs for one stable root cause and eight meaningful repairs total in a contiguous run. Each attempt records the failing command, diagnosis, change, and result. Identical retries without changed state do not count and are not allowed as an endless loop. At the limit, stop with the complete error, classification, attempted repairs, Git/build state, reversible changes, and concrete options. Product-domain, provider, and renderer work does not begin without a compiled and started reference baseline unless the owner explicitly changes the base decision.
+
+## Bounded repair loops
+
+Every later implementation and verification stage is bounded as well. One contiguous repair loop may address at most three distinct, evidenced failure causes. Repeating an unchanged command is not a repair attempt and is prohibited unless an external prerequisite has demonstrably changed. When the third cause is not resolved, stop that loop, preserve the reproducible state, record the exact blocker and attempted fixes, and continue only after a new diagnosis or an explicit owner decision. A successful check closes the loop and the next independently scoped work package starts with a fresh limit.
 
 ## Owner decision gates
 

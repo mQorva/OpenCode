@@ -46,3 +46,11 @@ Status: accepted unless explicitly marked otherwise.
 - Reason: Sessions currently provide strong conversation, event, tool, token, cost, revert, and child-session behavior, but they do not represent a stable product backlog or task lifecycle.
 - Constraint: Do not overload OpenCode session titles, todo items, plan files, or local follow-up state as the canonical product task record.
 - Compatibility: Existing OpenCode project and session identifiers remain addressable through adapter mappings so upstream storage and history are preserved.
+
+## ADR-008: Protected desktop secrets use a Main-to-Sidecar bridge
+
+- Decision: Electron main owns operating-system-backed encryption and ciphertext persistence. The local OpenCode sidecar requests put/get/delete operations over its existing private utility-process message channel.
+- Constraint: Renderer state, ordinary Electron settings stores, SQLite records, logs, events, exports, and environment variables never contain a persisted plaintext provider secret.
+- Runtime: Core credentials store only a protected-secret reference. Credential resolution asks the injected protected-secret service for plaintext only at the point of provider use.
+- Availability: The protected provider-account workflow is available only when a protected-secret adapter is installed. CLI, WSL, and remote-server behavior must report the capability as unavailable until they receive an equivalent secure implementation.
+- Compatibility: Legacy OpenCode credentials remain readable during an explicit migration period. New OpenRouter product connections must use protected storage and may not silently fall back to plaintext.

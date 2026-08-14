@@ -1,4 +1,5 @@
 export const SETTINGS_STORE = "opencode.settings"
+export const PROTECTED_SECRETS_STORE = "opencode.protected-secrets"
 export const DEFAULT_SERVER_URL_KEY = "defaultServerUrl"
 export const FIRST_LAUNCH_ONBOARDING_COMPLETE_KEY = "firstLaunchOnboardingComplete"
 export const OLD_LAYOUT_ELIGIBLE_KEY = "oldLayoutEligible"

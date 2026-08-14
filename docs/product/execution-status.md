@@ -4,37 +4,52 @@ Updated: 14 August 2026
 
 Status vocabulary: `planned`, `ready`, `in-progress`, `review`, `rework`, `accepted`, `blocked`.
 
-| ID | Status | Evidence or next action |
-|---|---|---|
-| AP-00 | in-progress | Technical work may proceed; product name, GitHub organization, final branding, signing, and publication remain owner decision gates. |
-| AP-01 | accepted | Full `upstream/dev` history checked out at `8a55ba75b5b01fa1bbf1578a0a176cfc2a81d558`; official remote renamed to `upstream`; `origin` deliberately absent. |
-| AP-02 | accepted | Root contract, product plan, architecture decisions, upstream base, and resumable execution status are present and verified. |
-| AP-03 | in-progress | Fresh install, package typechecks, App build, standalone Windows build with smoke test, Electron build, and installer are successful. One visible Windows desktop start remains. |
-| AP-04 | accepted | Build causes were repaired within the bounded loop; Windows x64 CLI, Desktop build, NSIS installer, and blockmap succeed. Visible desktop runtime evidence is tracked separately by AP-03. |
-| AP-05 | accepted | `scripts/setup.ps1`, `check.ps1`, `build.ps1`, and `package.ps1` passed parser review and real end-to-end execution. |
-| AP-06 | accepted | Four separated inventories cover project/task/session persistence, providers/settings, integrated coding workspace, and Electron/renderer architecture; consolidated evidence is in `current-ui-inventory.md`. |
-| AP-07 | accepted | Retain and incrementally consolidate the existing Solid renderer behind a product adapter; no second renderer or replacement desktop shell. |
-| AP-08 | accepted | Durable Project -> Task -> Run contract, lifecycle, concurrency, completion evidence, adapter boundary, errors, and compatibility mapping are defined in `product-domain-contract.md`. |
-| AP-09 | accepted | Product schemas, restrictive migration, lifecycle service, HttpApi adapter, Windows-safe generator fix, and focused DB/OpenAPI tests pass. |
-| AP-10 | accepted | OpenRouter credential kinds, protected storage, paste-key and PKCE flows, verification, usage/credits/model sources, UI, errors, export, and diagnostics are defined in `openrouter-account-contract.md` from current official documentation. |
-| AP-11 | in-progress | Implement protected secret storage, OpenRouter account metadata/verification, PKCE, projections, and graphical adapter around the existing provider engine. |
-| AP-12 | planned | Implement project navigation and task list. |
-| AP-13 | planned | Implement task workspace. |
-| AP-14 | planned | Implement diff, review, and completion workspace. |
-| AP-15 | planned | Implement graphical settings. |
-| AP-16 | planned | Add selected direct API providers. |
-| AP-17 | planned | Add approved Codex or Claude authentication paths. |
-| AP-18 | planned | Implement and test upstream update automation. |
-| AP-19 | planned | Complete product hardening and multi-perspective review. |
-| AP-20 | planned | Build and verify Windows distribution. |
-| AP-21 | planned | Publish open-source repository after owner approval. |
-| AP-22 | planned | Add and verify macOS and Linux distributions after stable Windows baseline. |
+| ID    | Status      | Evidence or next action                                                                                                                                                                                                                                                                                                  |
+| ----- | ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| AP-00 | in-progress | Technical work may proceed; product name, GitHub organization, final branding, signing, and publication remain owner decision gates.                                                                                                                                                                                     |
+| AP-01 | accepted    | Full `upstream/dev` history checked out at `8a55ba75b5b01fa1bbf1578a0a176cfc2a81d558`; official remote renamed to `upstream`; `origin` deliberately absent.                                                                                                                                                              |
+| AP-02 | accepted    | Root contract, product plan, architecture decisions, upstream base, and resumable execution status are present and verified.                                                                                                                                                                                             |
+| AP-03 | in-progress | Fresh install, package typechecks, App build, standalone Windows build with smoke test, Electron build, and installer are successful. One visible Windows desktop start remains.                                                                                                                                         |
+| AP-04 | accepted    | Build causes were repaired within the bounded loop; Windows x64 CLI, Desktop build, NSIS installer, and blockmap succeed. Visible desktop runtime evidence is tracked separately by AP-03.                                                                                                                               |
+| AP-05 | accepted    | `scripts/setup.ps1`, `check.ps1`, `build.ps1`, and `package.ps1` passed parser review and real end-to-end execution.                                                                                                                                                                                                     |
+| AP-06 | accepted    | Four separated inventories cover project/task/session persistence, providers/settings, integrated coding workspace, and Electron/renderer architecture; consolidated evidence is in `current-ui-inventory.md`.                                                                                                           |
+| AP-07 | accepted    | Retain and incrementally consolidate the existing Solid renderer behind a product adapter; no second renderer or replacement desktop shell.                                                                                                                                                                              |
+| AP-08 | accepted    | Durable Project -> Task -> Run contract, lifecycle, concurrency, completion evidence, adapter boundary, errors, and compatibility mapping are defined in `product-domain-contract.md`.                                                                                                                                   |
+| AP-09 | accepted    | Product schemas, restrictive migration, lifecycle service, HttpApi adapter, Windows-safe generator fix, and focused DB/OpenAPI tests pass.                                                                                                                                                                               |
+| AP-10 | accepted    | OpenRouter credential kinds, protected storage, paste-key and PKCE flows, verification, usage/credits/model sources, UI, errors, export, and diagnostics are defined in `openrouter-account-contract.md` from current official documentation.                                                                            |
+| AP-11 | in-progress | Protected-secret service, Windows OS encryption store, private Main-to-Sidecar transport, reference-only credential persistence, migration, retryable deletion, focused tests, typechecks, and Desktop production build pass. OpenRouter account metadata/verification, PKCE, projections, and graphical adapter remain. |
+| AP-12 | planned     | Implement project navigation and task list.                                                                                                                                                                                                                                                                              |
+| AP-13 | planned     | Implement task workspace.                                                                                                                                                                                                                                                                                                |
+| AP-14 | planned     | Implement diff, review, and completion workspace.                                                                                                                                                                                                                                                                        |
+| AP-15 | planned     | Implement graphical settings.                                                                                                                                                                                                                                                                                            |
+| AP-16 | planned     | Add selected direct API providers.                                                                                                                                                                                                                                                                                       |
+| AP-17 | planned     | Add approved Codex or Claude authentication paths.                                                                                                                                                                                                                                                                       |
+| AP-18 | planned     | Implement and test upstream update automation.                                                                                                                                                                                                                                                                           |
+| AP-19 | planned     | Complete product hardening and multi-perspective review.                                                                                                                                                                                                                                                                 |
+| AP-20 | planned     | Build and verify Windows distribution.                                                                                                                                                                                                                                                                                   |
+| AP-21 | planned     | Publish open-source repository after owner approval.                                                                                                                                                                                                                                                                     |
+| AP-22 | planned     | Add and verify macOS and Linux distributions after stable Windows baseline.                                                                                                                                                                                                                                              |
 
 ## Current critical path
 
 1. Implement AP-11 protected OpenRouter account integration without persisting plaintext secrets.
 2. Build AP-12 project/task navigation against the accepted ProductTask HttpApi adapter.
 3. Complete the visible AP-03 desktop start after owner confirmation.
+
+## Bounded repair policy
+
+- Every contiguous implementation or verification loop may address at most three distinct, evidenced failure causes.
+- An unchanged retry without a changed premise is prohibited.
+- At the limit, preserve the reproducible state and document the exact blocker, attempted fixes, and owner options before continuing.
+- A green verification closes the loop; the next independently scoped package receives a fresh limit.
+
+### AP-11 protected-secret verification ledger
+
+- Limit: 3 distinct failure causes.
+- Causes used: 2 of 3; loop closed green.
+- Cause 1: Protected credential deletion removed metadata before the OS secret, preventing a clean retry after a secret-store failure. Secret removal now precedes metadata deletion and the retry behavior is covered by a focused test.
+- Cause 2: Updating only a protected value attempted an empty label update after replacing the secret. The database update now runs only when a label was supplied.
+- Evidence: Core typecheck, 9 credential/protected-secret tests, migration synchronization check, Desktop typecheck, 13 OS-store/bridge tests, and complete Desktop production build pass.
 
 ## Bounded AP-03/AP-04 repair ledger
 

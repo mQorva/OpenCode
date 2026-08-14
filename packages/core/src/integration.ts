@@ -389,17 +389,19 @@ export const locationLayer = Layer.effect(
           }
           const credential = yield* credentials.get(connection.id)
           if (!credential) return undefined
-          if (credential.value.type === "key") return credential.value
+          const value = yield* authorize(credentials.resolve(credential.id))
+          if (!value) return undefined
+          if (value.type === "key") return value
           const implementation = state
             .get()
             .integrations.get(credential.integrationID)
-            ?.implementations.get(credential.value.methodID)
-          if (!implementation?.refresh) return credential.value
+            ?.implementations.get(value.methodID)
+          if (!implementation?.refresh) return value
           const now = yield* Clock.currentTimeMillis
-          if (credential.value.expires > now + Duration.toMillis(Duration.minutes(5))) return credential.value
-          const value = yield* authorize(implementation.refresh(credential.value))
-          yield* credentials.update(credential.id, { value })
-          return value
+          if (value.expires > now + Duration.toMillis(Duration.minutes(5))) return value
+          const refreshed = yield* authorize(implementation.refresh(value))
+          yield* authorize(credentials.update(credential.id, { value: refreshed }))
+          return refreshed
         }),
         key: Effect.fn("Integration.connection.key")(function* (input) {
           const method = state
@@ -457,7 +459,7 @@ export const locationLayer = Layer.effect(
         }),
         update: Effect.fn("Integration.connection.update")(function* (credentialID, updates) {
           const credential = yield* credentials.get(credentialID)
-          yield* credentials.update(credentialID, updates)
+          yield* credentials.update(credentialID, updates).pipe(Effect.orDie)
           if (credential) {
             yield* events.publish(Event.ConnectionUpdated, { integrationID: credential.integrationID })
           }
@@ -465,7 +467,7 @@ export const locationLayer = Layer.effect(
         }),
         remove: Effect.fn("Integration.connection.remove")(function* (credentialID) {
           const credential = yield* credentials.get(credentialID)
-          yield* credentials.remove(credentialID)
+          yield* credentials.remove(credentialID).pipe(Effect.orDie)
           if (credential) {
             yield* events.publish(Event.ConnectionUpdated, { integrationID: credential.integrationID })
           }
