@@ -5,7 +5,7 @@
   "upstream": {
     "repository": "https://github.com/anomalyco/opencode.git",
     "branch": "dev",
-    "version": "1.18.18",
-    "commit": "e23586af2623f1bc2e8e6965d2d7acf7bd03d5c3"
+    "version": "1.18.21",
+    "commit": "e00890c67261a435cee6409366a68999a93393fd"
   }
 }
