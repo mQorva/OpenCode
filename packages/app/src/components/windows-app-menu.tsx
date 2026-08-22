@@ -6,7 +6,13 @@ import { IconButtonV2 } from "@opencode-ai/ui/v2/icon-button-v2"
 import { Icon as IconV2 } from "@opencode-ai/ui/v2/icon"
 
 import { useCommand } from "@/context/command"
-import { DESKTOP_MENU, desktopMenuVisible, type DesktopMenuAction, type DesktopMenuEntry } from "@/desktop-menu"
+import {
+  DESKTOP_MENU,
+  desktopMenuVisible,
+  type DesktopMenu,
+  type DesktopMenuAction,
+  type DesktopMenuEntry,
+} from "@/desktop-menu"
 import { usePlatform } from "@/context/platform"
 import { useLanguage } from "@/context/language"
 
@@ -14,6 +20,7 @@ export function WindowsAppMenu(props: {
   command: ReturnType<typeof useCommand>
   platform: ReturnType<typeof usePlatform>
   variant?: "legacy" | "v2"
+  distributed?: boolean
 }) {
   let lastFocused: HTMLElement | undefined
   const language = useLanguage()
@@ -46,6 +53,46 @@ export function WindowsAppMenu(props: {
       return
     }
     if (entry.href) props.platform.openExternal(entry.href)
+  }
+
+  const entries = (menu: DesktopMenu) =>
+    menu.items
+      ?.filter((entry) => desktopMenuVisible(entry, "windows"))
+      .map((entry) =>
+        entry.type === "separator" ? (
+          <DropdownMenu.Separator />
+        ) : (
+          <DesktopMenuItem
+            label={entry.labelKey ? language.t(entry.labelKey) : ""}
+            keybind={entry.command ? props.command.keybind(entry.command) : entry.accelerator?.windows}
+            disabled={entry.command ? commandDisabled(entry.command) : false}
+            onSelect={() => runEntry(entry)}
+          />
+        ),
+      )
+
+  if (props.distributed) {
+    return (
+      <div class="flex h-full shrink-0 items-center gap-0.5" data-component="desktop-app-menu-bar">
+        <div class="px-2 text-13-medium text-v2-text-text-strong select-none">OpenCode</div>
+        {DESKTOP_MENU.filter((menu) => desktopMenuVisible(menu, "windows")).map((menu) => (
+          <DropdownMenu gutter={2} modal={false} placement="bottom-start">
+            <DropdownMenu.Trigger
+              as="button"
+              type="button"
+              class="h-7 rounded-md px-2 text-13-regular text-v2-text-text-muted hover:bg-v2-background-bg-hover hover:text-v2-text-text-strong data-[expanded]:bg-v2-background-bg-hover data-[expanded]:text-v2-text-text-strong"
+            >
+              {language.t(menu.labelKey)}
+            </DropdownMenu.Trigger>
+            <DropdownMenu.Portal>
+              <DropdownMenu.Content class="desktop-app-menu">
+                <DropdownMenu.Group>{entries(menu)}</DropdownMenu.Group>
+              </DropdownMenu.Content>
+            </DropdownMenu.Portal>
+          </DropdownMenu>
+        ))}
+      </div>
+    )
   }
 
   return (
@@ -82,20 +129,7 @@ export function WindowsAppMenu(props: {
             <DropdownMenu.GroupLabel class="desktop-app-menu-heading">OpenCode</DropdownMenu.GroupLabel>
             {DESKTOP_MENU.filter((menu) => desktopMenuVisible(menu, "windows")).map((menu) => (
               <DesktopMenuSubmenu label={language.t(menu.labelKey)}>
-                {menu.items
-                  ?.filter((entry) => desktopMenuVisible(entry, "windows"))
-                  .map((entry) =>
-                    entry.type === "separator" ? (
-                      <DropdownMenu.Separator />
-                    ) : (
-                      <DesktopMenuItem
-                        label={entry.labelKey ? language.t(entry.labelKey) : ""}
-                        keybind={entry.command ? props.command.keybind(entry.command) : entry.accelerator?.windows}
-                        disabled={entry.command ? commandDisabled(entry.command) : false}
-                        onSelect={() => runEntry(entry)}
-                      />
-                    ),
-                  )}
+                {entries(menu)}
               </DesktopMenuSubmenu>
             ))}
           </DropdownMenu.Group>

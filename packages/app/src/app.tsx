@@ -56,10 +56,13 @@ import { ServerConnection, ServerProvider, serverName, useServer } from "@/conte
 import { SettingsProvider, useSettings } from "@/context/settings"
 import { TabsProvider, useTabs, type DraftTab } from "@/context/tabs"
 import { SDKProvider, useSDK } from "@/context/sdk"
+import { TerminalProvider } from "@/context/terminal"
 import { WslServersProvider } from "@/wsl/context"
 import DirectoryLayout, { DirectoryDataProvider } from "@/pages/directory-layout"
 import LegacyLayout from "@/pages/layout"
 import NewLayout from "@/pages/layout-new"
+import SidebarLayout from "@/pages/layout-sidebar/shell"
+import { createHomeRoute } from "@/pages/layout-sidebar/home"
 import { ErrorPage } from "./pages/error"
 import { useCheckServerHealth } from "./utils/server-health"
 import { legacySessionHref, legacySessionServer, requireServerKey, sessionHref } from "./utils/session-route"
@@ -369,24 +372,29 @@ function LegacyServerScopedShell(props: ServerScopedShellProps) {
 }
 
 function NewAppLayout(props: ParentProps<{ serverScoped?: JSX.Element }>) {
+  const settings = useSettings()
   return (
     <SelectedServerProviders>
       <ServerScopedProviders serverScoped={props.serverScoped}>
-        <NewLayout>{props.children}</NewLayout>
+        <Dynamic component={settings.general.layoutMode() === "sidebar" ? SidebarLayout : NewLayout}>
+          {props.children}
+        </Dynamic>
       </ServerScopedProviders>
     </SelectedServerProviders>
   )
 }
 
-// The draft page only renders the prompt composer, so it drops TerminalProvider.
-// FileProvider and CommentsProvider stay because PromptInput uses file search and comment context.
+// Drafts share their workspace with the terminal, files, and prompt context. A new chat can
+// therefore open the same bottom terminal before its first prompt is submitted.
 function DraftProviders(props: ParentProps) {
   return (
-    <FileProvider>
-      <PromptProvider>
-        <CommentsProvider>{props.children}</CommentsProvider>
-      </PromptProvider>
-    </FileProvider>
+    <TerminalProvider>
+      <FileProvider>
+        <PromptProvider>
+          <CommentsProvider>{props.children}</CommentsProvider>
+        </PromptProvider>
+      </FileProvider>
+    </TerminalProvider>
   )
 }
 
@@ -636,7 +644,7 @@ function Routes(props: { serverScoped?: JSX.Element }) {
         </Route>
       </Route>
       <Show when={settings.general.newLayoutDesigns()}>
-        <Route path="/" component={NewHome} />
+        <Route path="/" component={SidebarAwareHome} />
         <Route path="/:dir/session/:id" component={NewLayoutLegacySessionRedirect} />
         <Route path="/server/:serverKey/session/:id" component={TargetSessionRoute} />
       </Show>
@@ -644,6 +652,10 @@ function Routes(props: { serverScoped?: JSX.Element }) {
     </>
   )
 }
+
+// Fork addition: "/" keeps the upstream home page for the tab layout and swaps to the sidebar
+// layout's behaviour (straight back into the work) when that setting is on.
+const SidebarAwareHome = createHomeRoute(() => <NewHome />)
 
 function NewLayoutLegacySessionRedirect() {
   const server = useServer()

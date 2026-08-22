@@ -3,6 +3,7 @@ import log from "electron-log/main.js"
 import { existsSync, readdirSync, readFileSync } from "node:fs"
 import { homedir } from "node:os"
 import { join } from "node:path"
+import { LEGACY_OPENCODE_APP_IDS } from "../../identity"
 import { CHANNEL } from "./constants"
 import { getStore } from "./store"
 
@@ -21,14 +22,8 @@ function tauriDir(id: string) {
   }
 }
 
-// The Tauri app identifier changes between dev/beta/prod builds.
-const TAURI_APP_IDS: Record<string, string> = {
-  dev: "ai.opencode.desktop.dev",
-  beta: "ai.opencode.desktop.beta",
-  prod: "ai.opencode.desktop",
-}
 function tauriAppId() {
-  return app.isPackaged ? TAURI_APP_IDS[CHANNEL] : "ai.opencode.desktop.dev"
+  return app.isPackaged ? LEGACY_OPENCODE_APP_IDS[CHANNEL] : LEGACY_OPENCODE_APP_IDS.dev
 }
 
 // Migrate a single Tauri .dat file into the corresponding electron-store.

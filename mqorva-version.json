@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "edition": "mQorva",
+  "revision": 1,
+  "upstream": {
+    "repository": "https://github.com/anomalyco/opencode.git",
+    "branch": "dev",
+    "version": "1.18.18",
+    "commit": "e23586af2623f1bc2e8e6965d2d7acf7bd03d5c3"
+  }
+}

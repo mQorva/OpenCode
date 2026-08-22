@@ -28,11 +28,11 @@ import { fileManagerApp } from "@/utils/file-manager"
 import { Persist, persisted } from "@/utils/persist"
 import { StatusPopover, StatusPopoverV2 } from "../status-popover"
 import { IconButtonV2 } from "@opencode-ai/ui/v2/icon-button-v2"
-import { Icon as IconV2 } from "@opencode-ai/ui/v2/icon"
 import { KeybindV2 } from "@opencode-ai/ui/v2/keybind-v2"
 import { TooltipV2 } from "@opencode-ai/ui/v2/tooltip-v2"
 import { reviewTooltipKeybind } from "../command-tooltip-keybind"
 import { useTitlebarRightMount } from "../titlebar"
+import { displayName, projectForSession } from "@/pages/layout/helpers"
 
 const OPEN_APPS = [
   "vscode",
@@ -137,7 +137,7 @@ const showRequestError = (language: ReturnType<typeof useLanguage>, err: unknown
   })
 }
 
-export function SessionHeader() {
+export function SessionHeader(props: { sidePanelOpen?: boolean }) {
   const layout = useLayout()
   const command = useCommand()
   const server = useServer()
@@ -148,20 +148,32 @@ export function SessionHeader() {
   const terminal = useTerminal()
   const { params, view } = useSessionLayout()
 
-  const projectDirectory = createMemo(() => decode64(params.dir) ?? "")
+  const activeSession = createMemo(() =>
+    params.id ? sync().data.session.find((session) => session.id === params.id) : undefined,
+  )
+  const projectDirectory = createMemo(() => activeSession()?.directory || decode64(params.dir) || "")
   const project = createMemo(() => {
+    const session = activeSession()
+    if (session) return projectForSession(session, layout.projects.list())
     const directory = projectDirectory()
-    if (!directory) return
+    if (!directory) return undefined
     return layout.projects.list().find((p) => p.worktree === directory || p.sandboxes?.includes(directory))
   })
   const name = createMemo(() => {
     const current = project()
-    if (current) return current.name || getFilename(current.worktree)
-    return getFilename(projectDirectory())
+    if (current) return displayName(current)
+    const fallback = layout.projects.list()[0]
+    if (fallback) return displayName(fallback)
+    return getFilename(projectDirectory()) || language.t("sidebarLayout.project")
+  })
+  const sessionTitle = createMemo(() => {
+    if (!params.id) return language.t("command.session.new")
+    return activeSession()?.title || language.t("sidebarLayout.untitled")
   })
   const hotkey = createMemo(() => command.keybind("file.open"))
   const os = createMemo(() => detectOS(platform))
   const isV2 = settings.general.newLayoutDesigns
+  const sidebarLayout = createMemo(() => isV2() && settings.general.layoutMode() === "sidebar")
   const search = settings.visibility.search
   const status = settings.visibility.status
   const isDesktop = createMediaQuery("(min-width: 768px)")
@@ -237,9 +249,12 @@ export function SessionHeader() {
   const v2ActionsState = createMemo<SessionHeaderV2ActionsState>(() => ({
     statusVisible: status(),
     statusLabel: language.t("status.popover.trigger"),
+    terminalLabel: language.t("command.terminal.toggle"),
+    terminalOpened: view().terminal.opened(),
+    onTerminalToggle: toggleTerminal,
     reviewLabel: language.t("command.review.toggle"),
     reviewKeybind: reviewTooltipKeybind(command),
-    reviewVisible: isDesktop(),
+    reviewVisible: isDesktop() && !(sidebarLayout() && props.sidePanelOpen),
     reviewOpened: view().reviewPanel.opened(),
     onReviewToggle: () => view().reviewPanel.toggle(),
   }))
@@ -289,7 +304,33 @@ export function SessionHeader() {
 
   return (
     <>
-      <Show when={search() && centerMount()} keyed>
+      <Show when={sidebarLayout()}>
+        <header class="h-12 shrink-0 flex items-center gap-2 px-3 bg-v2-background-bg-base">
+          <Show when={!layout.sidebar.opened()}>
+            <TooltipV2 placement="bottom" value={language.t("sidebarLayout.toggle")}>
+              <IconButtonV2
+                type="button"
+                variant="ghost-muted"
+                size="large"
+                class="!size-8 shrink-0"
+                onClick={() => layout.sidebar.toggle()}
+                aria-label={language.t("sidebarLayout.toggle")}
+                aria-expanded={false}
+                icon={<Icon name="layout-left" size="small" />}
+              />
+            </TooltipV2>
+          </Show>
+          <div class="min-w-0 flex-1 flex items-center gap-2 text-13-regular">
+            <span class="max-w-[42%] truncate text-v2-text-text-muted">{name()}</span>
+            <span class="shrink-0 text-v2-text-text-faint" aria-hidden="true">
+              /
+            </span>
+            <span class="min-w-0 truncate text-14-medium text-v2-text-text-strong">{sessionTitle()}</span>
+          </div>
+          <SessionHeaderV2Actions state={v2ActionsState()} />
+        </header>
+      </Show>
+      <Show when={!sidebarLayout() && search() && centerMount()} keyed>
         {(mount) => (
           <Portal mount={mount}>
             <Button
@@ -319,7 +360,7 @@ export function SessionHeader() {
           </Portal>
         )}
       </Show>
-      <Show when={rightMount()} keyed>
+      <Show when={!sidebarLayout() && rightMount()} keyed>
         {(mount) => (
           <Portal mount={mount}>
             <Show
@@ -519,6 +560,9 @@ export function SessionHeader() {
 type SessionHeaderV2ActionsState = {
   statusVisible: boolean
   statusLabel: string
+  terminalLabel: string
+  terminalOpened: boolean
+  onTerminalToggle: () => void
   reviewLabel: string
   reviewKeybind: string[]
   reviewVisible: boolean
@@ -527,15 +571,27 @@ type SessionHeaderV2ActionsState = {
 }
 
 function SessionHeaderV2Actions(props: { state: SessionHeaderV2ActionsState }) {
-  const language = useLanguage()
-
   return (
-    <div class="flex items-center gap-2">
+    <div class="flex items-center gap-1">
       <Show when={props.state.statusVisible}>
         <Tooltip placement="bottom" value={props.state.statusLabel}>
           <StatusPopoverV2 />
         </Tooltip>
       </Show>
+      <TooltipV2 class="shrink-0" placement="bottom" value={props.state.terminalLabel}>
+        <IconButtonV2
+          type="button"
+          variant="ghost-muted"
+          size="large"
+          class="!size-8 shrink-0"
+          state={props.state.terminalOpened ? "pressed" : undefined}
+          onClick={props.state.onTerminalToggle}
+          aria-label={props.state.terminalLabel}
+          aria-expanded={props.state.terminalOpened}
+          aria-controls="terminal-panel"
+          icon={<Icon name="layout-bottom" size="small" />}
+        />
+      </TooltipV2>
       <Show when={props.state.reviewVisible}>
         <TooltipV2
           class="shrink-0"
@@ -553,13 +609,13 @@ function SessionHeaderV2Actions(props: { state: SessionHeaderV2ActionsState }) {
             type="button"
             variant="ghost-muted"
             size="large"
-            class="!w-9 shrink-0"
+            class="!size-8 shrink-0"
             state={props.state.reviewOpened ? "pressed" : undefined}
             onClick={props.state.onReviewToggle}
             aria-label={props.state.reviewLabel}
             aria-expanded={props.state.reviewOpened}
             aria-controls="review-panel"
-            icon={<IconV2 name="sidebar-right" />}
+            icon={<Icon name="layout-right" size="small" />}
           />
         </TooltipV2>
       </Show>

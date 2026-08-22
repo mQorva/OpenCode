@@ -90,10 +90,10 @@ export function createHomeController() {
         const directory = directories[0]
         if (!directory) return
         const ctx = global.ensureServerCtx(conn)
-        directories.forEach((item) => {
-          if (ctx.projects.list().some((project) => project.worktree === item)) return
+        const registrations = directories.map((item) => {
+          if (ctx.projects.list().some((project) => project.worktree === item)) return Promise.resolve()
           const location = { directory: item }
-          void ctx.sdk.api.file
+          const registration = ctx.sdk.api.file
             .list({ path: ".", location })
             .then(async (files) => {
               if (files.data.length > 0) return ctx.sdk.api.project.current({ location })
@@ -103,9 +103,11 @@ export function createHomeController() {
             .then((project) => ctx.sync.child(item, { bootstrap: false })[1]("project", project.id))
             .catch(() => undefined)
           ctx.projects.open(item)
+          return registration
         })
         ctx.projects.touch(directory)
         setSelection({ server: ServerConnection.key(conn), directory })
+        return Promise.all(registrations).then(() => undefined)
       },
       openNewSession: () => {
         const conn = focusedServer()

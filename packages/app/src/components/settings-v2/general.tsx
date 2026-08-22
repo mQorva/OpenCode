@@ -329,6 +329,20 @@ export const SettingsGeneralV2: Component<{
       <SettingsListV2>
         <LanguageSetting />
 
+        <Show when={settings.general.newLayoutDesigns()}>
+          <SettingsRowV2
+            title={language.t("settings.general.row.sidebarLayout.title")}
+            description={language.t("settings.general.row.sidebarLayout.description")}
+          >
+            <div data-action="settings-sidebar-layout">
+              <Switch
+                checked={settings.general.layoutMode() === "sidebar"}
+                onChange={(checked) => settings.general.setLayoutMode(checked ? "sidebar" : "tabs")}
+              />
+            </div>
+          </SettingsRowV2>
+        </Show>
+
         <PermissionScopeSetting controller={permissionScope} />
 
         <ShellSetting controller={shell} />

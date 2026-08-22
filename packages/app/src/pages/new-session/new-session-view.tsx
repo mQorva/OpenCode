@@ -18,6 +18,7 @@ import { StatusPopoverV2 } from "@/components/status-popover"
 import { useLanguage } from "@/context/language"
 import { useSDK } from "@/context/sdk"
 import { useServerSync } from "@/context/server-sync"
+import { useSettings } from "@/context/settings"
 import { useProviders } from "@/hooks/use-providers"
 import { NEW_SESSION_CONTENT_WIDTH } from "@/pages/session/new-session-layout"
 import { Persist, persisted } from "@/utils/persist"
@@ -31,43 +32,60 @@ export function NewSessionView(props: {
   project: PromptProjectController
   workspace: NewSessionWorkspaceController
 }) {
+  const settings = useSettings()
+  const sidebarLayout = () => settings.general.layoutMode() === "sidebar"
+
   return (
     <div class="@container relative flex flex-col min-h-0 h-full flex-1">
       <div
         data-component="session-new-design"
-        class="relative flex-1 min-h-0 overflow-hidden rounded-[10px] bg-v2-background-bg-deep"
+        class="relative flex-1 min-h-0 overflow-hidden bg-v2-background-bg-deep"
       >
-        <div class="absolute inset-x-0 top-[25.375%] flex justify-center px-6">
-          <div class={NEW_SESSION_CONTENT_WIDTH}>
-            <WordmarkV2 class="h-auto w-full text-v2-background-bg-inverse" />
-            <div class="mt-8 flex flex-col gap-8">
-              <PromptInputV2Composer controller={props.input} />
-              <Show when={props.project.empty()}>
-                <PromptProjectAddButton controller={props.project} />
-              </Show>
-              <Show when={props.project.selected()}>
-                <div class="flex min-h-7 min-w-0 flex-col items-center justify-center gap-0 text-v2-text-text-faint sm:flex-row">
-                  <PromptProjectSelector controller={props.project} placement="bottom" />
-                  <Show
-                    when={props.workspace.bar.visible()}
-                    fallback={
-                      <PromptGitStatus branch={props.workspace.bar.branch()} noGit={!props.workspace.project.git()} />
-                    }
-                  >
-                    <PromptWorkspaceSelector
-                      value={props.workspace.selection.value()}
-                      projectRoot={props.workspace.project.root()}
-                      workspaces={props.workspace.project.workspaces()}
-                      branch={props.workspace.bar.branch()}
-                      onChange={props.workspace.selection.set}
-                      onDone={props.input.restoreFocus}
-                    />
+        <Show
+          when={sidebarLayout()}
+          fallback={
+            <div class="absolute inset-x-0 top-[25.375%] flex justify-center px-6">
+              <div class={NEW_SESSION_CONTENT_WIDTH}>
+                <WordmarkV2 class="h-auto w-full text-v2-background-bg-inverse" />
+                <div class="mt-8 flex flex-col gap-8">
+                  <PromptInputV2Composer controller={props.input} />
+                  <Show when={props.project.empty()}>
+                    <PromptProjectAddButton controller={props.project} />
+                  </Show>
+                  <Show when={props.project.selected()}>
+                    <div class="flex min-h-7 min-w-0 flex-col items-center justify-center gap-0 text-v2-text-text-faint sm:flex-row">
+                      <PromptProjectSelector controller={props.project} placement="bottom" />
+                      <Show
+                        when={props.workspace.bar.visible()}
+                        fallback={
+                          <PromptGitStatus branch={props.workspace.bar.branch()} noGit={!props.workspace.project.git()} />
+                        }
+                      >
+                        <PromptWorkspaceSelector
+                          value={props.workspace.selection.value()}
+                          projectRoot={props.workspace.project.root()}
+                          workspaces={props.workspace.project.workspaces()}
+                          branch={props.workspace.bar.branch()}
+                          onChange={props.workspace.selection.set}
+                          onDone={props.input.restoreFocus}
+                        />
+                      </Show>
+                    </div>
                   </Show>
                 </div>
-              </Show>
+              </div>
+            </div>
+          }
+        >
+          <div class="h-full flex flex-col">
+            <div class="flex-1" />
+            <div class="shrink-0 flex justify-center px-6 pb-8">
+              <div class="w-full max-w-[58.5rem]">
+                <PromptInputV2Composer controller={props.input} />
+              </div>
             </div>
           </div>
-        </div>
+        </Show>
         <ProviderTip />
       </div>
     </div>

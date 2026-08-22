@@ -32,6 +32,16 @@ type PlatformBase = {
   /** App version */
   version?: string
 
+  /** Additional distribution identity without changing the OpenCode compatibility version. */
+  edition?: {
+    name: string
+    revision: number
+    upstreamVersion: string
+    upstreamCommit: string
+    buildCommit: string
+    displayVersion: string
+  }
+
   /** Open a web or mail URL in the default system application */
   openExternal(url: string): void
 

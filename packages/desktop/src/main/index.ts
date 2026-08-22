@@ -46,20 +46,12 @@ import { createWslServersController } from "./wsl/servers"
 import { registerWslIpcHandlers } from "./wsl/ipc"
 import { spawnWslSidecar } from "./wsl/sidecar"
 import { migrate } from "./migrate"
+import { migrateMqorvaUserData } from "./mqorva-migration"
+import { MQORVA_APP_IDS, MQORVA_APP_NAMES, MQORVA_PROTOCOL } from "../../identity"
 import { cleanupStoreFiles } from "./store-cleanup"
 import { startBackgroundCli } from "./background-cli"
 import { setNativeTranslations } from "./native-translations"
 
-const APP_NAMES: Record<string, string> = {
-  dev: "OpenCode Dev",
-  beta: "OpenCode Beta",
-  prod: "OpenCode",
-}
-const APP_IDS: Record<string, string> = {
-  dev: "ai.opencode.desktop.dev",
-  beta: "ai.opencode.desktop.beta",
-  prod: "ai.opencode.desktop",
-}
 const TEST_ONBOARDING = process.env.OPENCODE_TEST_ONBOARDING === "1"
 const SIDECAR_VERSION = process.env.OPENCODE_SIDECAR_V2 === "1" ? "v2" : "v1"
 const jsCallStackFeature = "DocumentPolicyIncludeJSCallStacksInCrashReports"
@@ -83,6 +75,12 @@ function emitDeepLinks(urls: string[]) {
   pendingDeepLinks.push(...urls)
   const win = getLastFocusedWindow()
   if (win) sendDeepLinks(win, urls)
+}
+
+function normalizeMqorvaDeepLink(url: string) {
+  const prefix = `${MQORVA_PROTOCOL}://`
+  if (!url.startsWith(prefix)) return
+  return `opencode://${url.slice(prefix.length)}`
 }
 
 async function killSidecar() {
@@ -122,7 +120,7 @@ const main = Effect.gen(function* () {
 
   process.env.OPENCODE_DISABLE_EMBEDDED_WEB_UI = "true"
 
-  const appId = app.isPackaged ? APP_IDS[CHANNEL] : "ai.opencode.desktop.dev"
+  const appId = app.isPackaged ? MQORVA_APP_IDS[CHANNEL] : MQORVA_APP_IDS.dev
   const onboardingTestRoot = ((): string | undefined => {
     if (!TEST_ONBOARDING) return
 
@@ -138,15 +136,28 @@ const main = Effect.gen(function* () {
     process.env.XDG_STATE_HOME = join(root, "state")
     return root
   })()
-  app.setName(app.isPackaged ? APP_NAMES[CHANNEL] : "OpenCode Dev")
+  const appName = app.isPackaged ? MQORVA_APP_NAMES[CHANNEL] : MQORVA_APP_NAMES.dev
+  const appDataPath = app.getPath("appData")
+  const userDataPath = onboardingTestRoot ? join(onboardingTestRoot, "desktop") : join(appDataPath, appId)
+  const mqorvaMigration = onboardingTestRoot
+    ? undefined
+    : (() => {
+        try {
+          return migrateMqorvaUserData(appDataPath, userDataPath, CHANNEL)
+        } catch (error) {
+          return { error }
+        }
+      })()
+  app.setName(appName)
   app.setAppUserModelId(appId)
-  app.setPath(
-    "userData",
-    onboardingTestRoot ? join(onboardingTestRoot, "desktop") : join(app.getPath("appData"), appId),
-  )
+  app.setPath("userData", userDataPath)
   if (onboardingTestRoot) app.setPath("sessionData", join(onboardingTestRoot, "session"))
   initializeOldLayoutEligibility(app.getPath("userData"))
   logger = initLogging()
+  if (mqorvaMigration && "error" in mqorvaMigration) logger.warn("mQorva profile migration failed", mqorvaMigration.error)
+  if (mqorvaMigration && "migrated" in mqorvaMigration && mqorvaMigration.migrated) {
+    logger.log("mQorva profile migrated", { copied: mqorvaMigration.copied })
+  }
   initCrashReporter()
 
   const wslServers = createWslServersController(
@@ -203,7 +214,7 @@ const main = Effect.gen(function* () {
   const shellEnv = preferAppEnv(app.getPath("userData"))
 
   app.on("second-instance", (_event: Event, argv: string[]) => {
-    const urls = argv.filter((arg: string) => arg.startsWith("opencode://"))
+    const urls = argv.flatMap((arg: string) => normalizeMqorvaDeepLink(arg) ?? [])
     if (urls.length) {
       logger.log("deep link received via second-instance", { urls })
       emitDeepLinks(urls)
@@ -217,8 +228,10 @@ const main = Effect.gen(function* () {
 
   app.on("open-url", (event: Event, url: string) => {
     event.preventDefault()
-    logger.log("deep link received via open-url", { url })
-    emitDeepLinks([url])
+    const normalized = normalizeMqorvaDeepLink(url)
+    if (!normalized) return
+    logger.log("deep link received via open-url", { url: normalized })
+    emitDeepLinks([normalized])
   })
 
   app.on("before-quit", () => {
@@ -268,7 +281,7 @@ const main = Effect.gen(function* () {
       }),
     ),
   )
-  app.setAsDefaultProtocolClient("opencode")
+  app.setAsDefaultProtocolClient(MQORVA_PROTOCOL)
   registerRendererProtocol()
   setDockIcon()
   const updater = setupAutoUpdater(stopSidecars)

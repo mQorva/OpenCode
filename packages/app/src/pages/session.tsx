@@ -33,6 +33,9 @@ import { SelectV2 } from "@opencode-ai/ui/v2/select-v2"
 import { isScrollKeyTarget, scrollKey, scrollKeyOwner } from "@opencode-ai/ui/scroll-view"
 import { Tabs } from "@opencode-ai/ui/tabs"
 import { ButtonV2 } from "@opencode-ai/ui/v2/button-v2"
+import { IconButtonV2 } from "@opencode-ai/ui/v2/icon-button-v2"
+import { Icon } from "@opencode-ai/ui/icon"
+import { TooltipV2 } from "@opencode-ai/ui/v2/tooltip-v2"
 import { createAutoScroll } from "@opencode-ai/ui/hooks"
 import { previewSelectedLines } from "@opencode-ai/session-ui/pierre/selection-bridge"
 import { Button } from "@opencode-ai/ui/button"
@@ -82,7 +85,6 @@ import {
   sessionPanelWidthMax,
 } from "@/pages/session/session-panel-width"
 import { SessionSidePanel } from "@/pages/session/session-side-panel"
-import { sessionPanelLayout } from "@/pages/session/session-panel-layout"
 import { SessionReviewEmptyChangesV2 } from "@opencode-ai/session-ui/v2/session-review-empty-changes-v2"
 import { SessionReviewEmptyNoGitV2 } from "@opencode-ai/session-ui/v2/session-review-empty-no-git-v2"
 import { SessionReviewV2SidebarToggle } from "@opencode-ai/session-ui/v2/session-review-v2"
@@ -335,14 +337,17 @@ function SessionRouteFrame(props: ParentProps<{ padded?: boolean }>) {
 }
 
 function SessionPanelFrame(props: ParentProps<{ newLayout: boolean; raised?: boolean }>) {
+  const settings = useSettings()
+
   return (
     <div
       classList={{
         "flex-1 min-h-0 flex flex-col": true,
         "bg-v2-background-bg-base": props.newLayout,
         "bg-background-stronger": !props.newLayout,
-        "rounded-[10px] overflow-hidden": props.newLayout,
-        "shadow-[var(--v2-elevation-raised)]": props.newLayout && props.raised,
+        "rounded-[10px] overflow-hidden": props.newLayout && settings.general.layoutMode() !== "sidebar",
+        "shadow-[var(--v2-elevation-raised)]":
+          props.newLayout && props.raised && settings.general.layoutMode() !== "sidebar",
       }}
     >
       {props.children}
@@ -450,10 +455,6 @@ export default function Page() {
   const desktopReviewOpen = createMemo(() => isDesktop() && view().reviewPanel.opened())
   const desktopV2ReviewOpen = createMemo(() => newSessionDesign() && desktopReviewOpen() && !!params.id)
   const terminalOpen = createMemo(() => view().terminal.opened())
-  const desktopTerminalOpen = createMemo(() => isDesktop() && terminalOpen())
-  const desktopInlineTerminalOnlyOpen = createMemo(
-    () => newSessionDesign() && desktopTerminalOpen() && !desktopV2ReviewOpen(),
-  )
   const desktopFileTreeOpen = createMemo(
     () =>
       isDesktop() &&
@@ -462,10 +463,11 @@ export default function Page() {
         opened: layout.fileTree.opened(),
       }),
   )
-  const desktopSessionResizeOpen = createMemo(() =>
-    newSessionDesign() ? desktopV2ReviewOpen() || desktopTerminalOpen() : desktopReviewOpen(),
-  )
+  const desktopSessionResizeOpen = createMemo(() => (newSessionDesign() ? desktopV2ReviewOpen() : desktopReviewOpen()))
   const desktopSidePanelOpen = createMemo(() => desktopSessionResizeOpen() || desktopFileTreeOpen())
+  const sidebarLayout = createMemo(
+    () => settings.general.newLayoutDesigns() && settings.general.layoutMode() === "sidebar",
+  )
   let panelRow: HTMLDivElement | undefined
   const [panelRowWidth, setPanelRowWidth] = createSignal<number>()
   createResizeObserver(
@@ -502,13 +504,6 @@ export default function Page() {
     return `calc(100% - ${layout.fileTree.width()}px)`
   })
   const centered = createMemo(() => isDesktop() && (newSessionDesign() || !desktopReviewOpen()))
-  const desktopV2PanelLayout = createMemo(() =>
-    sessionPanelLayout({
-      review: desktopV2ReviewOpen(),
-      terminal: desktopTerminalOpen(),
-      files: desktopFileTreeOpen(),
-    }),
-  )
 
   function normalizeTab(tab: string) {
     if (!tab.startsWith("file://")) return tab
@@ -2248,12 +2243,12 @@ export default function Page() {
 
   return (
     <SessionRouteFrame>
-      <SessionHeader />
+      <SessionHeader sidePanelOpen={desktopSidePanelOpen()} />
       <div
         ref={panelRow}
         class="flex-1 min-h-0 flex flex-col md:flex-row"
         classList={{
-          "gap-2 p-2": settings.general.newLayoutDesigns(),
+          "gap-2 p-2": settings.general.newLayoutDesigns() && settings.general.layoutMode() !== "sidebar",
         }}
       >
         <Show when={!isDesktop() && !!params.id && !settings.general.newLayoutDesigns()}>{mobileTabs()}</Show>
@@ -2262,7 +2257,7 @@ export default function Page() {
           classList={{
             "@container relative shrink-0 flex flex-col min-h-0 h-full flex-1 md:flex-none transition-[width]": true,
             "duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[width] motion-reduce:transition-none":
-              !size.active() && !ui.reviewSnap && !desktopInlineTerminalOnlyOpen(),
+              !size.active() && !ui.reviewSnap,
           }}
           style={{
             width: sessionPanelWidth(),
@@ -2319,69 +2314,83 @@ export default function Page() {
             />
           </Suspense>
         </Show>
-        <Show when={newSessionDesign()}>
-          <Show when={isDesktop() ? desktopV2PanelLayout().visible : terminalOpen()}>
-            <div class="min-w-0 h-full flex flex-1 flex-col">
-              <Show when={isDesktop() && (desktopV2ReviewOpen() || desktopFileTreeOpen())}>
-                <div class="min-h-0 flex-1">
-                  <Suspense>
-                    <SessionSidePanel
-                      canReview={canReview}
-                      diffs={reviewDiffs}
-                      diffsReady={reviewReady}
-                      empty={reviewEmptyText}
-                      hasReview={hasReview}
-                      reviewHasFocusableContent={() => hasReview() || reviewV2State.sidebarOpened()}
-                      reviewCount={reviewCount}
-                      reviewPanel={reviewPanelV2}
-                      reviewSidebarToggle={(disabled) => (
-                        <SessionReviewV2SidebarToggle
-                          opened={reviewV2State.sidebarOpened()}
-                          disabled={disabled}
-                          onToggle={reviewV2State.toggleSidebar}
-                        />
-                      )}
-                      fileBrowserState={reviewV2State}
-                      activeDiff={activeReviewFile()}
-                      focusReviewDiff={focusReviewDiff}
-                      reviewSnap={ui.reviewSnap}
-                      size={size}
-                      stacked={desktopV2PanelLayout().stacked}
-                    />
-                  </Suspense>
-                </div>
-              </Show>
-              <Show when={desktopV2PanelLayout().stacked}>
-                <div class="relative h-2 shrink-0" onPointerDown={() => size.start()}>
-                  <ResizeHandle
-                    class="!relative !inset-auto !h-full !w-full !transform-none"
-                    direction="vertical"
-                    size={layout.terminal.height()}
-                    min={100}
-                    max={typeof window === "undefined" ? 600 : window.innerHeight * 0.6}
-                    collapseThreshold={50}
-                    onResize={(height) => {
-                      size.touch()
-                      layout.terminal.resize(height)
-                    }}
-                    onCollapse={() => view().terminal.close()}
+        <Show when={newSessionDesign() && isDesktop() && desktopSidePanelOpen()}>
+          <div
+            class="min-w-0 flex flex-1 flex-col"
+            classList={{
+              "h-full": !sidebarLayout(),
+              "-mt-12 h-[calc(100%+3rem)] border-l border-t border-border-weaker-base bg-v2-background-bg-base":
+                sidebarLayout(),
+            }}
+          >
+            <Show when={sidebarLayout()}>
+              <div class="h-12 shrink-0 flex items-center justify-end px-3">
+                <TooltipV2 placement="bottom" value={language.t("command.review.toggle")}>
+                  <IconButtonV2
+                    type="button"
+                    variant="ghost-muted"
+                    size="large"
+                    class="!size-8 shrink-0"
+                    onClick={() => view().reviewPanel.toggle()}
+                    aria-label={language.t("command.review.toggle")}
+                    aria-expanded={view().reviewPanel.opened()}
+                    aria-controls="review-panel"
+                    icon={<Icon name="layout-right" size="small" />}
                   />
-                </div>
-              </Show>
-              <Show when={terminalOpen()}>
-                <div
-                  classList={{
-                    "min-h-0 shrink-0": desktopV2PanelLayout().stacked,
-                    "min-h-0 flex-1": !desktopV2PanelLayout().stacked,
-                  }}
-                >
-                  <TerminalPanelV2 stacked={desktopV2PanelLayout().stacked} />
-                </div>
-              </Show>
+                </TooltipV2>
+              </div>
+            </Show>
+            <div class="min-h-0 flex-1 flex flex-col">
+            <Suspense>
+              <SessionSidePanel
+                canReview={canReview}
+                diffs={reviewDiffs}
+                diffsReady={reviewReady}
+                empty={reviewEmptyText}
+                hasReview={hasReview}
+                reviewHasFocusableContent={() => hasReview() || reviewV2State.sidebarOpened()}
+                reviewCount={reviewCount}
+                reviewPanel={reviewPanelV2}
+                reviewSidebarToggle={(disabled) => (
+                  <SessionReviewV2SidebarToggle
+                    opened={reviewV2State.sidebarOpened()}
+                    disabled={disabled}
+                    onToggle={reviewV2State.toggleSidebar}
+                  />
+                )}
+                fileBrowserState={reviewV2State}
+                activeDiff={activeReviewFile()}
+                focusReviewDiff={focusReviewDiff}
+                reviewSnap={ui.reviewSnap}
+                size={size}
+                stacked={sidebarLayout()}
+              />
+            </Suspense>
             </div>
-          </Show>
+          </div>
         </Show>
       </div>
+
+      <Show when={newSessionDesign() && terminalOpen()}>
+        <Show when={isDesktop()}>
+          <div class="relative h-2 shrink-0" onPointerDown={() => size.start()}>
+            <ResizeHandle
+              class="!relative !inset-auto !h-full !w-full !transform-none"
+              direction="vertical"
+              size={layout.terminal.height()}
+              min={100}
+              max={typeof window === "undefined" ? 600 : window.innerHeight * 0.6}
+              collapseThreshold={50}
+              onResize={(height) => {
+                size.touch()
+                layout.terminal.resize(height)
+              }}
+              onCollapse={() => view().terminal.close()}
+            />
+          </div>
+        </Show>
+        <TerminalPanelV2 stacked={isDesktop()} />
+      </Show>
 
       <Show when={!newSessionDesign()}>
         <TerminalPanel />

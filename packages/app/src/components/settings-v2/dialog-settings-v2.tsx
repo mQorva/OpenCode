@@ -88,8 +88,20 @@ export const DialogSettings: Component<{
               </div>
             </div>
             <div class="settings-v2-nav-footer">
-              <span>{language.t("app.name.desktop")}</span>
-              <span>v{platform.version}</span>
+              {platform.edition ? (
+                <>
+                  <span>{`OpenCode – ${platform.edition.name} Edition`}</span>
+                  <span>{`OpenCode v${platform.version}`}</span>
+                  <span title={platform.edition.displayVersion}>
+                    {`${platform.edition.name} r${platform.edition.revision} · ${platform.edition.buildCommit}`}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span>{language.t("app.name.desktop")}</span>
+                  <span>v{platform.version}</span>
+                </>
+              )}
             </div>
           </div>
         </TabsV2.List>

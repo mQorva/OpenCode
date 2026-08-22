@@ -169,6 +169,16 @@ const createPlatform = (windowState: DesktopWindowState): Platform => {
     platform: "desktop",
     os,
     version: pkg.version,
+    edition: import.meta.env.VITE_MQORVA_EDITION
+      ? {
+          name: import.meta.env.VITE_MQORVA_EDITION,
+          revision: Number(import.meta.env.VITE_MQORVA_REVISION),
+          upstreamVersion: import.meta.env.VITE_MQORVA_UPSTREAM_VERSION,
+          upstreamCommit: import.meta.env.VITE_MQORVA_UPSTREAM_COMMIT,
+          buildCommit: import.meta.env.VITE_MQORVA_BUILD_COMMIT,
+          displayVersion: import.meta.env.VITE_MQORVA_DISPLAY_VERSION,
+        }
+      : undefined,
     windowID: windowState.id,
 
     async openDirectoryPickerDialog(opts) {

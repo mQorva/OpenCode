@@ -2,8 +2,21 @@ import { sentryVitePlugin } from "@sentry/vite-plugin"
 import { defineConfig } from "electron-vite"
 import appPlugin from "@opencode-ai/app/vite"
 import * as fs from "node:fs/promises"
+import { dirname, resolve } from "node:path"
+import { fileURLToPath } from "node:url"
+
+import { MQORVA, mqorvaBuildCommit, mqorvaDisplayVersion } from "../../script/mqorva"
+import pkg from "./package.json"
 
 const OPENCODE_SERVER_DIST = "../opencode/dist/node"
+const rootDir = resolve(dirname(fileURLToPath(import.meta.url)), "../..")
+const mqorvaCommit = mqorvaBuildCommit(rootDir)
+
+if (pkg.version !== MQORVA.upstream.version) {
+  throw new Error(
+    `mqorva-version.json nennt OpenCode ${MQORVA.upstream.version}, Desktop verwendet aber ${pkg.version}.`,
+  )
+}
 
 const channel = (() => {
   const raw = process.env.OPENCODE_CHANNEL
@@ -91,6 +104,14 @@ const require = __cjs_mod__.createRequire(import.meta.url);
     },
   },
   renderer: {
+    define: {
+      "import.meta.env.VITE_MQORVA_EDITION": JSON.stringify(MQORVA.edition),
+      "import.meta.env.VITE_MQORVA_REVISION": JSON.stringify(String(MQORVA.revision)),
+      "import.meta.env.VITE_MQORVA_UPSTREAM_VERSION": JSON.stringify(MQORVA.upstream.version),
+      "import.meta.env.VITE_MQORVA_UPSTREAM_COMMIT": JSON.stringify(MQORVA.upstream.commit),
+      "import.meta.env.VITE_MQORVA_BUILD_COMMIT": JSON.stringify(mqorvaCommit),
+      "import.meta.env.VITE_MQORVA_DISPLAY_VERSION": JSON.stringify(mqorvaDisplayVersion(mqorvaCommit)),
+    },
     plugins: [appPlugin, sentry],
     publicDir: "../../../app/public",
     root: "src/renderer",

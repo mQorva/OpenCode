@@ -61,7 +61,12 @@ export function useTitlebarRightMount() {
   return mount
 }
 
-export function Titlebar(props: { update?: TitlebarUpdate; debugTools?: { visible: boolean; toggle: () => void } }) {
+export function Titlebar(props: {
+  update?: TitlebarUpdate
+  debugTools?: { visible: boolean; toggle: () => void }
+  sessionTabs?: boolean
+  distributedMenu?: boolean
+}) {
   const layout = useLayout()
   const platform = usePlatform()
   const command = useCommand()
@@ -368,11 +373,22 @@ export function Titlebar(props: { update?: TitlebarUpdate; debugTools?: { visibl
                   "md:pl-4": !macTrafficLights(),
                 }}
               >
-                <ChannelIndicator debugTools={props.debugTools} />
-                <Show when={windows() || linux()}>
-                  <WindowsAppMenu command={command} platform={platform} variant="v2" />
+                <Show when={!props.distributedMenu}>
+                  <ChannelIndicator debugTools={props.debugTools} />
                 </Show>
-                <TooltipV2
+                <Show when={windows() || linux()}>
+                  <WindowsAppMenu
+                    command={command}
+                    platform={platform}
+                    variant="v2"
+                    distributed={props.distributedMenu}
+                  />
+                </Show>
+                <Show when={props.distributedMenu}>
+                  <ChannelIndicator debugTools={props.debugTools} />
+                </Show>
+                <Show when={!props.distributedMenu}>
+                  <TooltipV2
                   placement="bottom"
                   value={
                     <>
@@ -381,8 +397,8 @@ export function Titlebar(props: { update?: TitlebarUpdate; debugTools?: { visibl
                     </>
                   }
                   class="shrink-0"
-                >
-                  <IconButtonV2
+                  >
+                    <IconButtonV2
                     type="button"
                     variant="ghost-muted"
                     size="large"
@@ -392,43 +408,46 @@ export function Titlebar(props: { update?: TitlebarUpdate; debugTools?: { visibl
                     onClick={toggleHome}
                     aria-label={language.t("home.title")}
                     aria-pressed={layout.route().type === "home"}
-                  />
-                </TooltipV2>
+                    />
+                  </TooltipV2>
+                </Show>
 
-                <TitlebarTabStrip
-                  tabs={tabsStore}
-                  currentTab={currentTab}
-                  forceTruncate={tabsAreOverflowing()}
-                  onOverflowChange={setTabsAreOverflowing}
-                  onNavigate={(tab, el) => {
-                    tabs.select(tab)
-                    el?.scrollIntoView({ behavior: "instant" })
-                  }}
-                  onClose={(tab) => {
-                    const index = tabsStore.findIndex((item) => tabKey(item) === tabKey(tab))
-                    if (index !== -1) tabsStoreActions.closeTab(index)
-                  }}
-                  onReorder={(keys) => tabsStoreActions.reorder(keys)}
-                />
-                <TooltipV2
-                  placement="bottom"
-                  value={
-                    <>
-                      {language.t("command.session.new")}
-                      <KeybindV2 keys={newTabTooltipKeybind(command)} variant="neutral" />
-                    </>
-                  }
-                >
-                  <IconButtonV2
-                    type="button"
-                    variant="ghost-muted"
-                    size="large"
-                    class="shrink-0"
-                    icon={<IconV2 name="plus" />}
-                    onClick={openNewTab}
-                    aria-label={language.t("command.session.new")}
+                <Show when={props.sessionTabs !== false}>
+                  <TitlebarTabStrip
+                    tabs={tabsStore}
+                    currentTab={currentTab}
+                    forceTruncate={tabsAreOverflowing()}
+                    onOverflowChange={setTabsAreOverflowing}
+                    onNavigate={(tab, el) => {
+                      tabs.select(tab)
+                      el?.scrollIntoView({ behavior: "instant" })
+                    }}
+                    onClose={(tab) => {
+                      const index = tabsStore.findIndex((item) => tabKey(item) === tabKey(tab))
+                      if (index !== -1) tabsStoreActions.closeTab(index)
+                    }}
+                    onReorder={(keys) => tabsStoreActions.reorder(keys)}
                   />
-                </TooltipV2>
+                  <TooltipV2
+                    placement="bottom"
+                    value={
+                      <>
+                        {language.t("command.session.new")}
+                        <KeybindV2 keys={newTabTooltipKeybind(command)} variant="neutral" />
+                      </>
+                    }
+                  >
+                    <IconButtonV2
+                      type="button"
+                      variant="ghost-muted"
+                      size="large"
+                      class="shrink-0"
+                      icon={<IconV2 name="plus" />}
+                      onClick={openNewTab}
+                      aria-label={language.t("command.session.new")}
+                    />
+                  </TooltipV2>
+                </Show>
                 <div class="flex-1" />
                 <TitlebarV2Right state={v2RightState()} />
               </div>

@@ -27,7 +27,7 @@ export { createSessionKeyReader, ensureSessionKey, pruneSessionKeys }
 export type { ProjectAvatarVariant }
 
 const AVATAR_COLOR_KEYS = ["pink", "mint", "orange", "purple", "cyan", "lime"] as const
-const DEFAULT_SIDEBAR_WIDTH = 344
+const DEFAULT_SIDEBAR_WIDTH = 280
 const DEFAULT_FILE_TREE_WIDTH = 200
 const DEFAULT_SESSION_WIDTH = 600
 const DEFAULT_TERMINAL_HEIGHT = 280
@@ -186,9 +186,14 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
       const sidebar = value.sidebar
       const migratedSidebar = (() => {
         if (!isRecord(sidebar)) return sidebar
-        if (typeof sidebar.workspaces !== "boolean") return sidebar
-        return {
+        const width = typeof sidebar.width === "number" ? sidebar.width : DEFAULT_SIDEBAR_WIDTH
+        const base = {
           ...sidebar,
+          width: width === 344 ? DEFAULT_SIDEBAR_WIDTH : width,
+        }
+        if (typeof sidebar.workspaces !== "boolean") return base
+        return {
+          ...base,
           workspaces: {},
           workspacesDefault: sidebar.workspaces,
         }
@@ -689,6 +694,35 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
         height: createMemo(() => store.terminal.height),
         resize(height: number) {
           setStore("terminal", "height", height)
+        },
+      },
+      // Fork addition: terminal and review panel visibility are global store state, but so far only
+      // reachable through view(sessionKey), which needs providers that only exist inside the session
+      // route. The sidebar layout drives both panels from its shell header, above those providers.
+      panels: {
+        terminalOpened: createMemo(() => store.terminal?.opened ?? false),
+        toggleTerminal() {
+          const current = store.terminal
+          if (!current) {
+            setStore("terminal", { height: DEFAULT_TERMINAL_HEIGHT, opened: true })
+            return
+          }
+          setStore("terminal", "opened", !(current.opened ?? false))
+        },
+        reviewPanelOpened: createMemo(() => store.review?.panelOpened ?? DEFAULT_REVIEW_PANEL_OPENED),
+        toggleReviewPanel() {
+          const current = store.review
+          if (!current) {
+            batch(() => {
+              setStore("review", { diffStyle: "split" as ReviewDiffStyle, panelOpened: true })
+              setEphemeral("reviewPanelSource", "other")
+            })
+            return
+          }
+          batch(() => {
+            setStore("review", "panelOpened", !(current.panelOpened ?? DEFAULT_REVIEW_PANEL_OPENED))
+            setEphemeral("reviewPanelSource", "other")
+          })
         },
       },
       review: {

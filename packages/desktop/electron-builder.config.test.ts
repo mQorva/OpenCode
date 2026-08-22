@@ -1,12 +1,10 @@
 import { expect, test } from "bun:test"
 import type { Configuration } from "electron-builder"
 
-const legacyDesktopEntry = "resources/linux/opencode-desktop.desktop"
-
 const channels = [
-  { channel: "dev", appId: "ai.opencode.desktop.dev" },
-  { channel: "beta", appId: "ai.opencode.desktop.beta" },
-  { channel: "prod", appId: "ai.opencode.desktop" },
+  { channel: "dev", appId: "de.mqorva.opencode.desktop.dev", productName: "OpenCode mQorva Dev" },
+  { channel: "beta", appId: "de.mqorva.opencode.desktop.beta", productName: "OpenCode mQorva Beta" },
+  { channel: "prod", appId: "de.mqorva.opencode.desktop", productName: "OpenCode mQorva" },
 ] as const
 
 for (const channel of channels) {
@@ -21,7 +19,12 @@ for (const channel of channels) {
     else process.env.OPENCODE_CHANNEL = previous
 
     expect(config.appId).toBe(channel.appId)
+    expect(config.productName).toBe(channel.productName)
     expect(config.extraMetadata?.desktopName).toBe(`${channel.appId}.desktop`)
+    expect(config.extraMetadata?.author).toEqual({ name: "mQorva" })
+    expect(config.protocols).toEqual({ name: channel.productName, schemes: ["opencode-mqorva"] })
+    expect(config.nsis?.shortcutName).toBe(channel.productName)
+    expect(config.nsis?.uninstallDisplayName).toBe(channel.productName)
     expect(config.linux?.executableName).toBe(channel.appId)
     expect(config.linux?.desktop?.entry?.StartupWMClass).toBe(channel.appId)
     expect(config.deb?.fpm).toContainEqual(expect.stringContaining(`/usr/share/metainfo/${channel.appId}.metainfo.xml`))
@@ -29,7 +32,7 @@ for (const channel of channels) {
   })
 }
 
-test("keeps a hidden prod launcher for old Linux pins", async () => {
+test("does not claim official OpenCode publishing or launcher identities", async () => {
   const previous = process.env.OPENCODE_CHANNEL
   process.env.OPENCODE_CHANNEL = "prod"
 
@@ -39,22 +42,9 @@ test("keeps a hidden prod launcher for old Linux pins", async () => {
   if (previous === undefined) delete process.env.OPENCODE_CHANNEL
   else process.env.OPENCODE_CHANNEL = previous
 
-  expect(
-    config.deb?.fpm?.some((entry) =>
-      entry.endsWith("opencode-desktop.desktop=/usr/share/applications/opencode-desktop.desktop"),
-    ),
-  ).toBe(true)
-  expect(
-    config.rpm?.fpm?.some((entry) =>
-      entry.endsWith("opencode-desktop.desktop=/usr/share/applications/opencode-desktop.desktop"),
-    ),
-  ).toBe(true)
-
-  const desktop = await Bun.file(legacyDesktopEntry).text()
-  expect(desktop).toContain("Exec=/opt/OpenCode/ai.opencode.desktop %U")
-  expect(desktop).toContain("Icon=ai.opencode.desktop")
-  expect(desktop).toContain("StartupWMClass=ai.opencode.desktop")
-  expect(desktop).toContain("NoDisplay=true")
+  expect(config.publish).toBeUndefined()
+  expect(config.deb?.fpm).not.toContainEqual(expect.stringContaining("opencode-desktop.desktop"))
+  expect(config.rpm?.fpm).not.toContainEqual(expect.stringContaining("opencode-desktop.desktop"))
 })
 
 test("bundles the CLI outside the dev app archive", async () => {

@@ -19,6 +19,16 @@ export interface SoundSettings {
   errors: string
 }
 
+export type LayoutMode = "tabs" | "sidebar"
+
+export const layoutModeDefault: LayoutMode = "sidebar"
+
+// The sidebar layout only exists on top of the new designs; the retired legacy shell gets no variant.
+export function resolveLayoutMode(newLayout: boolean, preference: LayoutMode | undefined): LayoutMode {
+  if (!newLayout) return "tabs"
+  return preference ?? layoutModeDefault
+}
+
 export interface Settings {
   general: {
     autoSave: boolean
@@ -35,6 +45,8 @@ export interface Settings {
     showCustomAgents: boolean
     mobileTitlebarPosition: "top" | "bottom"
     newLayoutDesigns?: boolean
+    // Fork addition: alternate shell with a grouped session sidebar instead of titlebar tabs.
+    layoutMode?: LayoutMode
     layoutTransitionEligible?: boolean
     agentVisibilityInitialized?: boolean
     newInterfaceNoticeDismissed?: boolean
@@ -276,6 +288,7 @@ export const { use: useSettings, provider: SettingsProvider } = createSimpleCont
         layoutTransitionEligible() ? legacyNewLayoutDesignsDefault : newLayoutDesignsDefault,
       )
     })
+    const layoutMode = createMemo(() => resolveLayoutMode(newLayoutDesigns(), store.general?.layoutMode))
     const visible = (preference: () => boolean) => createMemo(() => !newLayoutDesigns() || preference())
     const initializeAgentVisibility = (existing: boolean) => {
       const initial = initialAgentVisibility(store.general?.agentVisibilityInitialized, existing, launchState.previous)
@@ -434,6 +447,11 @@ export const { use: useSettings, provider: SettingsProvider } = createSimpleCont
           if (newLayoutDesigns() === next) return
           setStore("general", "newLayoutDesigns", next)
           if (typeof window !== "undefined") setTimeout(() => window.location.reload())
+        },
+        layoutMode,
+        setLayoutMode(value: LayoutMode) {
+          if (layoutMode() === value) return
+          setStore("general", "layoutMode", value)
         },
         layoutTransitionClassified,
         setOldLayoutEligible(eligible: boolean) {
