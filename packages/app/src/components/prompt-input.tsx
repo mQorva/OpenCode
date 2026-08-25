@@ -29,6 +29,8 @@ import { useLayout } from "@/context/layout"
 import { useSDK } from "@/context/sdk"
 import { useSync } from "@/context/sync"
 import { useComments } from "@/context/comments"
+import { useSettings } from "@/context/settings"
+import { SessionContextUsage } from "@/components/session-context-usage"
 import { Button } from "@opencode-ai/ui/button"
 import { DockShellForm, DockTray } from "@opencode-ai/ui/dock-surface"
 import { Icon } from "@opencode-ai/ui/icon"
@@ -124,6 +126,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
   const comments = useComments()
   const dialog = useDialog()
   const command = useCommand()
+  const settings = useSettings()
   const permission = usePermission()
   const language = useLanguage()
   const platform = usePlatform()
@@ -1390,7 +1393,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
       ) {
         return
       }
-      void handleSubmit(event)
+      void handleSubmit(event, { invert: event.ctrlKey || event.metaKey })
     }
   }
 
@@ -1785,6 +1788,7 @@ export const PromptInput: Component<PromptInputProps> = (props) => {
                 </Show>
               </div>
             </div>
+            <SessionContextUsage placement="top" buttonAppearance={settings.general.newLayoutDesigns() ? "v2" : "default"} />
           </div>
         </DockTray>
       </Show>

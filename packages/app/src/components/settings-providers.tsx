@@ -4,7 +4,7 @@ import { ProviderIcon } from "@opencode-ai/ui/provider-icon"
 import { Tag } from "@opencode-ai/ui/tag"
 import { showToast } from "@/utils/toast"
 import { popularProviders, useProviders } from "@/hooks/use-providers"
-import { createMemo, type Component, For, Show } from "solid-js"
+import { createMemo, createSignal, type Component, For, Show } from "solid-js"
 import { useLanguage } from "@/context/language"
 import { useServerProtocol, useServerSDK } from "@/context/server-sdk"
 import { useServerSync } from "@/context/server-sync"
@@ -12,6 +12,7 @@ import { DialogConnectProvider, useProviderConnectController } from "./dialog-co
 import { DialogCustomProvider } from "./dialog-custom-provider"
 import { SettingsList } from "./settings-list"
 import { SettingsServerPicker, SettingsServerScope } from "./settings-server-picker"
+import { disconnectProviderConnection } from "./provider-connection"
 
 type ProviderSource = "env" | "api" | "config" | "custom"
 type ProviderItem = ReturnType<ReturnType<typeof useProviders>["connected"]>[number]
@@ -43,6 +44,7 @@ const SettingsProvidersContent: Component<{ onBack?: () => void }> = (props) => 
   const serverSync = useServerSync()
   const providers = useProviders(() => undefined)
   const providerConnect = useProviderConnectController({ onBack: props.onBack })
+  const [disconnecting, setDisconnecting] = createSignal<string>()
 
   const connect = (provider?: string) => {
     providerConnect.select(provider)
@@ -97,52 +99,34 @@ const SettingsProvidersContent: Component<{ onBack?: () => void }> = (props) => 
     return true
   }
 
-  const disableProvider = async (providerID: string, name: string) => {
-    if (protocol() !== "v1") return
-    const before = serverSync().data.config.disabled_providers ?? []
-    const next = before.includes(providerID) ? before : [...before, providerID]
-    serverSync().set("config", "disabled_providers", next)
-
-    await serverSync()
-      .updateConfig({ disabled_providers: next })
-      .then(() => {
-        showToast({
-          variant: "success",
-          icon: "circle-check",
-          title: language.t("provider.disconnect.toast.disconnected.title", { provider: name }),
-          description: language.t("provider.disconnect.toast.disconnected.description", { provider: name }),
-        })
+  const disconnect = async (item: ProviderItem) => {
+    if (disconnecting()) return
+    setDisconnecting(item.id)
+    try {
+      await disconnectProviderConnection({
+        providerID: item.id,
+        protocol: await serverSDK().protocol,
+        legacy: serverSDK().createClient({ throwOnError: true }),
+        current: serverSDK().currentApi,
+        disable: source(item) === "config" || isConfigCustom(item.id),
+        disabledProviders: serverSync().data.config.disabled_providers ?? [],
+        updateConfig: serverSync().updateConfig,
+        refresh: () => serverSync().refreshProviders(null),
+        connected: () => providers.connected().some((provider) => provider.id === item.id),
+        failureMessage: language.t("common.requestFailed"),
       })
-      .catch((err: unknown) => {
-        serverSync().set("config", "disabled_providers", before)
-        const message = err instanceof Error ? err.message : String(err)
-        showToast({ title: language.t("common.requestFailed"), description: message })
+      showToast({
+        variant: "success",
+        icon: "circle-check",
+        title: language.t("provider.disconnect.toast.disconnected.title", { provider: item.name }),
+        description: language.t("provider.disconnect.toast.disconnected.description", { provider: item.name }),
       })
-  }
-
-  const disconnect = async (providerID: string, name: string) => {
-    if (isConfigCustom(providerID)) {
-      await serverSDK()
-        .client.auth.remove({ providerID })
-        .catch(() => undefined)
-      await disableProvider(providerID, name)
-      return
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err)
+      showToast({ title: language.t("common.requestFailed"), description: message, variant: "error" })
+    } finally {
+      setDisconnecting(undefined)
     }
-    await serverSDK()
-      .client.auth.remove({ providerID })
-      .then(async () => {
-        await serverSDK().client.global.dispose()
-        showToast({
-          variant: "success",
-          icon: "circle-check",
-          title: language.t("provider.disconnect.toast.disconnected.title", { provider: name }),
-          description: language.t("provider.disconnect.toast.disconnected.description", { provider: name }),
-        })
-      })
-      .catch((err: unknown) => {
-        const message = err instanceof Error ? err.message : String(err)
-        showToast({ title: language.t("common.requestFailed"), description: message })
-      })
   }
 
   return (
@@ -182,7 +166,12 @@ const SettingsProvidersContent: Component<{ onBack?: () => void }> = (props) => 
                         </span>
                       }
                     >
-                      <Button size="large" variant="ghost" onClick={() => void disconnect(item.id, item.name)}>
+                      <Button
+                        size="large"
+                        variant="ghost"
+                        disabled={disconnecting() !== undefined}
+                        onClick={() => void disconnect(item)}
+                      >
                         {language.t("common.disconnect")}
                       </Button>
                     </Show>

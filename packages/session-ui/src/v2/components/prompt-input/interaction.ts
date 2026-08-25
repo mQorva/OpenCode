@@ -37,7 +37,7 @@ export type PromptInputV2ViewConfig = {
   submit: {
     stopping: Accessor<boolean>
     working?: Accessor<boolean>
-    onSubmit: () => void
+    onSubmit: (invert?: boolean) => void
     onStop: () => void
   }
   shell?: {
@@ -331,7 +331,12 @@ export function createPromptInputV2Controller(input: {
       const persisted = draft.state
       if (persisted.prompt.some((part) => part.type === "image")) return true
       if (persisted.context.items.some((item) => !!item.comment?.trim())) return true
-      return persisted.prompt.some((part) => "content" in part && !!part.content.trim())
+      if (persisted.prompt.some((part) => "content" in part && !!part.content.trim())) return true
+      if (editor) {
+        const text = editor.textContent ?? ""
+        if (text.replace(/[\n\u200B]/g, "").trim().length > 0) return true
+      }
+      return false
     },
     setEditor(element: HTMLElement) {
       editor = element
@@ -357,8 +362,8 @@ export function createPromptInputV2Controller(input: {
     closeShell() {
       dispatch({ type: "mode.normal" })
     },
-    submit() {
-      input.view.submit.onSubmit()
+    submit(invert?: boolean) {
+      input.view.submit.onSubmit(!!invert)
       dispatch({ type: "popover.close" })
     },
     stop() {

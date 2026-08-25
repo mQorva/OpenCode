@@ -36,6 +36,7 @@ import { useLanguage } from "@/context/language"
 import { useSettings } from "@/context/settings"
 import { popularProviders, useProviders } from "@/hooks/use-providers"
 import { CustomProviderForm } from "./dialog-custom-provider"
+import { confirmProviderConnection } from "./provider-connection"
 import { decode64 } from "@/utils/base64"
 
 const CUSTOM_ID = "_custom"
@@ -74,7 +75,7 @@ export const DialogConnectProvider: Component<{
     return (
       <Switch>
         <Match when={controller.selected() === CUSTOM_ID}>
-          <CustomProviderForm autofocus={!newLayout()} />
+          <CustomProviderForm autofocus={!newLayout()} directory={props.directory} />
         </Match>
         <Match when={controller.selected() && controller.selected() !== CUSTOM_ID ? controller.selected() : undefined}>
           {(provider) => (
@@ -709,9 +710,12 @@ function ProviderConnection(props: {
   })
 
   async function complete() {
-    await serverSync()
-      .refreshProviders()
-      .catch(() => undefined)
+    await confirmProviderConnection({
+      refresh: () => serverSync().refreshProviders(directory() ?? null),
+      connected: () => providers.connected().some((item) => item.id === props.provider),
+      expected: true,
+      failureMessage: language.t("common.requestFailed"),
+    })
     dialog.close()
     showToast({
       variant: "success",
@@ -801,6 +805,7 @@ function ProviderConnection(props: {
     const [formStore, setFormStore] = createStore({
       value: "",
       error: undefined as string | undefined,
+      saving: false,
     })
 
     onMount(() => {
@@ -813,20 +818,28 @@ function ProviderConnection(props: {
 
       const form = e.currentTarget as HTMLFormElement
       const formData = new FormData(form)
-      const apiKey = formData.get("apiKey") as string
+      const raw = (formData.get("apiKey") as string) || formStore.value || ""
+      const key = raw.trim()
 
-      if (!apiKey?.trim()) {
+      if (!key) {
         setFormStore("error", language.t("provider.connect.apiKey.required"))
         return
       }
 
       setFormStore("error", undefined)
-      await serverSDK().api.integration.connect.key({
-        integrationID: props.provider,
-        location: location(),
-        key: apiKey,
-      })
-      await complete()
+      setFormStore("saving", true)
+      try {
+        await serverSDK().api.integration.connect.key({
+          integrationID: props.provider,
+          location: location(),
+          key,
+        })
+        await complete()
+      } catch (error) {
+        setFormStore("error", formatError(error, language.t("common.requestFailed")))
+      } finally {
+        setFormStore("saving", false)
+      }
     }
 
     if (newLayout())
@@ -875,8 +888,18 @@ function ProviderConnection(props: {
                 </div>
               )}
             </Show>
-            <ButtonV2 type="submit" variant="contrast" data-action="provider-connect-submit">
-              {language.t("common.continue")}
+            <ButtonV2
+              type="submit"
+              variant="contrast"
+              disabled={formStore.saving}
+              data-action="provider-connect-submit"
+            >
+              <Show when={formStore.saving} fallback={language.t("common.continue")}>
+                <span class="flex items-center gap-2">
+                  <Spinner class="size-3.5" />
+                  {language.t("common.continue")}
+                </span>
+              </Show>
             </ButtonV2>
           </form>
         </div>
@@ -917,7 +940,7 @@ function ProviderConnection(props: {
             validationState={formStore.error ? "invalid" : undefined}
             error={formStore.error}
           />
-          <Button class="w-auto" type="submit" size="large" variant="primary">
+          <Button class="w-auto" type="submit" size="large" variant="primary" disabled={formStore.saving}>
             {language.t("common.continue")}
           </Button>
         </form>
@@ -931,6 +954,7 @@ function ProviderConnection(props: {
     const [formStore, setFormStore] = createStore({
       value: "",
       error: undefined as string | undefined,
+      saving: false,
     })
 
     onMount(() => {
@@ -951,20 +975,20 @@ function ProviderConnection(props: {
       }
 
       setFormStore("error", undefined)
-      const result = await serverSDK()
-        .api.integration.oauth.complete({
+      setFormStore("saving", true)
+      try {
+        await serverSDK().api.integration.oauth.complete({
           integrationID: props.provider,
           attemptID: store.authorization!.attemptID,
           location: location(),
           code,
         })
-        .then(() => ({ ok: true as const }))
-        .catch((error) => ({ ok: false as const, error }))
-      if (result.ok) {
         await complete()
-        return
+      } catch (error) {
+        setFormStore("error", formatError(error, language.t("provider.connect.oauth.code.invalid")))
+      } finally {
+        setFormStore("saving", false)
       }
-      setFormStore("error", formatError(result.error, language.t("provider.connect.oauth.code.invalid")))
     }
 
     if (newLayout())
@@ -1000,7 +1024,7 @@ function ProviderConnection(props: {
                 </div>
               )}
             </Show>
-            <ButtonV2 type="submit" variant="contrast">
+            <ButtonV2 type="submit" variant="contrast" disabled={formStore.saving}>
               {language.t("common.continue")}
             </ButtonV2>
           </form>
@@ -1029,7 +1053,7 @@ function ProviderConnection(props: {
             validationState={formStore.error ? "invalid" : undefined}
             error={formStore.error}
           />
-          <Button class="w-auto" type="submit" size="large" variant="primary">
+          <Button class="w-auto" type="submit" size="large" variant="primary" disabled={formStore.saving}>
             {language.t("common.continue")}
           </Button>
         </form>
@@ -1064,7 +1088,10 @@ function ProviderConnection(props: {
           return
         }
         if (result.status.status === "complete") {
-          await complete()
+          await complete().catch((error) => {
+            if (!alive.value) return
+            dispatch({ type: "auth.error", error: formatError(error, language.t("common.requestFailed")) })
+          })
           return
         }
         if (result.status.status === "failed") {

@@ -3,6 +3,7 @@ export * as SessionRunnerModel from "./model"
 import { makeLocationNode } from "../../effect/app-node"
 import { type Model } from "@opencode-ai/llm"
 import * as AnthropicMessages from "@opencode-ai/llm/protocols/anthropic-messages"
+import * as Gemini from "@opencode-ai/llm/protocols/gemini"
 import * as OpenAICompatibleChat from "@opencode-ai/llm/protocols/openai-compatible-chat"
 import * as OpenAIResponses from "@opencode-ai/llm/protocols/openai-responses"
 import { Auth, type AnyRoute } from "@opencode-ai/llm/route"
@@ -153,10 +154,43 @@ export const fromCatalogModel = (
         .model({ id: resolved.api.id }),
     )
   }
-  if (resolved.api.type === "aisdk" && resolved.api.package === "@ai-sdk/openai-compatible" && resolved.api.url) {
+  if (
+    resolved.api.type === "aisdk" &&
+    (resolved.api.package === "@ai-sdk/google" || resolved.providerID === "google")
+  ) {
+    return Effect.succeed(
+      withDefaults(resolved, Gemini.route)
+        .with({ auth: key === undefined ? Auth.none : Auth.header("x-goog-api-key", key) })
+        .model({ id: resolved.api.id }),
+    )
+  }
+  if (
+    resolved.api.type === "aisdk" &&
+    (resolved.api.package === "@openrouter/ai-sdk-provider" || resolved.providerID === "openrouter")
+  ) {
+    const url = resolved.api.url || "https://openrouter.ai/api/v1"
     return Effect.succeed(
       withDefaults(resolved, OpenAICompatibleChat.route)
-        .with({ auth: key === undefined ? Auth.none : Auth.bearer(key) })
+        .with({
+          endpoint: { baseURL: url },
+          headers: {
+            "HTTP-Referer": "https://opencode.ai/",
+            "X-Title": "opencode",
+            ...resolved.request.headers,
+          },
+          auth: key === undefined ? Auth.none : Auth.bearer(key),
+        })
+        .model({ id: resolved.api.id }),
+    )
+  }
+  if (resolved.api.type === "aisdk" && resolved.api.package === "@ai-sdk/openai-compatible") {
+    const url = resolved.api.url || "https://api.openai.com/v1"
+    return Effect.succeed(
+      withDefaults(resolved, OpenAICompatibleChat.route)
+        .with({
+          endpoint: { baseURL: url },
+          auth: key === undefined ? Auth.none : Auth.bearer(key),
+        })
         .model({ id: resolved.api.id }),
     )
   }
@@ -176,7 +210,11 @@ export const supported = (model: ModelV2.Info) =>
   model.api.type === "aisdk" &&
   (model.api.package === "@ai-sdk/openai" ||
     model.api.package === "@ai-sdk/anthropic" ||
-    (model.api.package === "@ai-sdk/openai-compatible" && model.api.url !== undefined))
+    model.api.package === "@ai-sdk/google" ||
+    model.providerID === "google" ||
+    model.api.package === "@openrouter/ai-sdk-provider" ||
+    model.providerID === "openrouter" ||
+    model.api.package === "@ai-sdk/openai-compatible")
 
 /** Resolves models from the catalog belonging to the current Location runtime. */
 export const locationLayer = Layer.effect(

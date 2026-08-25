@@ -45,13 +45,14 @@ import { ProviderV2 } from "@opencode-ai/core/provider"
 import { ModelV2 } from "@opencode-ai/core/model"
 import { SessionMessage } from "@opencode-ai/schema/session-message"
 
-const parentTitlePrefix = "New session - "
-const childTitlePrefix = "Child session - "
+const parentTitlePrefix = "New chat"
+const childTitlePrefix = "Child chat"
+
+const defaultPattern =
+  /^(New chat|Child chat)$|^(New session|Child session) - \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
 
 export function isDefaultTitle(title: string) {
-  return new RegExp(
-    `^(${parentTitlePrefix}|${childTitlePrefix})\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}\\.\\d{3}Z$`,
-  ).test(title)
+  return defaultPattern.test(title) || title === parentTitlePrefix || title === childTitlePrefix
 }
 
 type SessionRow = typeof SessionTable.$inferSelect
@@ -518,7 +519,7 @@ const layer: Layer.Layer<
         path: input.path,
         workspaceID: input.workspaceID,
         parentID: input.parentID,
-        title: input.title ?? (input.parentID ? childTitlePrefix : parentTitlePrefix) + new Date().toISOString(),
+        title: input.title ?? (input.parentID ? childTitlePrefix : parentTitlePrefix),
         agent: input.agent,
         model: input.model,
         metadata: input.metadata,

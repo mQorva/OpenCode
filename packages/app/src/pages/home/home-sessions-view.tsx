@@ -9,7 +9,7 @@ import { TooltipV2 } from "@opencode-ai/ui/v2/tooltip-v2"
 import { useLanguage } from "@/context/language"
 import { ServerConnection } from "@/context/server"
 import { SessionTabAvatarView } from "@/pages/layout/session-tab-avatar"
-import { sessionTitle } from "@/utils/session-title"
+import { isNewChat, sessionTitle } from "@/utils/session-title"
 import { shouldOpenSessionInBackground } from "../home-session-open"
 import {
   HomeSessionStatusController,
@@ -344,7 +344,11 @@ function HomeSessionSearchResultRow(
     selected: boolean
   },
 ) {
-  const title = createMemo(() => sessionTitle(props.record.session.title) || props.record.session.id)
+  const title = createMemo(() => {
+    const value = props.record.session.title
+    if (isNewChat(value)) return props.language.t("sidebarLayout.newChat")
+    return sessionTitle(value) || props.record.session.id
+  })
   const showProjectName = () => props.showProjectName() && props.record.projectName
   const key = () => homeSessionSearchKey(props.record)
 
@@ -415,7 +419,11 @@ function HomeSessionGroupHeader(props: {
 }
 
 function HomeSessionRow(props: HomeSessionsViewProps & { record: HomeSessionRecord }) {
-  const title = createMemo(() => sessionTitle(props.record.session.title) || props.record.session.id)
+  const title = createMemo(() => {
+    const value = props.record.session.title
+    if (isNewChat(value)) return props.language.t("sidebarLayout.newChat")
+    return sessionTitle(value) || props.record.session.id
+  })
   const showProjectName = () => props.showProjectName() && props.record.projectName
 
   return (

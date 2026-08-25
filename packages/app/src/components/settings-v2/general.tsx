@@ -69,6 +69,11 @@ const soundSettings = {
   },
 } as const
 
+const followupOptions = () => [
+  { value: "steer" as const, labelKey: "settings.general.row.followup.option.steer" },
+  { value: "queue" as const, labelKey: "settings.general.row.followup.option.queue" },
+]
+
 const PermissionScopeSetting: Component<{ controller: PermissionScopeController }> = (props) => {
   const language = useLanguage()
   return (
@@ -328,6 +333,26 @@ export const SettingsGeneralV2: Component<{
     <div class="settings-v2-section">
       <SettingsListV2>
         <LanguageSetting />
+
+        <SettingsRowV2
+          title={language.t("settings.general.row.followup.title")}
+          description={language.t("settings.general.row.followup.description")}
+        >
+          <SelectV2
+            appearance="inline"
+            data-action="settings-followup"
+            options={followupOptions()}
+            placement="bottom-end"
+            gutter={6}
+            current={
+              followupOptions().find((option) => option.value === settings.general.followup()) ??
+              followupOptions()[0]
+            }
+            value={(option) => option.value}
+            label={(option) => language.t(option.labelKey)}
+            onSelect={(option) => option && settings.general.setFollowup(option.value)}
+          />
+        </SettingsRowV2>
 
         <Show when={settings.general.newLayoutDesigns()}>
           <SettingsRowV2

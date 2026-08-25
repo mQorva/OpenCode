@@ -440,7 +440,10 @@ const layer = Layer.effect(
               add: [
                 {
                   name: "@opencode-ai/plugin",
-                  version: InstallationLocal ? undefined : InstallationVersion,
+                  version:
+                    InstallationLocal || InstallationVersion.startsWith("0.0.0-dev")
+                      ? undefined
+                      : InstallationVersion,
                 },
               ],
             })

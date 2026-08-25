@@ -91,6 +91,20 @@ export async function downloadCliToResources() {
   console.log(`Copied ${cli.package} to ${dest}`)
 }
 
+export async function buildCliToResources() {
+  await $`bun script/build.ts --single --skip-install --skip-embed-web-ui --no-minify`.cwd("../opencode")
+  const platform = process.platform === "win32" ? "windows" : process.platform
+  const source = windowsify(`../opencode/dist/opencode-${platform}-${process.arch}/bin/opencode`)
+  const dest = windowsify("resources/opencode-cli")
+  await copyFile(source, dest)
+  if (process.platform !== "win32") await chmod(dest, 0o755)
+  if (process.platform === "win32" && process.env.GITHUB_ACTIONS === "true") {
+    await $`pwsh -NoLogo -NoProfile -ExecutionPolicy Bypass -File ../../script/sign-windows.ps1 ${dest}`
+  }
+  if (process.platform === "darwin") await $`codesign --force --sign - ${dest}`
+  console.log(`Built current OpenCode CLI to ${dest}`)
+}
+
 export function windowsify(path: string) {
   if (path.endsWith(".exe")) return path
   return `${path}${process.platform === "win32" ? ".exe" : ""}`

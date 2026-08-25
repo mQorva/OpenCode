@@ -12,6 +12,8 @@ export type SessionComposerFollowupDock = {
   sending?: string
   onSend: (id: string) => void
   onEdit: (id: string) => void
+  onRemove: (id: string) => void
+  onMove: (fromID: string, toID: string) => void
 }
 
 export type SessionComposerRevertDock = {

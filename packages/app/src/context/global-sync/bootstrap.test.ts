@@ -136,10 +136,6 @@ describe("bootstrapDirectory", () => {
       protocol: Promise.resolve("v1"),
     })
 
-    expect(store.status).toBe("partial")
-
-    await new Promise((resolve) => setTimeout(resolve, 80))
-
     expect(store.status).toBe("complete")
     expect(legacyConfigReads).toEqual(["directory"])
     expect(mcpReads.sort()).toEqual(["command", "resource", "status"])
@@ -174,10 +170,6 @@ describe("bootstrapDirectory", () => {
       queryClient: new QueryClient(),
       protocol: Promise.resolve("v2"),
     })
-
-    expect(store.status).toBe("partial")
-
-    await new Promise((resolve) => setTimeout(resolve, 80))
 
     expect(store.status).toBe("complete")
   })

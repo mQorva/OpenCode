@@ -371,7 +371,7 @@ export async function bootstrapDirectory(input: {
   const revKey = ScopedKey.from(input.scope, input.directory)
   const rev = (providerRev.get(revKey) ?? 0) + 1
   providerRev.set(revKey, rev)
-  ;(async () => {
+  await (async () => {
     const slow = [
       () => Promise.resolve(input.loadSessions(input.directory)),
       () =>

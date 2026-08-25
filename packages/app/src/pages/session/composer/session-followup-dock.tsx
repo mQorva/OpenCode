@@ -1,25 +1,58 @@
-import { For, Show, createMemo } from "solid-js"
+import { createMemo, createSignal, For, Show } from "solid-js"
 import { createStore } from "solid-js/store"
-import { Button } from "@opencode-ai/ui/button"
+import { ButtonV2 } from "@opencode-ai/ui/v2/button-v2"
+import { Icon as IconV2 } from "@opencode-ai/ui/v2/icon"
+import { IconButtonV2 } from "@opencode-ai/ui/v2/icon-button-v2"
+import { MenuV2 } from "@opencode-ai/ui/v2/menu-v2"
 import { DockTray } from "@opencode-ai/ui/dock-surface"
 import { IconButton } from "@opencode-ai/ui/icon-button"
+import { Tooltip } from "@opencode-ai/ui/tooltip"
 import { useLanguage } from "@/context/language"
+
+function TrashIcon() {
+  return (
+    <svg viewBox="0 0 20 20" aria-hidden="true" class="size-4">
+      <path
+        d="M3.5 5.5h13M8 5.5V4a1 1 0 0 1 1-1h2a1 1 0 0 1 1 1v1.5M5.5 5.5V15a1.5 1.5 0 0 0 1.5 1.5h6A1.5 1.5 0 0 0 14.5 15V5.5M8 8.5v5M12 8.5v5"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.2"
+        stroke-linecap="round"
+        stroke-linejoin="round"
+      />
+    </svg>
+  )
+}
 
 export function SessionFollowupDock(props: {
   items: { id: string; text: string }[]
   sending?: string
   onSend: (id: string) => void
   onEdit: (id: string) => void
+  onRemove: (id: string) => void
+  onMove: (fromID: string, toID: string) => void
 }) {
   const language = useLanguage()
   const [store, setStore] = createStore({
     collapsed: false,
   })
+  const [dragging, setDragging] = createSignal<string>()
 
   const toggle = () => setStore("collapsed", (value) => !value)
   const total = createMemo(() => props.items.length)
   const label = createMemo(() => language.plural("session.followupDock.summary", total()))
   const preview = createMemo(() => props.items[0]?.text ?? "")
+
+  const startDrag = (event: DragEvent, id: string) => {
+    setDragging(id)
+    if (event.dataTransfer) event.dataTransfer.effectAllowed = "move"
+  }
+  const dropOn = (id: string) => {
+    const from = dragging()
+    if (!from) return
+    props.onMove(from, id)
+    setDragging(undefined)
+  }
 
   return (
     <DockTray
@@ -72,29 +105,88 @@ export function SessionFollowupDock(props: {
       </Show>
 
       <Show when={!store.collapsed}>
-        <div class="px-3 pb-7 flex flex-col gap-1.5 max-h-42 overflow-y-auto no-scrollbar">
+        <div class="px-2 pb-6 flex flex-col gap-0.5 max-h-42 overflow-y-auto no-scrollbar">
           <For each={props.items}>
             {(item) => (
-              <div class="flex items-center gap-2 min-w-0 py-1">
-                <span class="min-w-0 flex-1 truncate text-13-regular text-text-strong">{item.text}</span>
-                <Button
-                  size="small"
-                  variant="secondary"
-                  class="shrink-0"
-                  disabled={!!props.sending}
-                  onClick={() => props.onSend(item.id)}
-                >
-                  {language.t("session.followupDock.sendNow")}
-                </Button>
-                <Button
-                  size="small"
+              <div
+                data-component="session-followup-item"
+                classList={{
+                  "flex items-center gap-1.5 min-w-0 rounded-lg px-1 py-1.5": true,
+                  "bg-v2-overlay-simple-overlay-hover": dragging() === item.id,
+                }}
+                onDragOver={(event) => {
+                  event.preventDefault()
+                  if (event.dataTransfer) event.dataTransfer.dropEffect = "move"
+                }}
+                onDrop={() => dropOn(item.id)}
+              >
+                <IconButton
+                  type="button"
+                  draggable
+                  icon="chevron-grabber-vertical"
+                  iconSize="small"
                   variant="ghost"
-                  class="shrink-0"
-                  disabled={!!props.sending}
-                  onClick={() => props.onEdit(item.id)}
-                >
-                  {language.t("session.followupDock.edit")}
-                </Button>
+                  class="shrink-0 cursor-grab text-text-weaker hover:text-text-strong"
+                  aria-label={language.t("session.followupDock.drag")}
+                  onDragStart={(event) => startDrag(event, item.id)}
+                  onDragEnd={() => setDragging(undefined)}
+                  onPointerDown={(event) => event.stopPropagation()}
+                />
+                <span class="min-w-0 flex-1 truncate text-13-regular text-text-base cursor-default select-none">
+                  {item.text}
+                </span>
+                <Tooltip value={language.t("session.followupDock.steer")} placement="top">
+                  <ButtonV2
+                    size="small"
+                    variant="ghost-muted"
+                    class="shrink-0 gap-1 px-1.5"
+                    disabled={!!props.sending}
+                    onClick={() => props.onSend(item.id)}
+                  >
+                    <IconV2 name="outline-square-arrow" size="small" />
+                    <span>{language.t("session.followupDock.steer")}</span>
+                  </ButtonV2>
+                </Tooltip>
+                <Tooltip value={language.t("common.delete")} placement="top">
+                  <IconButtonV2
+                    type="button"
+                    size="small"
+                    variant="ghost-muted"
+                    class="shrink-0 text-v2-icon-icon-muted"
+                    aria-label={language.t("common.delete")}
+                    onClick={() => props.onRemove(item.id)}
+                  >
+                    <TrashIcon />
+                  </IconButtonV2>
+                </Tooltip>
+                <MenuV2 gutter={6} placement="bottom-end">
+                  <MenuV2.Trigger
+                    as={IconButtonV2}
+                    type="button"
+                    size="small"
+                    variant="ghost-muted"
+                    class="shrink-0 text-v2-icon-icon-muted"
+                    aria-label={language.t("common.moreOptions")}
+                    icon={<IconV2 name="outline-dots" />}
+                  />
+                  <MenuV2.Portal>
+                    <MenuV2.Content style={{ "min-width": "140px" }}>
+                      <MenuV2.Item
+                        onSelect={() => props.onSend(item.id)}
+                        disabled={!!props.sending}
+                      >
+                        {language.t("session.followupDock.steer")}
+                      </MenuV2.Item>
+                      <MenuV2.Item onSelect={() => props.onEdit(item.id)}>
+                        {language.t("session.followupDock.edit")}
+                      </MenuV2.Item>
+                      <MenuV2.Separator />
+                      <MenuV2.Item onSelect={() => props.onRemove(item.id)}>
+                        {language.t("common.delete")}
+                      </MenuV2.Item>
+                    </MenuV2.Content>
+                  </MenuV2.Portal>
+                </MenuV2>
               </div>
             )}
           </For>

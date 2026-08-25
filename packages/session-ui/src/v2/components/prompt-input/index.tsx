@@ -22,6 +22,7 @@ import type {
   PromptInputV2Suggestion,
 } from "./types"
 import type { PromptInputV2Interaction, PromptInputV2SelectControl } from "./interaction"
+import { parsePromptInputV2Editor } from "./editor-dom"
 import "./attachments.css"
 
 export type {
@@ -42,6 +43,7 @@ export type PromptInputV2Props = {
   class?: string
   modelControl?: JSX.Element
   variantControlVisible?: boolean
+  slotAfterControls?: JSX.Element
   attachKeybind?: string[]
   attachShortcut?: string
 }
@@ -174,7 +176,7 @@ export function PromptInputV2(props: PromptInputV2Props) {
               if (event.key === "Enter" && !event.shiftKey && !event.isComposing) {
                 event.preventDefault()
                 if (event.repeat) return
-                props.controller.submit()
+                props.controller.submit(event.ctrlKey || event.metaKey)
               }
             }}
             onKeyUp={updateCursor}
@@ -253,6 +255,7 @@ export function PromptInputV2(props: PromptInputV2Props) {
                 </Show>
               )}
             </Show>
+            <Show when={props.slotAfterControls}>{props.slotAfterControls}</Show>
           </div>
           <PromptInputV2SubmitButton
             mode={state.mode}
@@ -296,74 +299,6 @@ function renderPromptInputV2Editor(editor: HTMLDivElement, prompt: PromptInputV2
   range.collapse(false)
   selection?.removeAllRanges()
   selection?.addRange(range)
-}
-
-function parsePromptInputV2Editor(editor: HTMLDivElement) {
-  const parts: Exclude<PromptInputV2Prompt[number], PromptInputV2Attachment>[] = []
-  let buffer = ""
-  let position = 0
-
-  const flush = () => {
-    if (!buffer) return
-    parts.push({ type: "text", content: buffer, start: position, end: position + buffer.length })
-    position += buffer.length
-    buffer = ""
-  }
-  const mention = (element: HTMLElement) => {
-    flush()
-    const content = element.textContent ?? ""
-    if (element.dataset.mention === "agent") {
-      parts.push({
-        type: "agent",
-        name: element.dataset.name ?? content.slice(1),
-        content,
-        start: position,
-        end: position + content.length,
-      })
-      position += content.length
-      return
-    }
-    parts.push({
-      type: "file",
-      path: element.dataset.path ?? content.slice(1),
-      content,
-      start: position,
-      end: position + content.length,
-      ...(element.dataset.mime ? { mime: element.dataset.mime } : {}),
-      ...(element.dataset.filename ? { filename: element.dataset.filename } : {}),
-    })
-    position += content.length
-  }
-  const visit = (node: Node) => {
-    if (node.nodeType === Node.TEXT_NODE) {
-      buffer += node.textContent ?? ""
-      return
-    }
-    if (!(node instanceof HTMLElement)) return
-    if (node.dataset.mention) {
-      mention(node)
-      return
-    }
-    if (node.tagName === "BR") {
-      buffer += "\n"
-      return
-    }
-    Array.from(node.childNodes).forEach(visit)
-  }
-
-  Array.from(editor.childNodes).forEach((node, index, nodes) => {
-    visit(node)
-    if (node instanceof HTMLElement && ["DIV", "P"].includes(node.tagName) && index < nodes.length - 1) buffer += "\n"
-  })
-  flush()
-  if (
-    parts.every((part) => part.type === "text") &&
-    parts.every((part) => part.content.replace(/[\n\u200B]/g, "") === "")
-  ) {
-    return [{ type: "text" as const, content: "", start: 0, end: 0 }]
-  }
-  if (parts.length > 0) return parts
-  return [{ type: "text" as const, content: "", start: 0, end: 0 }]
 }
 
 function promptInputV2Cursor(editor: HTMLDivElement) {

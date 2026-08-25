@@ -25,6 +25,7 @@ import { useSessionLayout } from "@/pages/session/session-layout"
 import { messageAgentColor } from "@/utils/agent"
 import { decode64 } from "@/utils/base64"
 import { fileManagerApp } from "@/utils/file-manager"
+import { isNewChat } from "@/utils/session-title"
 import { Persist, persisted } from "@/utils/persist"
 import { StatusPopover, StatusPopoverV2 } from "../status-popover"
 import { IconButtonV2 } from "@opencode-ai/ui/v2/icon-button-v2"
@@ -168,7 +169,9 @@ export function SessionHeader(props: { sidePanelOpen?: boolean }) {
   })
   const sessionTitle = createMemo(() => {
     if (!params.id) return language.t("command.session.new")
-    return activeSession()?.title || language.t("sidebarLayout.untitled")
+    const title = activeSession()?.title
+    if (isNewChat(title)) return language.t("sidebarLayout.newChat")
+    return title || language.t("sidebarLayout.untitled")
   })
   const hotkey = createMemo(() => command.keybind("file.open"))
   const os = createMemo(() => detectOS(platform))

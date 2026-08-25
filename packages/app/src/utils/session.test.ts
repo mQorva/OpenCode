@@ -37,12 +37,12 @@ describe("normalizeSessionInfo", () => {
     })
   })
 
-  test("supplies timestamped titles for untitled current sessions", () => {
+  test("supplies default titles for untitled current sessions", () => {
     const root = currentSession("session-1")
     const child = currentSession("session-2", "session-1")
 
-    expect(normalizeSessionInfo(root).title).toBe("New session - 1970-01-01T00:00:00.000Z")
-    expect(normalizeSessionInfo(child).title).toBe("Child session - 1970-01-01T00:00:00.000Z")
+    expect(normalizeSessionInfo(root).title).toBe("New chat")
+    expect(normalizeSessionInfo(child).title).toBe("Child chat")
   })
 })
 

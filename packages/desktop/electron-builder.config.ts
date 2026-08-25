@@ -42,6 +42,8 @@ if (pkg.version !== MQORVA.upstream.version) {
 }
 
 const getBase = (appId: string, productName: string): Configuration => ({
+  appId,
+  productName,
   artifactName: `opencode-mqorva-\${version}-r${MQORVA.revision}-${mqorvaCommit}-\${os}-\${arch}.\${ext}`,
   directories: {
     output: "dist",
@@ -52,20 +54,17 @@ const getBase = (appId: string, productName: string): Configuration => ({
   // https://developer.gnome.org/documentation/guidelines/maintainer/integrating.html
   // https://www.electron.build/docs/linux/
   extraMetadata: {
+    name: "opencode-mqorva",
     desktopName: `${appId}.desktop`,
     author: { name: "mQorva" },
   },
   files: ["out/**/*", "resources/**/*", "!resources/opencode-cli*"],
   extraResources: [
-    ...(channel === "dev"
-      ? [
-          {
-            from: "resources/",
-            to: "",
-            filter: ["opencode-cli*"],
-          },
-        ]
-      : []),
+    {
+      from: "resources/",
+      to: "",
+      filter: ["opencode-cli*"],
+    },
     {
       from: "native/",
       to: "native/",
@@ -91,6 +90,7 @@ const getBase = (appId: string, productName: string): Configuration => ({
   },
   win: {
     icon: `resources/icons/icon.ico`,
+    executableName: productName,
     signtoolOptions: {
       sign: signWindows,
     },

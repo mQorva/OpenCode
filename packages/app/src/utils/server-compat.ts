@@ -44,6 +44,8 @@ type LegacyPrompt = {
   model?: { providerID: string; modelID: string }
   variant?: string
   legacyParts?: (TextPartInput | FilePartInput | AgentPartInput)[]
+  sessionDirectory?: string
+  location?: { directory?: string }
 }
 type LegacyLocation = { directory?: string }
 type CompatibleInput = {
@@ -189,16 +191,17 @@ function createV1Api(input: CompatibleInput): CompatibleApi {
       async remove(value: Parameters<ServerApi["session"]["remove"]>[0] & LegacyLocation) {
         await legacy(value).session.delete(value)
       },
-      async fork(value: Parameters<ServerApi["session"]["fork"]>[0]) {
-        const result = await legacy().session.fork(value)
+      async fork(value: Parameters<ServerApi["session"]["fork"]>[0] & { location?: { directory?: string }; directory?: string }) {
+        const result = await legacy(value.location ?? (value.directory ? { directory: value.directory } : undefined)).session.fork(value)
         if (!result.data) throw new Error("Failed to fork session")
         return sessionInfo(result.data)
       },
-      async interrupt(value: Parameters<ServerApi["session"]["interrupt"]>[0]) {
-        await legacy().session.abort(value)
+      async interrupt(value: Parameters<ServerApi["session"]["interrupt"]>[0] & { location?: { directory?: string }; directory?: string }) {
+        await legacy(value.location ?? (value.directory ? { directory: value.directory } : undefined)).session.abort(value)
       },
       async prompt(value: SessionPromptInput & LegacyPrompt) {
-        await legacy().session.promptAsync({
+        const loc = value.location ?? (value.sessionDirectory ? { directory: value.sessionDirectory } : undefined)
+        await legacy(loc).session.promptAsync({
           sessionID: value.sessionID,
           messageID: value.id ?? undefined,
           agent: value.agent,
@@ -238,8 +241,9 @@ function createV1Api(input: CompatibleInput): CompatibleApi {
           delivery: value.delivery ?? "steer",
         }
       },
-      async command(value: SessionCommandInput) {
-        await legacy().session.command({
+      async command(value: SessionCommandInput & { location?: { directory?: string }; sessionDirectory?: string; directory?: string }) {
+        const loc = value.location ?? (value.sessionDirectory ? { directory: value.sessionDirectory } : value.directory ? { directory: value.directory } : undefined)
+        await legacy(loc).session.command({
           sessionID: value.sessionID,
           messageID: value.id ?? undefined,
           command: value.command,
@@ -265,16 +269,18 @@ function createV1Api(input: CompatibleInput): CompatibleApi {
         }
       },
       async shell(value: SessionShellInput & LegacyPrompt) {
-        await legacy().session.shell({
+        const loc = value.location ?? (value.sessionDirectory ? { directory: value.sessionDirectory } : undefined)
+        await legacy(loc).session.shell({
           sessionID: value.sessionID,
           command: value.command,
           agent: value.agent,
           model: value.model,
         })
       },
-      compact: async (value: SessionCompactInput & { model?: LegacyPrompt["model"] }) => {
+      compact: async (value: SessionCompactInput & { model?: LegacyPrompt["model"]; sessionDirectory?: string; location?: { directory?: string } }) => {
         if (!value.model) throw new Error("A model is required to compact a V1 session")
-        await legacy().session.summarize({
+        const loc = value.location ?? (value.sessionDirectory ? { directory: value.sessionDirectory } : undefined)
+        await legacy(loc).session.summarize({
           sessionID: value.sessionID,
           providerID: value.model.providerID,
           modelID: value.model.modelID,
@@ -402,7 +408,6 @@ function createV1Api(input: CompatibleInput): CompatibleApi {
             auth: { type: "api", key: value.key },
           })
           await legacy(value.location).instance.dispose()
-          await input.legacy().instance.dispose()
         },
       },
       oauth: {
@@ -418,8 +423,8 @@ function createV1Api(input: CompatibleInput): CompatibleApi {
             {
               attemptID: `${value.integrationID}:${method}`,
               url: result.data.url,
-              instructions: result.data.instructions,
-              mode: result.data.method,
+              instructions: result.data.instructions ?? "",
+              mode: (result.data.method === "code" ? "code" : "auto") as "auto" | "code",
               time: { created: Date.now(), expires: Date.now() + 10 * 60 * 1000 },
             },
             value.location,
@@ -432,7 +437,6 @@ function createV1Api(input: CompatibleInput): CompatibleApi {
             { throwOnError: true },
           )
           await legacy(value.location).instance.dispose()
-          await input.legacy().instance.dispose()
         },
         status: async (value: Parameters<ServerApi["integration"]["oauth"]["status"]>[0]) => {
           const method = Number(value.attemptID.split(":").at(-1))
@@ -441,7 +445,6 @@ function createV1Api(input: CompatibleInput): CompatibleApi {
             { throwOnError: true },
           )
           await legacy(value.location).instance.dispose()
-          await input.legacy().instance.dispose()
           return located(
             { status: "complete" as const, time: { created: Date.now(), expires: Date.now() } },
             value.location,

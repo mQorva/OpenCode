@@ -630,6 +630,8 @@ export const dict = {
   "session.followupDock.edit": "Bearbeiten",
   "session.followupDock.collapse": "Warteschlange einklappen",
   "session.followupDock.expand": "Warteschlange ausklappen",
+  "session.followupDock.steer": "steuern",
+  "session.followupDock.drag": "ziehen zum Sortieren",
   "session.revertDock.summary.one": "{{count}} zurückgesetzte Nachricht",
   "session.revertDock.summary.other": "{{count}} zurückgesetzte Nachrichten",
   "session.revertDock.collapse": "Zurückgesetzte Nachrichten einklappen",
@@ -758,7 +760,7 @@ export const dict = {
   "settings.general.row.uiFont.description": "Die in der gesamten Benutzeroberfläche verwendete Schriftart anpassen",
   "settings.general.row.followup.title": "Verhalten bei Folgeeingaben",
   "settings.general.row.followup.description":
-    "Wählen Sie, ob Folgeeingaben die laufende Sitzung sofort steuern oder in einer Warteschlange warten",
+    "Wählen Sie das Standardverhalten für Folgeeingaben. Enter folgt diesem; Strg+Enter macht das Gegenteil (sofort senden oder in die Warteschlange).",
   "settings.general.row.followup.option.queue": "Warteschlange",
   "settings.general.row.followup.option.steer": "Steuern",
   "settings.general.row.showFileTree.title": "Dateibaum",

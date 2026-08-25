@@ -267,7 +267,9 @@ Wortart, Verben klein).
 - `packages/app/src/pages/new-session.tsx` stellt dieselben Bereiche bereits im neuen Chat bereit
   und bindet den vorhandenen Dateibaum sowie das Terminal ein. **Marker:** `draft-workspace-panel`
 - `packages/app/src/pages/new-session/new-session-view.tsx` entfernt im Seitenleisten-Layout die
-  doppelte Projektauswahl aus dem Composer. **Marker:** `const sidebarLayout = () =>`
+  doppelte Projektauswahl aus dem Composer. Ein sichtbarer Provider-Hinweis liegt dort im normalen
+  vertikalen Layoutfluss und reserviert seine Höhe, damit er den Promptbereich nicht überdeckt.
+  **Marker:** `const sidebarLayout = () =>` · `providerTip.present()`
 
 ## 9 — Sitzungscontainer
 
@@ -301,9 +303,54 @@ Wortart, Verben klein).
 - `packages/desktop/src/main/constants.ts` deaktiviert den offiziellen Updater. mQorva-Builds
   dürfen niemals aus den offiziellen OpenCode-Repositories aktualisiert oder dorthin veröffentlicht
   werden.
+- `packages/desktop/src/main/server.ts` und `packages/desktop/src/main/sidecar.ts` isolieren die
+  Umgebungsvariablen `XDG_DATA_HOME`, `XDG_CONFIG_HOME`, `XDG_CACHE_HOME` und `XDG_STATE_HOME`
+  auf das mQorva-spezifische `userDataPath`. Dadurch erhält die mQorva-Edition ihre eigene
+  SQLite-Datenbank (`opencode.db`) und eigene Lock-Dateien und kann vollständig parallel zur
+  offiziellen OpenCode-Installation betrieben werden.
+  *Rückgängig machen:* In beiden Dateien lediglich die drei Zuweisungen für `XDG_DATA_HOME`,
+  `XDG_CONFIG_HOME` und `XDG_CACHE_HOME` entfernen (dann wird wieder der globale Standardordner
+  `%LOCALAPPDATA%\opencode` genutzt).
+- `packages/desktop/src/main/background-cli.ts` durchsucht nur noch mQorva-eigene App-IDs nach
+  laufenden Daemons, um eine Kopplung an Daemons des originalen OpenCode zu verhindern.
+- `packages/desktop/src/main/index.ts` nutzt im Entwicklungsmodus standardmäßig Port 9223 für den
+  Remote-Debugging-Port, um Portkonflikte mit 9222 des Original-OpenCode zu vermeiden.
 - `packages/desktop/scripts/copy-metainfo.ts` und `electron-builder.config.ts` erzeugen auch auf
   Linux ausschließlich mQorva-Identitäten; der frühere offizielle Kompatibilitätslauncher wird
   nicht mitgeliefert.
+
+## 12 — Bestätigter Provider-Lebenszyklus
+
+**Warum:** Die Provider-Endpunkte bestätigen zunächst nur, dass Schlüssel, Credential oder
+Konfiguration gespeichert beziehungsweise entfernt wurden. Der sichtbare Provider-Katalog hängt
+zusätzlich an einer verzeichnisbezogenen OpenCode-Instanz und an mehreren Query-Caches. Ohne
+explizites Neuladen konnte die Oberfläche deshalb Erfolg melden, obwohl sie weiterhin den alten
+Zustand zeigte.
+
+- `packages/app/src/components/provider-connection.ts` enthält den gemeinsamen Abschlussvertrag
+  für Verbinden, benutzerdefinierte Provider und Trennen: Mutation abwarten, nur die betroffene
+  Instanz neu laden, den passenden Katalog aktualisieren und den erwarteten Zustand prüfen.
+- `dialog-connect-provider.tsx` verwendet denselben Vertrag für API-Schlüssel, OAuth-Code und
+  automatisches OAuth. Fehler beim abschließenden Aktualisieren bleiben im Dialog sichtbar;
+  Mehrfachübermittlungen werden während der laufenden Aktion gesperrt.
+- `dialog-custom-provider.tsx` wartet nach Schlüssel und Konfiguration ebenfalls auf die
+  bestätigte Katalogaktualisierung. Beim Reaktivieren wird `disabled_providers` bereinigt.
+- Beide Provider-Einstellungsoberflächen verwenden denselben Trennablauf. Bei V1 werden alte
+  Auth-Einträge entfernt und konfigurationsbasierte Provider deaktiviert; bei V2 werden die echten
+  Credential-IDs der Integration entfernt. Ein Erfolgstoast erscheint erst nach bestätigtem
+  Verschwinden aus der Liste.
+- `context/server-sync.tsx` kann Provider-Abfragen global, nur global oder für genau ein
+  Verzeichnis aktualisieren. Dadurch wird nicht mehr jede offene Projektinstanz neu aufgebaut.
+- `utils/server-compat.ts` lädt nach V1-Key- und OAuth-Mutationen nur die adressierte Instanz neu.
+
+**Abgrenzung zum Original:** Die fehlende Kopplung zwischen Auth-/Config-Mutation,
+Instanz-Neuladen und sichtbarem Katalog ist ein Upstream-Problem. Die zwei parallel gepflegten
+Settings-Oberflächen und der benutzerdefinierte Provider-Dialog vergrößerten es im Fork. Der
+gemeinsame Abschlussvertrag ist daher als Upstream-Kandidat geeignet; die mQorva-spezifische
+Dokumentation und UI-Einbindung bleiben Fork-Aufgabe.
+
+**Marker:** `confirmProviderConnection` · `disconnectProviderConnection` ·
+`refreshProviders(directory?: string | null)`
 
 ---
 

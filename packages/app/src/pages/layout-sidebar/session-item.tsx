@@ -1,14 +1,15 @@
-import { createEffect, createSignal, Show } from "solid-js"
-import { ContextMenu, DropdownMenu, IconButton, Tooltip, useLanguage } from "./upstream"
+import { createEffect, createSignal, Show, type Accessor } from "solid-js"
+import { ContextMenu, DropdownMenu, IconButton, IconV2, Tooltip, useLanguage } from "./upstream"
 import type { SidebarSession } from "./sessions"
+import { isNewChat } from "@/utils/session-title"
 
 function PinIcon(props: { filled?: boolean }) {
   return (
-    <svg viewBox="0 0 20 20" fill={props.filled ? "currentColor" : "none"} aria-hidden="true" class="size-4">
+    <svg viewBox="0 0 24 24" fill={props.filled ? "currentColor" : "none"} aria-hidden="true" class="size-4">
       <path
-        d="m7.25 3.25 5.5 0-.65 4.1 2.15 2.15v1H10.5V17l-.5.75-.5-.75v-6.5H5.75v-1L7.9 7.35l-.65-4.1Z"
+        d="M16 9V4h1V2H8v2h1v5c0 1.66-1.34 3-3 3v2h5.97v7l1 1 1-1v-7H19v-2c-1.66 0-3-1.34-3-3z"
         stroke="currentColor"
-        stroke-width="1.15"
+        stroke-width="1.2"
         stroke-linejoin="round"
       />
     </svg>
@@ -86,6 +87,7 @@ export function SessionItem(props: {
   active: boolean
   pinned: boolean
   unread: boolean
+  working: Accessor<boolean>
   indent?: boolean
   onSelect: () => void
   onRename: (title: string) => Promise<boolean>
@@ -98,7 +100,11 @@ export function SessionItem(props: {
   onCopyProject: () => void
 }) {
   const language = useLanguage()
-  const title = () => props.entry.session.title?.trim() || language.t("sidebarLayout.untitled")
+  const title = () => {
+    const value = props.entry.session.title?.trim()
+    if (isNewChat(value)) return language.t("sidebarLayout.newChat")
+    return value || language.t("sidebarLayout.untitled")
+  }
   const [editing, setEditing] = createSignal(false)
   const [value, setValue] = createSignal("")
   const [saving, setSaving] = createSignal(false)
@@ -156,9 +162,9 @@ export function SessionItem(props: {
               class="min-w-0 h-full flex-1 flex items-center gap-2 truncate text-left outline-none"
               aria-current={props.active ? "page" : undefined}
             >
-              <Show when={props.unread}>
+              <Show when={props.unread && props.pinned}>
                 <span
-                  class="size-1.5 shrink-0 rounded-full bg-icon-info-base"
+                  class="size-1.5 shrink-0 rounded-full bg-v2-icon-icon-accent"
                   aria-label={language.t("sidebarLayout.unread")}
                 />
               </Show>
@@ -188,9 +194,28 @@ export function SessionItem(props: {
         </Show>
 
         <Show when={!editing()}>
-          <Show when={!menuOpen() && !props.pinned}>
-            <span class="shrink-0 px-1 text-11-regular text-text-weaker group-hover/session:hidden group-focus-within/session:hidden">
-              {relativeAge(props.entry.session.time.updated, language.locale())}
+          <Show
+            when={props.working()}
+            fallback={
+              <Show when={!menuOpen() && !props.pinned}>
+                <Show
+                  when={props.unread}
+                  fallback={
+                    <span class="shrink-0 px-1 text-11-regular text-text-weaker group-hover/session:hidden group-focus-within/session:hidden">
+                      {relativeAge(props.entry.session.time.updated, language.locale())}
+                    </span>
+                  }
+                >
+                  <span
+                    class="shrink-0 mx-1 size-1.5 rounded-full bg-v2-icon-icon-accent group-hover/session:hidden group-focus-within/session:hidden"
+                    aria-label={language.t("sidebarLayout.unread")}
+                  />
+                </Show>
+              </Show>
+            }
+          >
+            <span class="shrink-0 px-1 group-hover/session:hidden group-focus-within/session:hidden">
+              <IconV2 name="spinner" class="size-3.5 animate-spin text-icon-base" />
             </span>
           </Show>
           <div

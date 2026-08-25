@@ -78,8 +78,10 @@ Lokale Windows-Pakete werden standardmäßig als mQorva-Ausgabe benannt:
 opencode-mqorva-<OpenCode-Version>-r<Revision>-<Build-Commit>-win-<Architektur>.exe
 ```
 
-Der Dev-Kanal verwendet eine eigene Electron-App-ID und sein eigenes Datenverzeichnis. Dadurch
-können die normale OpenCode-App und die mQorva-Entwicklungsinstanz gleichzeitig laufen.
+Der Dev- und Produktionskanal verwenden eine eigene Electron-App-ID sowie vollständig isolierte
+Backend-Verzeichnisse (`XDG_DATA_HOME`, `XDG_CONFIG_HOME`, `XDG_CACHE_HOME`, `XDG_STATE_HOME`
+innerhalb von `userDataPath`). Dadurch verfügt mQorva über eine eigene SQLite-Datenbank (`opencode.db`)
+und eigene Lock-Dateien, sodass die offizielle OpenCode-App und mQorva komplett parallel laufen können.
 
 `package.ps1` erstellt standardmäßig zuerst einen vollständigen frischen Build. Nur
 `package.ps1 -SkipBuild` verwendet ausdrücklich einen bereits vorhandenen Desktop-Build. Für

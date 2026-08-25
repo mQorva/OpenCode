@@ -6,16 +6,19 @@ import { ProviderIcon } from "@opencode-ai/ui/provider-icon"
 import { useMutation } from "@tanstack/solid-query"
 import { TextField } from "@opencode-ai/ui/text-field"
 import { showToast } from "@/utils/toast"
-import { batch, For } from "solid-js"
+import { type Accessor, batch, For } from "solid-js"
 import { createStore, produce } from "solid-js/store"
 import { ExternalLink } from "@/components/external-link"
 import { useServerSDK } from "@/context/server-sdk"
 import { useServerSync } from "@/context/server-sync"
 import { useLanguage } from "@/context/language"
+import { useProviders } from "@/hooks/use-providers"
+import { connectCustomProvider } from "./provider-connection"
 import { type FormState, headerRow, modelRow, validateCustomProvider } from "./dialog-custom-provider-form"
 
 type Props = {
   onBack: () => void
+  directory?: Accessor<string | undefined>
 }
 
 export function DialogCustomProvider(props: Props) {
@@ -35,16 +38,17 @@ export function DialogCustomProvider(props: Props) {
       }
       transition
     >
-      <CustomProviderForm />
+      <CustomProviderForm directory={props.directory} />
     </Dialog>
   )
 }
 
-export function CustomProviderForm(props: { autofocus?: boolean } = {}) {
+export function CustomProviderForm(props: { autofocus?: boolean; directory?: Accessor<string | undefined> } = {}) {
   const dialog = useDialog()
   const serverSync = useServerSync()
   const serverSDK = useServerSDK()
   const language = useLanguage()
+  const providers = useProviders(() => props.directory?.())
 
   const [form, setForm] = createStore<FormState>({
     providerID: "",
@@ -132,22 +136,23 @@ export function CustomProviderForm(props: { autofocus?: boolean } = {}) {
   const saveMutation = useMutation(() => ({
     mutationFn: async (result: NonNullable<ReturnType<typeof validate>>) => {
       if ((await serverSDK().protocol) !== "v1") throw new Error(language.t("provider.custom.unavailable"))
+      const directory = props.directory?.()
+      const client = serverSDK().createClient({ directory, throwOnError: true })
       const disabledProviders = serverSync().data.config.disabled_providers ?? []
       const nextDisabled = disabledProviders.filter((id) => id !== result.providerID)
 
-      if (result.key) {
-        await serverSDK().client.auth.set({
-          providerID: result.providerID,
-          auth: {
-            type: "api",
-            key: result.key,
-          },
-        })
-      }
-
-      await serverSync().updateConfig({
-        provider: { [result.providerID]: result.config },
-        disabled_providers: nextDisabled,
+      await connectCustomProvider({
+        providerID: result.providerID,
+        key: result.key,
+        client,
+        config: {
+          provider: { [result.providerID]: result.config },
+          disabled_providers: nextDisabled,
+        },
+        updateConfig: serverSync().updateConfig,
+        refresh: () => serverSync().refreshProviders(directory ?? null),
+        connected: () => providers.connected().some((provider) => provider.id === result.providerID),
+        failureMessage: language.t("common.requestFailed"),
       })
       return result
     },
@@ -162,7 +167,7 @@ export function CustomProviderForm(props: { autofocus?: boolean } = {}) {
     },
     onError: (err) => {
       const message = err instanceof Error ? err.message : String(err)
-      showToast({ title: language.t("common.requestFailed"), description: message })
+      showToast({ title: language.t("common.requestFailed"), description: message, variant: "error" })
     },
   }))
 

@@ -290,10 +290,18 @@ export function createServerSyncContextInner(serverSDK: ServerSDK) {
 
   const queryClient = useQueryClient()
   const homeSessions = createHomeSessionIndexCache(queryClient, ServerConnection.key(serverSDK.server))
-  const refreshProviders = () =>
-    queryClient.refetchQueries({
+  const refreshProviders = async (directory?: string | null) => {
+    const key = typeof directory === "string" ? directoryKey(directory) : directory
+    await queryClient.invalidateQueries({
       predicate: (query) => query.queryKey[0] === serverSDK.scope && query.queryKey[2] === "providers",
     })
+    await queryClient.refetchQueries({
+      predicate: (query) =>
+        query.queryKey[0] === serverSDK.scope &&
+        query.queryKey[2] === "providers" &&
+        (key === undefined || query.queryKey[1] === key),
+    })
+  }
 
   let bootedAt = 0
   let bootingRoot = false
@@ -563,6 +571,7 @@ export function createServerSyncContextInner(serverSDK: ServerSDK) {
       )
         bootstrap.refetch()
       if (eventType === "server.connected" || eventType === "global.disposed") {
+        void refreshProviders()
         if (recent) return
         for (const directory of Object.keys(children.children)) {
           if (!children.active(directory)) continue
@@ -609,6 +618,12 @@ export function createServerSyncContextInner(serverSDK: ServerSDK) {
       sessionContent: false,
       permission: session.data.permission,
       vcsCache: children.vcsCache.get(key),
+      notifyError: (message) =>
+        showToast({
+          variant: "error",
+          title: language.t("notification.session.error.title"),
+          description: message ?? language.t("notification.session.error.fallbackDescription"),
+        }),
       loadLsp: () => {
         if (!children.active(key)) return
         void queryClient.fetchQuery(queryOptionsApi.lsp(key))

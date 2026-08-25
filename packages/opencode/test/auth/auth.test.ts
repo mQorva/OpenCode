@@ -72,4 +72,21 @@ describe("Auth", () => {
       expect(after["anthropic"]).toBeUndefined()
     }),
   )
+
+  it.instance("preserves concurrent credential updates", () =>
+    Effect.gen(function* () {
+      const auth = yield* Auth.Service
+      yield* Effect.all(
+        Array.from({ length: 20 }, (_, index) =>
+          auth.set(`provider-${index}`, {
+            type: "api",
+            key: `test-key-${index}`,
+          }),
+        ),
+        { concurrency: "unbounded" },
+      )
+      const data = yield* auth.all()
+      expect(Object.keys(data).filter((key) => key.startsWith("provider-"))).toHaveLength(20)
+    }),
+  )
 })

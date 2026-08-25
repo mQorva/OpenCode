@@ -24,6 +24,7 @@ import { type ImageAttachmentPart, usePrompt } from "@/context/prompt"
 import { usePlatform } from "@/context/platform"
 import { useSDK } from "@/context/sdk"
 import { useSync } from "@/context/sync"
+import { SessionContextUsage } from "@/components/session-context-usage"
 import { createSessionTabs } from "@/pages/session/helpers"
 import { showToast } from "@/utils/toast"
 import { PromptInputV2, type PromptInputV2Suggestion } from "@opencode-ai/session-ui/v2/prompt-input"
@@ -56,6 +57,7 @@ export function PromptInputV2Composer(props: PromptInputV2ComposerProps) {
         borderUnderlay={props.borderUnderlay}
         class={props.class}
         variantControlVisible={!props.controller.model.loading}
+        slotAfterControls={<SessionContextUsage placement="top" buttonAppearance="v2" />}
         attachKeybind={command.keybindParts("file.attach")}
         attachShortcut={command.keybind("file.attach")}
         modelControl={
@@ -403,7 +405,7 @@ export function usePromptInputV2Controller(props: PromptInputV2ControllerProps):
       submit: {
         stopping,
         working,
-        onSubmit: () => void submission.handleSubmit(new Event("submit")),
+        onSubmit: (invert) => void submission.handleSubmit(new Event("submit"), invert ? { invert: true } : undefined),
         onStop: () => void submission.abort(),
       },
     },
@@ -479,6 +481,7 @@ function PromptInputV2ModelControl(props: {
   onClose: () => void
   onUnpaidClick: () => void
 }) {
+  const language = useLanguage()
   const shouldAnimate = createMemo<boolean>((previous) => previous ?? props.loading)
   const content = () => (
     <>
@@ -498,7 +501,21 @@ function PromptInputV2ModelControl(props: {
     </>
   )
   return (
-    <Show when={!props.loading}>
+    <Show
+      when={!props.loading}
+      fallback={
+        <ButtonV2
+          variant="ghost-muted"
+          size="normal"
+          disabled
+          class="min-w-0 max-w-[220px] justify-start ![font-weight:440] opacity-70 cursor-wait"
+          style={{ height: "28px" }}
+        >
+          <Icon name="spinner" class="size-3.5 animate-spin mr-1 text-v2-icon-icon-muted" />
+          <span class="truncate leading-4 text-v2-text-text-muted">{language.t("common.loading")}</span>
+        </ButtonV2>
+      }
+    >
       <TooltipV2
         placement="top"
         gutter={4}

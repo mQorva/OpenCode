@@ -59,7 +59,6 @@ import { Popover as KobaltePopover } from "@kobalte/core/popover"
 import { normalize } from "@opencode-ai/session-ui/session-diff"
 import { useFileComponent } from "@opencode-ai/ui/context/file"
 import { shouldMarkBoundaryGesture, normalizeWheelDelta } from "@/pages/session/message-gesture"
-import { SessionContextUsage } from "@/components/session-context-usage"
 import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { useLanguage } from "@/context/language"
 import { useSessionKey } from "@/pages/session/session-layout"
@@ -71,7 +70,7 @@ import { legacySessionHref, requireServerKey, sessionHref } from "@/utils/sessio
 import { useSDK } from "@/context/sdk"
 import { useSync } from "@/context/sync"
 import { notifySessionTabsRemoved } from "@/components/titlebar-session-events"
-import { sessionTitle } from "@/utils/session-title"
+import { isNewChat, sessionTitle } from "@/utils/session-title"
 import { scheduleConnectedMeasure } from "./measure"
 import { observeElementOffsetReconnectAware } from "./observe-element-offset"
 import { createTimelineProjection } from "./projection"
@@ -297,7 +296,12 @@ export function MessageTimeline(props: {
     return sync().session.get(id)
   })
   const titleValue = createMemo(() => info()?.title)
-  const titleLabel = createMemo(() => sessionTitle(titleValue()))
+  const titleLabel = createMemo(() => {
+    const value = titleValue()
+    if (!value) return undefined
+    if (isNewChat(value)) return language.t("sidebarLayout.newChat")
+    return sessionTitle(value)
+  })
   const shareUrl = createMemo(() => info()?.share?.url)
   const shareEnabled = createMemo(() => sync().data.config.share !== "disabled")
   const parentID = createMemo(() => info()?.parentID)
@@ -1383,11 +1387,16 @@ export function MessageTimeline(props: {
               "md:max-w-200 md:mx-auto 2xl:max-w-[1000px]": props.centered && !settings.general.newLayoutDesigns(),
             }}
           >
-            <div class="h-12 w-full flex items-center justify-between gap-2">
+            <div
+              classList={{
+                "h-12 w-full flex items-center gap-2": true,
+                "justify-between": !settings.general.newLayoutDesigns(),
+              }}
+            >
               <div
                 classList={{
-                  "flex items-center gap-1 min-w-0 flex-1": true,
-                  "pr-3": !settings.general.newLayoutDesigns(),
+                  "flex items-center gap-1 min-w-0": true,
+                  "flex-1 pr-3": !settings.general.newLayoutDesigns(),
                 }}
               >
                 <div class="flex items-center min-w-0 flex-1 w-full">
@@ -1472,10 +1481,6 @@ export function MessageTimeline(props: {
                       "gap-3": !settings.general.newLayoutDesigns(),
                     }}
                   >
-                    <SessionContextUsage
-                      placement="bottom"
-                      buttonAppearance={settings.general.newLayoutDesigns() ? "v2" : "default"}
-                    />
                     <Show when={!parentID()}>
                       <Show
                         when={settings.general.newLayoutDesigns()}

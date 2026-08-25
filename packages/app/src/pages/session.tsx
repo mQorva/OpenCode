@@ -1812,6 +1812,25 @@ export default function Page() {
     setFollowup("edit", id, undefined)
   }
 
+  const removeFollowup = (sessionID: string, id: string) => {
+    setFollowup("items", sessionID, (items) => (items ?? []).filter((entry) => entry.id !== id))
+    setFollowup("failed", sessionID, (value) => (value === id ? undefined : value))
+  }
+
+  const moveFollowup = (sessionID: string, fromID: string, toID: string) => {
+    if (fromID === toID) return
+    setFollowup("items", sessionID, (items) => {
+      const list = items ?? []
+      const from = list.findIndex((entry) => entry.id === fromID)
+      const to = list.findIndex((entry) => entry.id === toID)
+      if (from === -1 || to === -1) return list
+      const next = [...list]
+      const [moved] = next.splice(from, 1)
+      next.splice(to, 0, moved)
+      return next
+    })
+  }
+
   const halt = (sessionID: string) =>
     busy(sessionID)
       ? sdk()
@@ -2143,6 +2162,8 @@ export default function Page() {
                     sending: sendingFollowup(),
                     onSend: (id) => void sendFollowup(params.id!, id, { manual: true }),
                     onEdit: editFollowup,
+                    onRemove: (id) => removeFollowup(params.id!, id),
+                    onMove: (fromID, toID) => moveFollowup(params.id!, fromID, toID),
                   }
                 : undefined,
             revert: () =>

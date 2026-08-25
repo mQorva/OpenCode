@@ -175,6 +175,7 @@ function ProjectGroup(props: {
   onRename: (entry: SidebarSession, title: string) => Promise<boolean>
   onMarkUnread: (entry: SidebarSession) => void
   onTogglePin: (entry: SidebarSession) => void
+  sessionWorking: (entry: SidebarSession) => boolean
   onNewChat: () => void
   onEditProject: () => void
   onCopyProjectName: () => void
@@ -270,7 +271,7 @@ function ProjectGroup(props: {
             </DropdownMenu>
             <Tooltip value={language.t("command.session.new")} placement="top">
               <IconButton
-                icon="plus"
+                icon="speech-bubble"
                 iconSize="small"
                 variant="ghost"
                 class="!size-7 shrink-0 rounded-md text-icon-base"
@@ -324,6 +325,7 @@ function ProjectGroup(props: {
                 active={entry.session.id === props.activeSessionID}
                 pinned={props.isPinned(entry)}
                 unread={props.isUnread(entry)}
+                working={() => props.sessionWorking(entry)}
                 onSelect={() => props.onSelect(entry)}
                 onRename={(title) => props.onRename(entry, title)}
                 onMarkUnread={() => props.onMarkUnread(entry)}
@@ -479,6 +481,8 @@ export function Sidebar() {
   const toggle = (entry: SidebarSession) => setPinned(togglePin([...pinned], sessionPinKey(entry)))
   const isPinned = (entry: SidebarSession) => pinned.includes(sessionPinKey(entry))
   const isUnread = (entry: SidebarSession) => unread.includes(sessionPinKey(entry))
+  const sessionWorking = (entry: SidebarSession) =>
+    serverSync().session.data.session_working(entry.session.id)
   const markUnread = (entry: SidebarSession) => {
     const key = sessionPinKey(entry)
     if (!unread.includes(key)) setUnread((items) => [...items, key])
@@ -753,9 +757,8 @@ export function Sidebar() {
           onClick={() => newChat()}
           class="w-full h-9 flex items-center gap-2 rounded-lg px-2 text-14-regular text-text-base hover:bg-v2-background-bg-layer-02/60 hover:text-text-strong"
         >
-          <Icon name="new-session" size="small" class="text-icon-base" />
+          <Icon name="speech-bubble" size="small" class="text-icon-base" />
           <span class="flex-1 text-left truncate">{language.t("sidebarLayout.newChat")}</span>
-          <Icon name="plus" size="small" class="text-icon-base" />
         </button>
       </div>
 
@@ -772,6 +775,7 @@ export function Sidebar() {
                     active={entry.session.id === activeSessionID()}
                     pinned
                     unread={isUnread(entry)}
+                    working={() => sessionWorking(entry)}
                     onSelect={() => select(entry)}
                     onRename={(title) => renameSession(entry, title)}
                     onMarkUnread={() => markUnread(entry)}
@@ -811,6 +815,7 @@ export function Sidebar() {
                   activeDraftID={activeDraftID()}
                   isPinned={isPinned}
                   isUnread={isUnread}
+                  sessionWorking={sessionWorking}
                   onToggleCollapsed={() =>
                     setCollapsed((items) =>
                       items.includes(group.project.worktree)

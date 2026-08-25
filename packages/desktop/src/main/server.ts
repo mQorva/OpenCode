@@ -1,7 +1,7 @@
+import { spawn } from "node:child_process"
 import { dirname, join } from "node:path"
 import { fileURLToPath } from "node:url"
-import { app, utilityProcess } from "electron"
-import type { Details } from "electron"
+import { app } from "electron"
 import { getLogger } from "./logging"
 import { getUserShell, loadShellEnv } from "./shell-env"
 import { getStore } from "./store"
@@ -9,14 +9,8 @@ import { DEFAULT_SERVER_URL_KEY } from "./store-keys"
 
 export type HealthCheck = { wait: Promise<void> }
 
-type SidecarMessage =
-  | { type: "ready" }
-  | { type: "stopped" }
-  | { type: "error"; error: { message: string; stack?: string } }
-
 export type SidecarListener = { stop: () => Promise<void> }
 
-const SIDECAR_SERVICE_NAME = "opencode server"
 const SIDECAR_START_STALL_TIMEOUT = 60_000
 const SIDECAR_STOP_TIMEOUT = 6_000
 
@@ -46,10 +40,12 @@ export function preferAppEnv(userDataPath: string) {
   const shellEnv = shell ? loadShellEnv(shell, getLogger()) : null
   Object.assign(process.env, {
     ...shellEnv,
-    OPENCODE_EXPERIMENTAL_ICON_DISCOVERY: "true",
     OPENCODE_EXPERIMENTAL_FILEWATCHER: "true",
     OPENCODE_CLIENT: "desktop",
-    XDG_STATE_HOME: process.env.XDG_STATE_HOME ?? userDataPath,
+    XDG_DATA_HOME: process.env.XDG_DATA_HOME ?? join(userDataPath, "data"),
+    XDG_CONFIG_HOME: process.env.XDG_CONFIG_HOME ?? join(userDataPath, "config"),
+    XDG_CACHE_HOME: process.env.XDG_CACHE_HOME ?? join(userDataPath, "cache"),
+    XDG_STATE_HOME: process.env.XDG_STATE_HOME ?? join(userDataPath, "state"),
   })
   return shellEnv
 }
@@ -60,84 +56,38 @@ export async function spawnLocalServer(
   password: string,
   options: SpawnLocalServerOptions,
 ) {
-  const sidecar = join(dirname(fileURLToPath(import.meta.url)), "sidecar.js")
-  const child = utilityProcess.fork(sidecar, [], {
+  const executable = app.isPackaged
+    ? join(process.resourcesPath, executableName())
+    : join(dirname(fileURLToPath(import.meta.url)), "../../resources", executableName())
+  const child = spawn(executable, ["serve", "--hostname", hostname, "--port", String(port)], {
     cwd: process.cwd(),
-    env: createSidecarEnv(),
-    serviceName: SIDECAR_SERVICE_NAME,
-    stdio: "pipe",
+    env: createSidecarEnv(options.userDataPath, password),
+    stdio: ["ignore", "pipe", "pipe"],
+    windowsHide: true,
   })
   let exited = false
   const exit = defer<number>()
 
-  const onProcessGone = (_event: unknown, details: Details) => {
-    if (details.type !== "Utility" || details.name !== SIDECAR_SERVICE_NAME) return
-    options.onStderr?.(`utility process gone reason=${details.reason} exitCode=${details.exitCode}`)
-  }
-
-  app.on("child-process-gone", onProcessGone)
   child.once("exit", (code) => {
     exited = true
-    app.off("child-process-gone", onProcessGone)
-    options.onExit?.(code)
-    exit.resolve(code)
+    process.off("exit", killOnParentExit)
+    options.onExit?.(code ?? 1)
+    exit.resolve(code ?? 1)
   })
-  child.on("error", (error) => options.onStderr?.(`utility process error: ${serializeError(error).message}`))
+  const killOnParentExit = () => {
+    if (!exited) child.kill("SIGKILL")
+  }
+  process.once("exit", killOnParentExit)
+  child.on("error", (error) => options.onStderr?.(`sidecar process error: ${serializeError(error).message}`))
 
   child.stdout?.on("data", (chunk: Buffer) => options.onStdout?.(chunk.toString("utf8").trimEnd()))
   child.stderr?.on("data", (chunk: Buffer) => options.onStderr?.(chunk.toString("utf8").trimEnd()))
 
   await new Promise<void>((resolve, reject) => {
-    let done = false
-    let timeout: NodeJS.Timeout
-
-    const fail = (error: Error) => {
-      if (done) return
-      done = true
-      cleanup()
-      reject(error)
-    }
-
-    const refreshTimeout = () => {
-      clearTimeout(timeout)
-      timeout = setTimeout(() => {
-        fail(new Error(`Sidecar did not become ready within ${SIDECAR_START_STALL_TIMEOUT}ms: ${sidecar}`))
-      }, SIDECAR_START_STALL_TIMEOUT)
-    }
-
-    const onMessage = (message: SidecarMessage) => {
-      if (message.type === "ready") {
-        if (done) return
-        done = true
-        cleanup()
-        resolve()
-        return
-      }
-      if (message.type === "error") {
-        fail(Object.assign(new Error(message.error.message), { stack: message.error.stack }))
-      }
-    }
-    const onExit = (code: number) => {
-      fail(new Error(`Sidecar exited before ready with code ${code}`))
-    }
-    const cleanup = () => {
-      clearTimeout(timeout)
-      child.off("message", onMessage)
-      child.off("exit", onExit)
-    }
-
-    child.on("message", onMessage)
-    child.on("exit", onExit)
-    refreshTimeout()
-    child.postMessage({
-      type: "start",
-      hostname,
-      port,
-      password,
-      userDataPath: options.userDataPath,
-    })
+    child.once("spawn", resolve)
+    child.once("error", reject)
   }).catch((error) => {
-    if (!exited) child.kill()
+    if (!exited) child.kill("SIGKILL")
     throw error
   })
 
@@ -159,7 +109,13 @@ export async function spawnLocalServer(
       }
     }
 
-    await Promise.race([ready(), gone])
+    await Promise.race([
+      ready(),
+      gone,
+      delay(SIDECAR_START_STALL_TIMEOUT).then(() => {
+        throw new Error(`Sidecar did not become healthy within ${SIDECAR_START_STALL_TIMEOUT}ms: ${executable}`)
+      }),
+    ])
   })()
 
   let stopping: Promise<void> | undefined
@@ -169,12 +125,14 @@ export async function spawnLocalServer(
       stop: () => {
         if (stopping) return stopping
         if (exited) return Promise.resolve()
-        child.postMessage({ type: "stop" })
+        child.kill()
         stopping = Promise.race([
           exit.promise.then(() => undefined),
-          delay(SIDECAR_STOP_TIMEOUT).then(() => {
-            if (!exited) child.kill()
-          }),
+          delay(SIDECAR_STOP_TIMEOUT)
+            .then(() => {
+              if (!exited) child.kill("SIGKILL")
+            })
+            .then(() => Promise.race([exit.promise.then(() => undefined), delay(1000)])),
         ])
         return stopping
       },
@@ -210,13 +168,25 @@ export async function checkHealth(url: string, password?: string | null): Promis
   return false
 }
 
-function createSidecarEnv(): Record<string, string> {
+function createSidecarEnv(userDataPath: string, password: string): Record<string, string> {
   const env = Object.fromEntries(
     Object.entries(process.env).flatMap(([key, value]) => (value === undefined ? [] : [[key, String(value)]])),
   )
+  Object.assign(env, {
+    OPENCODE_SERVER_USERNAME: "opencode",
+    OPENCODE_SERVER_PASSWORD: password,
+    XDG_DATA_HOME: env.XDG_DATA_HOME ?? join(userDataPath, "data"),
+    XDG_CONFIG_HOME: env.XDG_CONFIG_HOME ?? join(userDataPath, "config"),
+    XDG_CACHE_HOME: env.XDG_CACHE_HOME ?? join(userDataPath, "cache"),
+    XDG_STATE_HOME: env.XDG_STATE_HOME ?? join(userDataPath, "state"),
+  })
   delete env.DEBUG
   if (process.platform === "linux") delete env.LD_PRELOAD
   return env
+}
+
+function executableName() {
+  return process.platform === "win32" ? "opencode-cli.exe" : "opencode-cli"
 }
 
 function delay(ms: number) {
