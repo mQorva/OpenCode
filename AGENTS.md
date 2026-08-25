@@ -144,6 +144,14 @@ const table = sqliteTable("session", {
 - Test actual implementation, do not duplicate logic into tests
 - Tests cannot run from repo root (guard: `do-not-run-tests-from-root`); run from package dirs like `packages/opencode`.
 
+## mQorva UI Development
+
+- mQorva builds on plain OpenCode plus a sidebar shell on the new design. The classic interface (V1, `newLayoutDesigns === false`) stays OpenCode-compatible.
+- Build new UI features only in the new-design path (`pages/layout-sidebar/*`, `prompt-input-v2`, `settings-v2`, and the `settings.general.newLayoutDesigns() === true` branches). Do not add purpose-built V1-only features.
+- Small, non-breaking fixes (bugs, layout/paper-cuts) may touch V1 too when they do not add mQorva-only behavior. Prefer changes that benefit both paths over duplicates.
+- Keep the `layoutMode` switch (`tabs` ↔ `sidebar`) working; the tabs mode is the upstream default and must keep working.
+- Build features only on the V2 API; do not add V1-API counterparts for new functionality.
+
 ## Type Checking
 
 - Always run `bun typecheck` from package directories (e.g., `packages/opencode`), never `tsc` directly.

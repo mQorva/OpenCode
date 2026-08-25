@@ -343,7 +343,8 @@ function SessionPanelFrame(props: ParentProps<{ newLayout: boolean; raised?: boo
     <div
       classList={{
         "flex-1 min-h-0 flex flex-col": true,
-        "bg-v2-background-bg-base": props.newLayout,
+        "bg-v2-background-bg-base": props.newLayout && settings.general.layoutMode() !== "sidebar",
+        "bg-v2-background-bg-layer-01": props.newLayout && settings.general.layoutMode() === "sidebar",
         "bg-background-stronger": !props.newLayout,
         "rounded-[10px] overflow-hidden": props.newLayout && settings.general.layoutMode() !== "sidebar",
         "shadow-[var(--v2-elevation-raised)]":

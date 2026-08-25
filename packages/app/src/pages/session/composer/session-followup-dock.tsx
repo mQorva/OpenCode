@@ -57,6 +57,7 @@ export function SessionFollowupDock(props: {
   return (
     <DockTray
       data-component="session-followup-dock"
+      class="bg-v2-background-bg-layer-01 border-b border-border-weaker-base"
       style={{
         "margin-bottom": "-0.875rem",
         "border-bottom-left-radius": 0,

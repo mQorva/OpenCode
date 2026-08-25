@@ -295,8 +295,9 @@ export function SessionSidePanel(props: {
         aria-hidden={!open()}
         inert={!open()}
         class="relative min-w-0 flex overflow-hidden"
-        classList={{
-          "bg-v2-background-bg-base": settings.general.newLayoutDesigns(),
+classList={{
+          "bg-v2-background-bg-base": settings.general.newLayoutDesigns() && settings.general.layoutMode() !== "sidebar",
+          "bg-v2-background-bg-layer-02": settings.general.newLayoutDesigns() && settings.general.layoutMode() === "sidebar",
           "bg-background-base": !settings.general.newLayoutDesigns(),
           "h-full shrink-0": !props.stacked,
           "h-full min-h-0": props.stacked,

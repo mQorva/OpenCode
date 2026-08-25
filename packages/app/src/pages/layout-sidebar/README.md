@@ -29,3 +29,17 @@ Dateien, Terminal und Einstellungen bleiben OpenCode-Funktionen.
 `upstream.ts` ist der einzige Importübergang zu gemeinsam genutzten OpenCode-Komponenten. Neue
 Bedienlogik soll dort bestehende UI- und Layout-APIs weiterverwenden, statt parallele Zustände
 anzulegen.
+
+## Entwicklungsregel (mQorva)
+
+Dieser Ordner ist der **mQorva-Entwicklungszweig** im neuen Design (`layoutMode === "sidebar"`).
+Es gelten die Regeln aus der Repository-`AGENTS.md` (Abschnitt „mQorva UI Development"):
+
+- Neue mQorva-Funktionen werden **nur** hier (und in `settings-v2`, `prompt-input-v2`,
+  den `newLayoutDesigns() === true`-Zweigen) gebaut.
+- Das klassische Interface (`newLayoutDesigns === false`) bleibt OpenCode-kompatibel und erhält
+  keine mQorva-eigenen Features. Kleine, nicht-brechende Fixes dürfen es berühren.
+- Übergreifende Features (z. B. Titel-Platzhalter, Warteschlange) werden nicht zweigeteilt
+  gesperrt; sie können beide Pfade betreffen.
+- Der Umschalter `layoutMode` (tabs ↔ sidebar) bleibt aktiv; der Tab-Modus ist der
+  Upstream-Standard.
