@@ -12,6 +12,7 @@ type ProviderCatalogInput =
       explicit: true
       directory?: string
       catalog?: DirectoryCatalog
+      global?: NormalizedProviderListResponse
     }
   | {
       explicit: false
@@ -22,7 +23,10 @@ type ProviderCatalogInput =
 
 export function selectProviderCatalog(input: ProviderCatalogInput) {
   if (input.directory && input.catalog?.ready) return input.catalog.providers
-  if (input.explicit) return emptyProviderCatalog
+  // Fall back to the global catalog so a fresh directory without a completed
+  // bootstrap does not render the model selector permanently in a "loading"
+  // state.
+  if (input.explicit) return "global" in input ? (input.global ?? emptyProviderCatalog) : emptyProviderCatalog
   return input.global
 }
 

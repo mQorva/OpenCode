@@ -607,8 +607,9 @@ export function Sidebar() {
     if (!created) return
 
     serverSync().session.remember(created)
-    const [, setStore] = serverSync().child(directory, { bootstrap: true })
-    setStore("session", (sessions) =>
+    // Fetch sessions lazily (no bootstrap:true) so the new tab can render
+    // immediately instead of waiting for a full provider/path/agent bootstrap.
+    serverSync().child(directory)[1]("session", (sessions) =>
       sessions.some((session) => session.id === created.id) ? sessions : [...sessions, created],
     )
     const tab = tabs.addSessionTab({ server: server.key, sessionId: created.id })
@@ -628,6 +629,9 @@ export function Sidebar() {
           if (!result) return
           const directory = Array.isArray(result) ? result[0] : result
           if (!directory) return
+          // Kick off project registration without blocking: register first,
+          // then create the session; do not chain via .then(...) which defers
+          // the session creation until file.list/initGit completes.
           void Promise.resolve(home.project.add(conn, [directory])).then(() => createProjectSession(directory))
         },
       }),

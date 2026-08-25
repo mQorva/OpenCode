@@ -3,7 +3,7 @@ import { Tooltip } from "@opencode-ai/ui/tooltip"
 import { Icon as IconV2 } from "@opencode-ai/ui/v2/icon"
 import { TooltipV2 } from "@opencode-ai/ui/v2/tooltip-v2"
 import { WordmarkV2 } from "@opencode-ai/ui/v2/wordmark-v2"
-import { Show, createMemo, createSignal, type Accessor } from "solid-js"
+import { Show, createMemo, createSignal, onCleanup, type Accessor } from "solid-js"
 import { createStore } from "solid-js/store"
 import { Portal } from "solid-js/web"
 import createPresence from "solid-presence"
@@ -34,6 +34,7 @@ export function NewSessionView(props: {
 }) {
   const settings = useSettings()
   const sidebarLayout = () => settings.general.layoutMode() === "sidebar"
+  const providerTip = createProviderTipController()
 
   return (
     <div class="@container relative flex flex-col min-h-0 h-full flex-1">
@@ -48,7 +49,11 @@ export function NewSessionView(props: {
               <div class={NEW_SESSION_CONTENT_WIDTH}>
                 <WordmarkV2 class="h-auto w-full text-v2-background-bg-inverse" />
                 <div class="mt-8 flex flex-col gap-8">
-                  <PromptInputV2Composer controller={props.input} />
+                  {/* The composer only makes sense once a project is picked; before
+                      that it renders a half-ready input that "loads" forever. */}
+                  <Show when={props.project.selected()}>
+                    <PromptInputV2Composer controller={props.input} />
+                  </Show>
                   <Show when={props.project.empty()}>
                     <PromptProjectAddButton controller={props.project} />
                   </Show>
@@ -79,14 +84,20 @@ export function NewSessionView(props: {
         >
           <div class="h-full flex flex-col">
             <div class="flex-1" />
-            <div class="shrink-0 flex justify-center px-6 pb-8">
+            <div
+              class="shrink-0 flex justify-center px-6 transition-[padding-bottom] duration-[250ms] ease-[cubic-bezier(0.215,0.61,0.355,1)] motion-reduce:transition-none"
+              classList={{ "pb-2": providerTip.present(), "pb-8": !providerTip.present() }}
+            >
               <div class="w-full max-w-[58.5rem]">
                 <PromptInputV2Composer controller={props.input} />
               </div>
             </div>
+            <ProviderTip controller={providerTip} inline />
           </div>
         </Show>
-        <ProviderTip />
+        <Show when={!sidebarLayout()}>
+          <ProviderTip controller={providerTip} />
+        </Show>
       </div>
     </div>
   )
@@ -110,8 +121,7 @@ export function NewSessionStatus(props: { mount: Accessor<HTMLElement | null>; v
   )
 }
 
-function ProviderTip() {
-  const language = useLanguage()
+function createProviderTipController() {
   const dialog = useDialog()
   const sdk = useSDK()
   const serverSync = useServerSync()
@@ -138,20 +148,39 @@ function ProviderTip() {
     })
   }
 
+  return {
+    visible,
+    present: presence.present,
+    setRef,
+    openProviders,
+    dismiss: () => setPersistedState("dismissedAt", Date.now()),
+  }
+}
+
+function ProviderTip(props: { controller: ReturnType<typeof createProviderTipController>; inline?: boolean }) {
+  const language = useLanguage()
+  onCleanup(() => props.controller.setRef(undefined))
+
   return (
-    <Show when={presence.present()}>
-      <div class="pointer-events-none absolute inset-x-0 bottom-4 flex justify-center px-10">
+    <Show when={props.controller.present()}>
+      <div
+        class={
+          props.inline
+            ? "pointer-events-none shrink-0 flex justify-center px-10 pb-4"
+            : "pointer-events-none absolute inset-x-0 bottom-4 flex justify-center px-10"
+        }
+      >
         <div
-          ref={setRef}
+          ref={props.controller.setRef}
           data-component="provider-tip"
-          data-visible={visible()}
+          data-visible={props.controller.visible()}
           class="group/provider-tip pointer-events-auto relative flex h-6 max-w-full items-center transition-[opacity,transform] duration-[250ms] ease-[cubic-bezier(0.215,0.61,0.355,1)] motion-reduce:transition-none"
           classList={{ "data-[visible=false]:animate-out fade-out slide-out-to-bottom-4": true }}
         >
           <button
             type="button"
             class="flex h-6 min-w-0 items-center rounded-[4px] pl-1.5 text-[13px] leading-none tracking-[-0.04px] text-v2-text-text-faint transition-[background-color,color] duration-150 ease-in-out hover:bg-v2-overlay-simple-overlay-hover hover:text-v2-text-text-muted focus-visible:bg-v2-overlay-simple-overlay-hover focus-visible:text-v2-text-text-muted focus-visible:outline-none"
-            onClick={openProviders}
+            onClick={props.controller.openProviders}
           >
             <span class="truncate">{language.t("home.providerTip")}</span>
             <span class="flex size-6 shrink-0 items-center justify-center" aria-hidden="true">
@@ -168,7 +197,7 @@ function ProviderTip() {
               type="button"
               class="flex size-6 items-center justify-center rounded-[4px] text-v2-icon-icon-muted transition-[background-color,color] duration-150 ease-in-out hover:bg-v2-overlay-simple-overlay-hover hover:text-v2-icon-icon-base focus-visible:bg-v2-overlay-simple-overlay-hover focus-visible:text-v2-icon-icon-base focus-visible:outline-none"
               aria-label={language.t("common.dismiss")}
-              onClick={() => setPersistedState("dismissedAt", Date.now())}
+              onClick={props.controller.dismiss}
             >
               <IconV2 name="xmark-small" />
             </button>
