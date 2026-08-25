@@ -126,7 +126,14 @@ try {
     if ($Update) {
         Write-Host ""
         if ($workingTree) {
-            Write-Host "[UPDATE] Nicht committete Aenderungen erkannt - sichere diese vorab lokal ..." -ForegroundColor Yellow
+            Write-Host "[UPDATE] Warnung: nicht committete Aenderungen erkannt." -ForegroundColor Yellow
+            Write-Host "  - Ein Update committet diese NUR lokal und pusht sie NICHT auf dein GitHub (origin)." -ForegroundColor Gray
+            Write-Host "  - Erst -Backup sichert deinen Stand dauerhaft auf GitHub (empfohlen vor einem Update)." -ForegroundColor Gray
+            $answer = Read-Host "[UPDATE] Trotzdem fortfahren und lokal committen? (j/n)"
+            if ($answer -ne "j" -and $answer -ne "J" -and $answer -ne "y" -and $answer -ne "Y") {
+                Write-Host "[UPDATE] Abgebrochen - führe zuerst aus: .\sync.ps1 -Backup" -ForegroundColor Red
+                return
+            }
             git add -A
             $commitMsg = if (-not [string]::IsNullOrWhiteSpace($Message)) { $Message } else { "feat: mQorva updates vor Upstream-Sync" }
             git commit -m $commitMsg

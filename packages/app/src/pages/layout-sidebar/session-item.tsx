@@ -1,5 +1,5 @@
 import { createEffect, createSignal, Show, type Accessor } from "solid-js"
-import { ContextMenu, DropdownMenu, IconButton, IconV2, Tooltip, useLanguage } from "./upstream"
+import { ContextMenu, DropdownMenu, IconButton, Spinner, Tooltip, useLanguage } from "./upstream"
 import type { SidebarSession } from "./sessions"
 import { isNewChat } from "@/utils/session-title"
 
@@ -215,7 +215,7 @@ export function SessionItem(props: {
             }
           >
             <span class="shrink-0 px-1 group-hover/session:hidden group-focus-within/session:hidden">
-              <IconV2 name="spinner" class="size-3.5 animate-spin text-icon-base" />
+              <Spinner class="size-3.5" />
             </span>
           </Show>
           <div
