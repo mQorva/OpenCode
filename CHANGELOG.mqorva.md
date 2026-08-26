@@ -18,6 +18,13 @@ OpenCode-Basis: `1.18.18` (`e23586af2623f1bc2e8e6965d2d7acf7bd03d5c3`)
 - dauerhaft sichtbarer Scrollbalken im Chatverlauf, durchgehend bis zur unteren Fensterkante, mit Schrittpfeilen an beiden Enden
 - rechter Arbeitsbereich liegt auf derselben Fläche wie der Verlauf, getrennt durch eine Kante statt durch einen Farbsprung
 - Sitzungstitel steht nur noch in der Kopfzeile; das zugehörige Menü sitzt dort statt in einer zweiten Zeile im Verlauf
+- Kontextmenüs der Seitenleiste in derselben Familie wie die übrige Oberfläche; Dreipunkt-Knöpfe entfallen, die rechte Maustaste übernimmt
+- Schriftgrößen, -gewichte und Zeilenhöhen der Seitenleiste an die übrige Oberfläche angeglichen
+- Farben des Fenstermenüs an die übrigen Menüs angeglichen
+- Markdown-Dateien öffnen im Seitenpanel als gesetzte Vorschau; ein Knopf in der Tab-Leiste schaltet auf den Quelltext um
+- Tabs, „öffnen mit" und der Einklapp-Knopf des Seitenpanels stehen auf einer Linie mit der Kopfzeile der Sitzung
+- Sitzungsmenü sitzt direkt hinter dem Sitzungstitel statt am rechten Rand
+- Kante zwischen Verlauf und Seitenbereich ist sichtbar und damit als Ziehgriff erkennbar
 - Sitzungsliste ohne Zeitangabe je Eintrag; lange Titel wandern beim Zeigen einmal und bleiben stehen
 - Schnellliste am linken Rand des Chatverlaufs mit einer Marke je Nutzereingabe, Vorschau beim Zeigen und Sprung per Klick
 - Schnellliste mit gleichmäßigen Abständen; Marken wachsen weich unter dem Zeiger, die Vorschau zeigt die Eingabe und darunter die Antwort des Agenten

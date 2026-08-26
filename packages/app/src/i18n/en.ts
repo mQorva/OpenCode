@@ -689,6 +689,7 @@ export const dict = {
   "session.review.noUncommittedChanges": "No uncommitted changes yet",
   "session.review.noBranchChanges": "No branch changes yet",
 
+  "session.file.markdownPreview": "Toggle Markdown preview",
   "session.files.selectToOpen": "Select a file to open",
   "session.files.all": "All files",
   "session.files.empty": "No files",

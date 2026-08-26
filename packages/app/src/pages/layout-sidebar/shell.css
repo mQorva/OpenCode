@@ -15,6 +15,12 @@
   --workspace-text: var(--v2-grey-400);
 }
 
+/* Set on the workspace rather than on the composer region: a new session renders its own
+   composer and would otherwise leave the input on the plain surface. */
+[data-slot="sidebar-workspace"] {
+  --prompt-input-surface: var(--v2-background-bg-layer-01);
+}
+
 [data-color-scheme="dark"] [data-slot="sidebar-workspace"] {
   --v2-background-bg-base: var(--workspace-surface);
   --color-v2-background-bg-base: var(--workspace-surface);

@@ -81,6 +81,67 @@
     white-space: nowrap;
   }
 
+  /* The window menu still runs on the v1 dropdown, so its surface and type colours come from the
+     old token family and read as foreign next to every v2 menu. Align them here rather than
+     rebuilding the menu: sizing and behaviour above stay as they are. */
+  body[data-new-layout] [data-component="dropdown-menu-content"].desktop-app-menu,
+  body[data-new-layout] [data-component="dropdown-menu-sub-content"].desktop-app-menu {
+    background-color: var(--v2-background-bg-layer-01);
+    border-radius: 6px;
+    box-shadow: var(--v2-elevation-floating);
+    color: var(--v2-text-text-base);
+  }
+
+  body[data-new-layout] .desktop-app-menu [data-slot="dropdown-menu-item"],
+  body[data-new-layout] .desktop-app-menu [data-slot="dropdown-menu-sub-trigger"] {
+    border-radius: 4px;
+    color: var(--v2-text-text-base);
+    letter-spacing: -0.04px;
+  }
+
+  body[data-new-layout] .desktop-app-menu [data-slot="dropdown-menu-item"]:where(:hover, [data-highlighted]),
+  body[data-new-layout] .desktop-app-menu [data-slot="dropdown-menu-sub-trigger"]:where(:hover, [data-highlighted]) {
+    background: var(--v2-overlay-simple-overlay-hover);
+    color: var(--v2-text-text-base);
+  }
+
+  body[data-new-layout] .desktop-app-menu [data-slot="dropdown-menu-group-label"] {
+    color: var(--v2-text-text-muted);
+    letter-spacing: 0.05px;
+  }
+
+  body[data-new-layout] .desktop-app-menu [data-slot="desktop-app-menu-keybind"],
+  body[data-new-layout] .desktop-app-menu [data-slot="desktop-app-menu-chevron"] {
+    color: var(--v2-text-text-faint);
+  }
+
+  body[data-new-layout] .desktop-app-menu [data-slot="dropdown-menu-separator"] {
+    background: var(--v2-border-border-muted, var(--border-weak-base));
+  }
+
+  /* Der Seitenbereich beginnt in der Seitenleisten-Ansicht direkt mit der Tab-Leiste. Damit Tabs,
+     "öffnen mit" und der Einklapp-Knopf auf einer Linie mit der Kopfzeile der Sitzung sitzen,
+     bekommt die Leiste deren Höhe. */
+  body[data-new-layout] #review-panel [data-component="tabs"] .mqorva-tabs-bar-flush [data-slot="tabs-list"],
+  body[data-new-layout]
+    #review-panel
+    [data-component="tabs"][data-variant="normal"][data-orientation="horizontal"]
+    .mqorva-tabs-bar-flush
+    [data-slot="tabs-list"] {
+    height: 48px;
+  }
+
+  /* Der geteilte Griff kommt ohne Farbe; ohne sie ist die Kante zwischen Verlauf und Seitenbereich
+     unsichtbar und wirkt unbeweglich. */
+  .mqorva-session-resize-handle::after {
+    background: var(--v2-border-border-muted, var(--border-weak-base));
+  }
+
+  /* Markdown-Vorschau im Dateipanel: gleiche Textbreite und -abstände wie im Verlauf. */
+  .mqorva-markdown-file-view [data-component="markdown"] {
+    max-width: 80ch;
+  }
+
   [data-slot="desktop-app-menu-chevron"] {
     display: flex;
     margin-left: auto;

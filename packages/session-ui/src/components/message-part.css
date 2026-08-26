@@ -150,6 +150,15 @@
       unicode-bidi: isolate;
     }
 
+    [data-highlight="file"][data-clickable] {
+      cursor: pointer;
+
+      &:hover {
+        text-decoration: underline;
+        text-underline-offset: 2px;
+      }
+    }
+
     [data-highlight="agent"] {
       color: var(--syntax-type);
       direction: ltr;

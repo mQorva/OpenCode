@@ -32,6 +32,7 @@ import { markdownBlockKey, type MarkdownToken } from "./markdown-worker-protocol
 import { shouldResetCodeTokens, type RenderedCodeState } from "./markdown-code-state"
 import { getCachedMarkdown, sanitizeMarkdown, touchCachedMarkdown, type MarkdownCacheEntry } from "./markdown-cache"
 import { inlineCodeKind } from "./markdown-inline-code-kind"
+import { useOpenFile, type OpenFilePath } from "../context/open-file"
 
 type RenderedBlock =
   | (MarkdownCacheEntry & { key: string; mode: Exclude<Block["mode"], "code"> })
@@ -265,24 +266,44 @@ function markCodeLinks(root: HTMLDivElement) {
   }
 }
 
-function markInlineCode(root: HTMLDivElement) {
+function markInlineCode(root: HTMLDivElement, canOpenFiles: boolean) {
   const codeNodes = Array.from(root.querySelectorAll(":not(pre) > code"))
   for (const code of codeNodes) {
     if (!(code instanceof HTMLElement)) continue
     delete code.dataset.inlineCodeKind
+    delete code.dataset.fileLink
     const kind = inlineCodeKind(code.textContent ?? "")
     if (kind) code.dataset.inlineCodeKind = kind
+    if (kind === "path" && canOpenFiles) code.dataset.fileLink = ""
   }
 }
 
-function decorate(root: HTMLDivElement, labels: CopyLabels) {
+function decorate(root: HTMLDivElement, labels: CopyLabels, canOpenFiles: boolean) {
   const blocks = Array.from(root.querySelectorAll("pre"))
   for (const block of blocks) {
     ensureCodeWrapper(block, labels)
   }
   if (!document.body.hasAttribute("data-new-layout")) return
-  markInlineCode(root)
+  markInlineCode(root, canOpenFiles)
   markCodeLinks(root)
+}
+
+function setupFileLinks(root: HTMLDivElement, open: OpenFilePath) {
+  const handleClick = (event: MouseEvent) => {
+    const target = event.target
+    if (!(target instanceof Element)) return
+    const code = target.closest("code[data-file-link]")
+    if (!(code instanceof HTMLElement)) return
+    event.preventDefault()
+    const path = code.textContent?.trim()
+    if (path) open(path)
+  }
+
+  root.addEventListener("click", handleClick)
+
+  return () => {
+    root.removeEventListener("click", handleClick)
+  }
 }
 
 function setupCodeCopy(root: HTMLDivElement, getLabels: () => CopyLabels) {
@@ -372,6 +393,7 @@ export function Markdown(
 ) {
   const [local, others] = splitProps(props, ["text", "cacheKey", "streaming", "class", "classList"])
   const i18n = useI18n()
+  const openFile = useOpenFile()
   const [root, setRoot] = createSignal<HTMLDivElement>()
   const owner = createUniqueId()
   const activeCodeKeys = new Set<string>()
@@ -491,6 +513,7 @@ export function Markdown(
   )
 
   let copyCleanup: (() => void) | undefined
+  let fileLinkCleanup: (() => void) | undefined
 
   createEffect(() => {
     const container = root()
@@ -515,7 +538,7 @@ export function Markdown(
     })
     activeCodeKeys.clear()
     nextCodeKeys.forEach((key) => activeCodeKeys.add(key))
-    content.forEach((block, index) => updateBlock(container, index, block, labels))
+    content.forEach((block, index) => updateBlock(container, index, block, labels, !!openFile))
     while (container.children.length > content.length) {
       const child = container.lastElementChild
       if (!child) break
@@ -530,10 +553,12 @@ export function Markdown(
         copy: i18n.t("ui.message.copy"),
         copied: i18n.t("ui.message.copied"),
       }))
+    if (!fileLinkCleanup && openFile) fileLinkCleanup = setupFileLinks(container, openFile)
   })
 
   onCleanup(() => {
     if (copyCleanup) copyCleanup()
+    if (fileLinkCleanup) fileLinkCleanup()
     disposeMarkdownProjection(owner)
     activeCodeKeys.forEach(disposeCode)
     completedCode.clear()
@@ -586,7 +611,13 @@ function disposeCode(key: string) {
   disposeStreamingCode(key)
 }
 
-function updateBlock(container: HTMLDivElement, index: number, block: RenderedBlock, labels: CopyLabels) {
+function updateBlock(
+  container: HTMLDivElement,
+  index: number,
+  block: RenderedBlock,
+  labels: CopyLabels,
+  canOpenFiles: boolean,
+) {
   const current = container.children[index]
   if (block.mode === "code") {
     updateCodeBlock(container, current, block, labels)
@@ -605,7 +636,7 @@ function updateBlock(container: HTMLDivElement, index: number, block: RenderedBl
   next.dataset.markdownHash = block.hash
   next.style.display = "contents"
   next.innerHTML = block.html
-  decorate(next, labels)
+  decorate(next, labels, canOpenFiles)
 
   if (!(current instanceof HTMLDivElement)) {
     container.appendChild(next)

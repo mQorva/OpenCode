@@ -1,13 +1,5 @@
 import { For, Show } from "solid-js"
-import {
-  DialogHeader,
-  DialogTitleGroup,
-  DialogV2,
-  Icon,
-  displayName,
-  useLanguage,
-  type LocalProject,
-} from "./upstream"
+import { DialogHeader, DialogTitleGroup, DialogV2, Icon, displayName, useLanguage, type LocalProject } from "./upstream"
 
 export function ProjectStartDialog(props: {
   recent: LocalProject[]
@@ -35,10 +27,10 @@ export function ProjectStartDialog(props: {
             <Icon name="folder" size="small" class="text-v2-icon-icon-muted" />
           </span>
           <span class="min-w-0">
-            <span class="block text-14-medium text-v2-text-text-strong">
+            <span class="block text-[13px] font-[530] leading-4 tracking-[-0.04px] text-v2-text-text-strong">
               {language.t("sidebarLayout.projectStart.folder")}
             </span>
-            <span class="block text-12-regular text-v2-text-text-muted">
+            <span class="block text-[12px] font-[440] leading-4 tracking-[-0.04px] text-v2-text-text-muted">
               {language.t("sidebarLayout.projectStart.folderDescription")}
             </span>
           </span>
@@ -53,17 +45,17 @@ export function ProjectStartDialog(props: {
             <Icon name="server" size="small" class="text-v2-icon-icon-muted" />
           </span>
           <span class="min-w-0">
-            <span class="block text-14-medium text-v2-text-text-strong">
+            <span class="block text-[13px] font-[530] leading-4 tracking-[-0.04px] text-v2-text-text-strong">
               {language.t("sidebarLayout.projectStart.server")}
             </span>
-            <span class="block text-12-regular text-v2-text-text-muted">
+            <span class="block text-[12px] font-[440] leading-4 tracking-[-0.04px] text-v2-text-text-muted">
               {language.t("sidebarLayout.projectStart.serverDescription")}
             </span>
           </span>
         </button>
 
         <Show when={props.recent.length > 0}>
-          <div class="pt-3 text-12-medium text-v2-text-text-muted">
+          <div class="pt-3 text-[11px] font-[530] leading-4 tracking-[0.05px] text-v2-text-text-muted">
             {language.t("sidebarLayout.projectStart.recent")}
           </div>
           <div class="overflow-hidden rounded-lg border border-border-weaker-base">
@@ -75,7 +67,7 @@ export function ProjectStartDialog(props: {
                   onClick={() => props.onReopen(project)}
                 >
                   <Icon name="folder" size="small" class="shrink-0 text-v2-icon-icon-muted" />
-                  <span class="min-w-0 flex-1 truncate text-13-regular text-v2-text-text-strong">
+                  <span class="min-w-0 flex-1 truncate text-[13px] font-[440] leading-4 tracking-[-0.04px] text-v2-text-text-strong">
                     {displayName(project)}
                   </span>
                 </button>

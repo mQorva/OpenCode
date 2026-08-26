@@ -32,6 +32,7 @@ import {
   QuestionInfo,
 } from "@opencode-ai/sdk/v2"
 import { useData } from "../context"
+import { useOpenFile } from "../context/open-file"
 import { useFileComponent } from "@opencode-ai/ui/context/file"
 import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { type UiI18n, useI18n } from "@opencode-ai/ui/context/i18n"
@@ -1394,6 +1395,7 @@ export function UserMessageDisplay(props: {
 type HighlightSegment = { text: string; type?: "file" | "agent" }
 
 function HighlightedText(props: { text: string; references: FilePart[]; agents: AgentPart[] }) {
+  const openFile = useOpenFile()
   const segments = createMemo(() => {
     const text = props.text
 
@@ -1427,7 +1429,25 @@ function HighlightedText(props: { text: string; references: FilePart[]; agents: 
     return result
   })
 
-  return <For each={segments()}>{(segment) => <span data-highlight={segment.type}>{segment.text}</span>}</For>
+  const open = (segment: HighlightSegment) => {
+    if (!openFile || segment.type !== "file") return
+    const path = segment.text.replace(/^@/, "").trim()
+    if (path) openFile(path)
+  }
+
+  return (
+    <For each={segments()}>
+      {(segment) => (
+        <span
+          data-highlight={segment.type}
+          data-clickable={openFile && segment.type === "file" ? "" : undefined}
+          onClick={() => open(segment)}
+        >
+          {segment.text}
+        </span>
+      )}
+    </For>
+  )
 }
 
 export function Part(props: MessagePartProps) {

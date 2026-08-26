@@ -54,6 +54,7 @@ import {
   type Sizing,
 } from "@/pages/session/helpers"
 import { setSessionHandoff } from "@/pages/session/handoff"
+import { isMarkdownPath, markdownPreview } from "@/pages/session/markdown-preview"
 import { useSessionLayout } from "@/pages/session/session-layout"
 import { SessionFileBrowserTab, type SessionFileBrowserState } from "@/pages/session/v2/session-file-browser-tab"
 
@@ -75,6 +76,7 @@ export function SessionSidePanel(props: {
   reviewCount: () => number
   reviewPanel: () => JSX.Element
   reviewSidebarToggle?: (disabled: boolean) => JSX.Element
+  panelToggle?: () => JSX.Element
   fileBrowserState?: SessionFileBrowserState
   activeDiff?: string
   focusReviewDiff: (path: string) => void
@@ -187,6 +189,13 @@ export function SessionSidePanel(props: {
   const openedTabs = tabState.openedTabs
   const activeTab = tabState.activeTab
   const activeFileTab = tabState.activeFileTab
+
+  // mQorva: Der Umschalter gilt nur, solange eine Markdown-Datei im Panel offen ist.
+  const markdownTabOpen = createMemo(() => {
+    const tab = activeFileTab()
+    if (!tab) return false
+    return isMarkdownPath(file.pathFromTab(tab))
+  })
 
   const fileTreeTab = () => layout.fileTree.tab()
 
@@ -548,7 +557,10 @@ export function SessionSidePanel(props: {
                       }}
                     >
                       <Tabs value={activeTab()} onChange={activateTab}>
-                        <div class="session-review-v2-tabs-bar sticky top-0 shrink-0 flex items-center">
+                        <div
+                          class="session-review-v2-tabs-bar sticky top-0 shrink-0 flex items-center"
+                          classList={{ "mqorva-tabs-bar-flush": !!props.panelToggle }}
+                        >
                           <Tabs.List
                             ref={(el: HTMLDivElement) => {
                               tabList = el
@@ -687,11 +699,31 @@ export function SessionSidePanel(props: {
                             </div>
                           </Tabs.List>
                           <div
-                            class="session-review-v2-open-in-app-slot shrink-0 flex items-center pr-3"
+                            class="session-review-v2-open-in-app-slot shrink-0 flex items-center gap-1 pr-3"
                             onPointerDown={(event) => event.stopPropagation()}
                             onClick={(event) => event.stopPropagation()}
                           >
+                            <Show when={markdownTabOpen()}>
+                              <TooltipV2
+                                placement="bottom"
+                                value={language.t("session.file.markdownPreview")}
+                                class="flex items-center"
+                              >
+                                <IconButtonV2
+                                  type="button"
+                                  variant="ghost-muted"
+                                  size="large"
+                                  class="!size-8 shrink-0"
+                                  classList={{ "opacity-45": !markdownPreview.enabled() }}
+                                  onClick={() => markdownPreview.toggle()}
+                                  aria-label={language.t("session.file.markdownPreview")}
+                                  aria-pressed={markdownPreview.enabled()}
+                                  icon={<Icon name="eye" size="small" />}
+                                />
+                              </TooltipV2>
+                            </Show>
                             <OpenInAppV2 directory={projectDirectory} />
+                            <Show when={props.panelToggle}>{(toggle) => toggle()()}</Show>
                           </div>
                         </div>
 

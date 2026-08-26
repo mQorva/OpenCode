@@ -354,6 +354,108 @@ Dokumentation und UI-Einbindung bleiben Fork-Aufgabe.
 
 ---
 
+## 13 — Follow-up-Verhalten: Queue bleibt wählbar (Upstream-Kandidat)
+
+**Warum:** Upstream kennt `followup: "queue" | "steer"` als Setting-Typ, zwingt `"queue"` aber an
+drei Stellen auf `"steer"` um (Effect, Fallback, Setter) — die Auswahl ist unerreichbar. Der Fork
+lässt beide Werte zu, stellt die Auswahl in den Einstellungen sichtbar und macht Strg+Enter zum
+Gegenteil der eingestellten Vorgabe (steuert statt parkt bzw. parkt statt steuert). Kein
+Sidebar-Bezug; als Feature auch für das Original sinnvoll (siehe
+`plans/upstream-kandidaten.md`, Kandidat #22).
+
+- `packages/app/src/context/settings.tsx` entfernt die drei Umzwing-Stellen; `followup` liest den
+  gespeicherten Wert unverändert.
+- `packages/app/src/components/settings-v2/general.tsx` ergänzt die Auswahlzeile
+  (`followupOptions`, `data-action="settings-followup"`).
+- `packages/app/src/components/prompt-input/submit.ts` nimmt `options?: { invert?: boolean }` an
+  `handleSubmit` entgegen.
+- `packages/session-ui/src/v2/components/prompt-input/interaction.ts` reicht Ctrl/Cmd+Enter als
+  `invert` durch und liest bei leerem Store zusätzlich den DOM-Text (`hasContent`).
+- `i18n/en.ts`/`de.ts`: neue Beschreibung der Zeile sowie `session.followupDock.steer` /
+  `.drag`.
+
+**Marker:** `settings-followup` · `invert?: boolean` · `onSubmit: (invert?: boolean) => void`
+
+---
+
+## 14 — Session-UI-Nähte am Prompt-Composer
+
+**Warum:** gemeinsame Composer-Bausteine brauchen kleine, rückwärtskompatible Erweiterungen.
+
+- `packages/session-ui/package.json`: zusätzlicher Export `./v2/prompt-input/editor-dom`.
+- `packages/session-ui/src/v2/components/prompt-input/index.tsx`: neuer Slot
+  `slotAfterControls`; Oberfläche und Verläufe folgen `var(--prompt-input-surface, …)`;
+  Enter-Reichweite übergibt Ctrl/Cmd+Enter als `invert`.
+- `packages/session-ui/src/v2/components/prompt-input/editor-dom.ts` (neu): der vorher private
+  Editor-Parser, unverändert ausgelagert; genutzt vom DOM-Sync-Fallback in `submit.ts`
+  (Kandidat #15 in `plans/upstream-kandidaten.md`).
+
+**Marker:** `./v2/prompt-input/editor-dom` · `slotAfterControls` · `--prompt-input-surface`
+
+---
+
+## 15 — Entwürfe ohne Projektzuordnung
+
+**Warum:** die Seitenleiste gruppiert Entwürfe im Block „Chats“, bis ein Projekt gewählt ist.
+
+- `packages/app/src/context/tabs.tsx`: optionales `unassigned?: boolean` am `DraftTab`;
+  `directory` trägt weiterhin einen lauffähigen Ort für die erste Nachricht.
+- `packages/app/src/context/tab-migration.ts`: erhält das Flag beim Lesen alter Speicherstände.
+
+**Marker:** `unassigned?: boolean` · `tab.unassigned === true`
+
+---
+
+## 16 — Timeline-Naht (`pages/session/timeline/message-timeline.tsx`)
+
+**Warum:** Kopfzeile, Nachrichtenleiste und Titel passen sich dem Seitenleisten-Layout an; Teile
+wirken bewusst auch im Tab-Modus.
+
+- `HeaderSlot`-Portal: im Sidebar-Modus wandert die Titelleiste in den Sitzungskopf.
+- `MessageRail` + `message-rail-text.ts/.css` (neu): schmale Nachrichtenleiste links, gerendert ab
+  Viewport ≥520×320 **in beiden Layouts**.
+- `titleLabel` nutzt Fork-Util `isNewChat` mit lokalisiertem Platzhalter.
+- ScrollView mit `thumbVisibility="always"` und `thumbContainer` (Paar mit dem Scrollbar-Stepper
+  in `pages/session.tsx`).
+- Im gesamten V2-Zweig ist `SessionContextUsage` ausgeblendet (Paar mit dem Slot in
+  `prompt-input-v2.tsx`); Share-Popover im V2-Zweig überarbeitet.
+
+**Marker:** `HeaderSlot` · `MessageRail` · `sidebarLayout.newChat`
+
+---
+
+## 17 — Standardbreite der Seitenleiste
+
+**Warum:** Design-Feinschliff; betrifft beide Layouts.
+
+- `packages/app/src/context/layout.tsx`: `DEFAULT_SIDEBAR_WIDTH` 344→280 inklusive Migration
+  gespeicherter 344er-Werte.
+
+**Marker:** `width === 344 ? DEFAULT_SIDEBAR_WIDTH : width`
+
+---
+
+## 18 — Desktop: experimentelle Icon-Discovery deaktiviert
+
+**Warum:** `OPENCODE_EXPERIMENTAL_ICON_DISCOVERY=true` wurde aus
+`packages/desktop/src/main/server.ts` entfernt; die Gründe sind nicht dokumentiert. Negative
+Änderungen kann `patches.ps1` per Marker nicht prüfen — nach jedem Sync dort von Hand
+kontrollieren, dass die Zeile nicht zurückkehrt.
+
+---
+
+## Sichtbare Abweichungen im Tab-Modus (bewusst akzeptiert)
+
+Der Umschalter bleibt voll bedienbar; folgende Unterschiede zum Original im Tab-Modus sind
+gewollt und werden nicht zurückgebaut:
+
+1. Draft-Seite mit eigenem Header, Terminal und Workspace-Panel (`new-session.tsx`, Abschnitt 8);
+   das Status-Popover im Titlebar-Rechtsmount entfällt.
+2. Terminal immer in voller Breite unten, nie gestapelt neben dem Review-Panel (`session.tsx`,
+   Abschnitt 9).
+3. `MessageRail` auch im Tab-Modus (Abschnitt 16).
+4. Composer-Breite `max-w-200` und Context-Usage-Slot in beiden Modi (Abschnitte 14, 16).
+
 ## Was bewusst NICHT geändert wurde
 
 - **`pages/layout.tsx`** und `pages/layout/*` — das Legacy-Layout wird upstream verschwinden. Was

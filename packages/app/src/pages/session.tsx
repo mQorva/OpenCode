@@ -74,6 +74,8 @@ import {
   SessionComposerRegion,
 } from "@/pages/session/composer"
 import { createOpenReviewFile, createSessionTabs, createSizing, shouldShowFileTree } from "@/pages/session/helpers"
+import { createCommandPaletteFileOpener } from "@/components/command-palette"
+import { OpenFileProvider } from "@opencode-ai/session-ui/context/open-file"
 import { MessageTimeline } from "@/pages/session/timeline/message-timeline"
 import { createTimelineModel } from "@/pages/session/timeline/model"
 import { type DiffStyle, SessionReviewTab, type SessionReviewTabProps } from "@/pages/session/review-tab"
@@ -425,6 +427,16 @@ export default function Page() {
   const navigate = useNavigate()
   const { params, sessionKey, workspaceKey, tabs, view } = useSessionLayout()
   const reviewMode = () => view().review.mode() ?? "git"
+
+  const openPaletteFile = createCommandPaletteFileOpener()
+  const openChatFilePath = async (input: string) => {
+    const path = file.normalize(input.replace(/\\/g, "/"))
+    if (!path) return
+    await file.load(path)
+    if (!file.get(path)?.loaded) return
+    openPaletteFile(path)
+  }
+
   const reviewFile = () => view().review.file()
   const sessionOwnership = createSessionOwnership(sessionKey)
   const newSessionDesign = createMemo(() => settings.general.newLayoutDesigns())
@@ -2161,43 +2173,45 @@ export default function Page() {
           <Match when={params.id}>
             <Show when={messagesReady() ? params.id : undefined} keyed>
               {(_id) => (
-                <MessageTimeline
-                  actions={actions}
-                  scroll={ui.scroll}
-                  onResumeScroll={resumeScroll}
-                  setScrollRef={setScrollRef}
-                  onScheduleScrollState={scheduleScrollState}
-                  thumbContainer={thumbTrack}
-                  onAutoScrollHandleScroll={autoScroll.handleScroll}
-                  onMarkScrollGesture={markScrollGesture}
-                  hasScrollGesture={hasScrollGesture}
-                  onUserScroll={markUserScroll}
-                  onHistoryScroll={onHistoryScroll}
-                  onAutoScrollInteraction={autoScroll.handleInteraction}
-                  shouldAnchorBottom={() =>
-                    !location.hash && !store.messageId && !ui.pendingMessage && !autoScroll.userScrolled()
-                  }
-                  centered={centered()}
-                  setContentRef={(el) => {
-                    content = el
-                    autoScroll.contentRef(el)
+                <OpenFileProvider open={openChatFilePath}>
+                  <MessageTimeline
+                    actions={actions}
+                    scroll={ui.scroll}
+                    onResumeScroll={resumeScroll}
+                    setScrollRef={setScrollRef}
+                    onScheduleScrollState={scheduleScrollState}
+                    thumbContainer={thumbTrack}
+                    onAutoScrollHandleScroll={autoScroll.handleScroll}
+                    onMarkScrollGesture={markScrollGesture}
+                    hasScrollGesture={hasScrollGesture}
+                    onUserScroll={markUserScroll}
+                    onHistoryScroll={onHistoryScroll}
+                    onAutoScrollInteraction={autoScroll.handleInteraction}
+                    shouldAnchorBottom={() =>
+                      !location.hash && !store.messageId && !ui.pendingMessage && !autoScroll.userScrolled()
+                    }
+                    centered={centered()}
+                    setContentRef={(el) => {
+                      content = el
+                      autoScroll.contentRef(el)
 
-                    const root = scroller
-                    if (root) scheduleScrollState(root)
-                  }}
-                  userMessages={visibleUserMessages()}
-                  setHistoryAnchor={(handlers) => {
-                    captureHistoryAnchor = handlers.capture
-                    restoreHistoryAnchor = handlers.restore
-                  }}
-                  anchor={anchor}
-                  setRevealMessage={(fn) => {
-                    revealMessage = fn
-                  }}
-                  setScrollToEnd={(fn) => {
-                    scrollToEnd = fn
-                  }}
-                />
+                      const root = scroller
+                      if (root) scheduleScrollState(root)
+                    }}
+                    userMessages={visibleUserMessages()}
+                    setHistoryAnchor={(handlers) => {
+                      captureHistoryAnchor = handlers.capture
+                      restoreHistoryAnchor = handlers.restore
+                    }}
+                    anchor={anchor}
+                    setRevealMessage={(fn) => {
+                      revealMessage = fn
+                    }}
+                    setScrollToEnd={(fn) => {
+                      scrollToEnd = fn
+                    }}
+                  />
+                </OpenFileProvider>
               )}
             </Show>
           </Match>
@@ -2366,6 +2380,7 @@ export default function Page() {
           <Show when={desktopSessionResizeOpen()}>
             <div onPointerDown={() => size.start()}>
               <ResizeHandle
+                class="mqorva-session-resize-handle"
                 classList={{
                   "-end-1": settings.general.newLayoutDesigns(),
                 }}
@@ -2409,23 +2424,6 @@ export default function Page() {
                 sidebarLayout(),
             }}
           >
-            <Show when={sidebarLayout()}>
-              <div class="h-12 shrink-0 flex items-center justify-end px-3">
-                <TooltipV2 placement="bottom" value={language.t("command.review.toggle")}>
-                  <IconButtonV2
-                    type="button"
-                    variant="ghost-muted"
-                    size="large"
-                    class="!size-8 shrink-0"
-                    onClick={() => view().reviewPanel.toggle()}
-                    aria-label={language.t("command.review.toggle")}
-                    aria-expanded={view().reviewPanel.opened()}
-                    aria-controls="review-panel"
-                    icon={<Icon name="layout-right" size="small" />}
-                  />
-                </TooltipV2>
-              </div>
-            </Show>
             <div class="min-h-0 flex-1 flex flex-col">
               <Suspense>
                 <SessionSidePanel
@@ -2444,6 +2442,25 @@ export default function Page() {
                       onToggle={reviewV2State.toggleSidebar}
                     />
                   )}
+                  panelToggle={
+                    sidebarLayout()
+                      ? () => (
+                          <TooltipV2 placement="bottom" value={language.t("command.review.toggle")}>
+                            <IconButtonV2
+                              type="button"
+                              variant="ghost-muted"
+                              size="large"
+                              class="!size-8 shrink-0"
+                              onClick={() => view().reviewPanel.toggle()}
+                              aria-label={language.t("command.review.toggle")}
+                              aria-expanded={view().reviewPanel.opened()}
+                              aria-controls="review-panel"
+                              icon={<Icon name="layout-right" size="small" />}
+                            />
+                          </TooltipV2>
+                        )
+                      : undefined
+                  }
                   fileBrowserState={reviewV2State}
                   activeDiff={activeReviewFile()}
                   focusReviewDiff={focusReviewDiff}

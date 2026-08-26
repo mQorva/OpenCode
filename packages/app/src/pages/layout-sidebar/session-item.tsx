@@ -1,6 +1,6 @@
 import { createEffect, createSignal, Show, type Accessor } from "solid-js"
 import { createDraggable, createDroppable } from "@thisbeyond/solid-dnd"
-import { ContextMenu, DropdownMenu, IconButton, Spinner, Tooltip, useLanguage } from "./upstream"
+import { IconButton, MenuV2, Spinner, Tooltip, useLanguage } from "./upstream"
 import { SidebarMarquee } from "./marquee"
 import type { SidebarSession } from "./sessions"
 import { isNewChat } from "@/utils/session-title"
@@ -28,45 +28,27 @@ function SessionMenuItems(props: {
   onCopyTitle: () => void
   onCopyID: () => void
   onCopyProject: () => void
-  context?: boolean
 }) {
   const language = useLanguage()
-  const Menu = props.context ? ContextMenu : DropdownMenu
 
   return (
     <>
-      <Menu.Item onSelect={props.onRename}>
-        <Menu.ItemLabel>{language.t("sidebarLayout.rename")}</Menu.ItemLabel>
-      </Menu.Item>
-      <Menu.Item onSelect={props.onMarkUnread}>
-        <Menu.ItemLabel>{language.t("sidebarLayout.markUnread")}</Menu.ItemLabel>
-      </Menu.Item>
-      <Menu.Item onSelect={props.onTogglePin}>
-        <Menu.ItemLabel>
-          <Show when={props.pinned} fallback={language.t("sidebarLayout.pin")}>
-            {language.t("sidebarLayout.unpin")}
-          </Show>
-        </Menu.ItemLabel>
-      </Menu.Item>
+      <MenuV2.Item onSelect={props.onRename}>{language.t("sidebarLayout.rename")}</MenuV2.Item>
+      <MenuV2.Item onSelect={props.onMarkUnread}>{language.t("sidebarLayout.markUnread")}</MenuV2.Item>
+      <MenuV2.Item onSelect={props.onTogglePin}>
+        <Show when={props.pinned} fallback={language.t("sidebarLayout.pin")}>
+          {language.t("sidebarLayout.unpin")}
+        </Show>
+      </MenuV2.Item>
       <Show when={props.onArchive}>
-        <Menu.Item onSelect={props.onArchive}>
-          <Menu.ItemLabel>{language.t("common.archive")}</Menu.ItemLabel>
-        </Menu.Item>
+        <MenuV2.Item onSelect={props.onArchive}>{language.t("common.archive")}</MenuV2.Item>
       </Show>
-      <Menu.Separator />
-      <Menu.Item onSelect={props.onCopyTitle}>
-        <Menu.ItemLabel>{language.t("sidebarLayout.copyTitle")}</Menu.ItemLabel>
-      </Menu.Item>
-      <Menu.Item onSelect={props.onCopyID}>
-        <Menu.ItemLabel>{language.t("sidebarLayout.copyID")}</Menu.ItemLabel>
-      </Menu.Item>
-      <Menu.Item onSelect={props.onCopyProject}>
-        <Menu.ItemLabel>{language.t("sidebarLayout.copyProject")}</Menu.ItemLabel>
-      </Menu.Item>
-      <Menu.Separator />
-      <Menu.Item onSelect={props.onDelete}>
-        <Menu.ItemLabel>{language.t("common.delete")}</Menu.ItemLabel>
-      </Menu.Item>
+      <MenuV2.Separator />
+      <MenuV2.Item onSelect={props.onCopyTitle}>{language.t("sidebarLayout.copyTitle")}</MenuV2.Item>
+      <MenuV2.Item onSelect={props.onCopyID}>{language.t("sidebarLayout.copyID")}</MenuV2.Item>
+      <MenuV2.Item onSelect={props.onCopyProject}>{language.t("sidebarLayout.copyProject")}</MenuV2.Item>
+      <MenuV2.Separator />
+      <MenuV2.Item onSelect={props.onDelete}>{language.t("common.delete")}</MenuV2.Item>
     </>
   )
 }
@@ -102,7 +84,6 @@ export function SessionItem(props: {
   const [editing, setEditing] = createSignal(false)
   const [value, setValue] = createSignal("")
   const [saving, setSaving] = createSignal(false)
-  const [menuOpen, setMenuOpen] = createSignal(false)
   let input: HTMLInputElement | undefined
 
   createEffect(() => {
@@ -130,8 +111,8 @@ export function SessionItem(props: {
   }
 
   return (
-    <ContextMenu>
-      <ContextMenu.Trigger
+    <MenuV2.Context>
+      <MenuV2.Context.Trigger
         as="div"
         data-sidebar-row=""
         ref={(el: HTMLElement) => {
@@ -142,7 +123,7 @@ export function SessionItem(props: {
         data-drop={props.dragID && droppable.isActiveDroppable ? "" : undefined}
         classList={{
           "opacity-50": !!props.dragID && draggable.isActiveDraggable,
-          "group/session relative w-full min-w-0 h-8 flex items-center rounded-lg text-13-regular transition-colors outline-none": true,
+          "group/session relative w-full min-w-0 h-8 flex items-center rounded-lg text-[13px] font-[440] leading-4 tracking-[-0.04px] transition-colors outline-none": true,
           "pl-2": !props.indent,
           "pl-8": props.indent,
           "pr-1": true,
@@ -181,46 +162,14 @@ export function SessionItem(props: {
               event.preventDefault()
               void commitRename()
             }}
-            class="min-w-0 flex-1 h-6 rounded-md border border-border-focus bg-v2-background-bg-base px-1.5 text-13-regular text-text-strong outline-none"
+            class="min-w-0 flex-1 h-6 rounded-md border border-border-focus bg-v2-background-bg-base px-1.5 text-[13px] font-[440] leading-4 tracking-[-0.04px] text-text-strong outline-none"
             aria-label={language.t("sidebarLayout.rename")}
           />
         </Show>
 
         <Show when={!editing()}>
-          {/* Actions first, status last: the spinner keeps its place while the actions slide in. */}
-          <div
-            classList={{
-              "shrink-0 items-center": true,
-              flex: menuOpen(),
-              "hidden group-hover/session:flex group-focus-within/session:flex": !menuOpen(),
-            }}
-          >
-            <DropdownMenu open={menuOpen()} onOpenChange={setMenuOpen} gutter={4} placement="bottom-end" flip={false}>
-              <DropdownMenu.Trigger
-                as={IconButton}
-                icon="dot-grid"
-                iconSize="small"
-                variant="ghost"
-                class="!size-7 shrink-0 rounded-md text-icon-base"
-                title={language.t("common.moreOptions")}
-                aria-label={language.t("common.moreOptions")}
-              />
-              <DropdownMenu.Portal>
-                <DropdownMenu.Content>
-                  <SessionMenuItems
-                    pinned={props.pinned}
-                    onRename={beginRename}
-                    onMarkUnread={props.onMarkUnread}
-                    onTogglePin={props.onTogglePin}
-                    onArchive={props.onArchive}
-                    onDelete={props.onDelete}
-                    onCopyTitle={props.onCopyTitle}
-                    onCopyID={props.onCopyID}
-                    onCopyProject={props.onCopyProject}
-                  />
-                </DropdownMenu.Content>
-              </DropdownMenu.Portal>
-            </DropdownMenu>
+          {/* Actions replace the status marker on hover — the row is too narrow for both. */}
+          <div class="shrink-0 items-center hidden group-hover/session:flex group-focus-within/session:flex">
             <Tooltip
               value={props.pinned ? language.t("sidebarLayout.unpin") : language.t("sidebarLayout.pin")}
               placement="top"
@@ -253,13 +202,7 @@ export function SessionItem(props: {
           <Show
             when={props.working()}
             fallback={
-              <span
-                classList={{
-                  "shrink-0 flex items-center": true,
-                  hidden: menuOpen(),
-                  "group-hover/session:hidden group-focus-within/session:hidden": !menuOpen(),
-                }}
-              >
+              <span class="shrink-0 flex items-center group-hover/session:hidden group-focus-within/session:hidden">
                 <Show
                   when={props.unread}
                   fallback={
@@ -278,16 +221,15 @@ export function SessionItem(props: {
               </span>
             }
           >
-            <span class="shrink-0 px-1">
+            <span class="shrink-0 px-1 group-hover/session:hidden group-focus-within/session:hidden">
               <Spinner class="size-3.5" />
             </span>
           </Show>
         </Show>
-      </ContextMenu.Trigger>
-      <ContextMenu.Portal>
-        <ContextMenu.Content>
+      </MenuV2.Context.Trigger>
+      <MenuV2.Context.Portal>
+        <MenuV2.Context.Content>
           <SessionMenuItems
-            context
             pinned={props.pinned}
             onRename={beginRename}
             onMarkUnread={props.onMarkUnread}
@@ -298,8 +240,8 @@ export function SessionItem(props: {
             onCopyID={props.onCopyID}
             onCopyProject={props.onCopyProject}
           />
-        </ContextMenu.Content>
-      </ContextMenu.Portal>
-    </ContextMenu>
+        </MenuV2.Context.Content>
+      </MenuV2.Context.Portal>
+    </MenuV2.Context>
   )
 }

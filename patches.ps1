@@ -62,6 +62,25 @@ $patches = @(
     @{ Id = "13a"; File = "packages/app/src/components/provider-connection.ts"; Marker = "confirmProviderConnection"; What = "bestaetigter Provider-Lebenszyklus" }
     @{ Id = "13b"; File = "packages/app/src/context/server-sync.tsx"; Marker = "refreshProviders = async (directory?: string | null)"; What = "gezielte Provider-Aktualisierung" }
     @{ Id = "13c"; File = "packages/app/src/utils/server-compat.ts"; Marker = "await legacy(value.location).instance.dispose()"; What = "gezieltes V1-Provider-Neuladen" }
+    @{ Id = "14a"; File = "packages/app/src/context/settings.tsx"; Marker = 'followup: withFallback(() => store.general?.followup'; What = "Queue-Verhalten wieder waehlbar" }
+    @{ Id = "14b"; File = "packages/app/src/components/settings-v2/general.tsx"; Marker = "settings-followup"; What = "Follow-up-Auswahl in den Einstellungen" }
+    @{ Id = "14c"; File = "packages/app/src/components/prompt-input/submit.ts"; Marker = "invert?: boolean"; What = "Strg+Enter kehrt Folgeverhalten um" }
+    @{ Id = "14d"; File = "packages/session-ui/src/v2/components/prompt-input/interaction.ts"; Marker = "onSubmit: (invert?: boolean) => void"; What = "Invert-Durchreichung im Composer" }
+    @{ Id = "15a"; File = "packages/session-ui/package.json"; Marker = "./v2/prompt-input/editor-dom"; What = "Editor-Parser als Paketexport" }
+    @{ Id = "15b"; File = "packages/session-ui/src/v2/components/prompt-input/index.tsx"; Marker = "slotAfterControls"; What = "Slot hinter den Composer-Steuerungen" }
+    @{ Id = "15c"; File = "packages/session-ui/src/v2/components/prompt-input/index.tsx"; Marker = "--prompt-input-surface"; What = "Composer-Oberflaechenvariable" }
+    @{ Id = "16a"; File = "packages/app/src/context/tabs.tsx"; Marker = "unassigned?: boolean"; What = "Entwurf ohne Projektzuordnung" }
+    @{ Id = "16b"; File = "packages/app/src/context/tab-migration.ts"; Marker = "tab.unassigned === true"; What = "unassigned-Flag bei Migration erhalten" }
+    @{ Id = "17a"; File = "packages/app/src/pages/session/timeline/message-timeline.tsx"; Marker = "MessageRail"; What = "Nachrichtenleiste in der Timeline" }
+    @{ Id = "17b"; File = "packages/app/src/pages/session/timeline/message-timeline.tsx"; Marker = "HeaderSlot"; What = "Titelleisten-Portal der Timeline" }
+    @{ Id = "18a"; File = "packages/app/src/context/layout.tsx"; Marker = "width === 344 ? DEFAULT_SIDEBAR_WIDTH : width"; What = "Seitenleisten-Breite 280 mit Migration" }
+    @{ Id = "19a"; File = "packages/app/src/pages/session/markdown-preview.ts"; Marker = "mqorva.markdown-preview"; What = "Markdown-Vorschau im Dateipanel" }
+    @{ Id = "19b"; File = "packages/app/src/pages/session/file-tabs.tsx"; Marker = "mqorva-markdown-file-view"; What = "gerenderte Markdown-Ansicht statt Quelltext" }
+    @{ Id = "19c"; File = "packages/app/src/pages/session/session-side-panel.tsx"; Marker = "session.file.markdownPreview"; What = "Umschalter fuer die Markdown-Vorschau" }
+    @{ Id = "20a"; File = "packages/app/src/pages/session/session-side-panel.tsx"; Marker = "panelToggle"; What = "Einklapp-Knopf in der Tab-Leiste des Seitenpanels" }
+    @{ Id = "20b"; File = "packages/app/src/index.css"; Marker = "mqorva-tabs-bar-flush"; What = "Tab-Leiste auf Hoehe der Sitzungskopfzeile" }
+    @{ Id = "21a"; File = "packages/app/src/components/session/session-header.tsx"; Marker = "direkt hinter dem Titel"; What = "Sitzungsmenue hinter dem Titel" }
+    @{ Id = "22a"; File = "packages/app/src/index.css"; Marker = "mqorva-session-resize-handle"; What = "sichtbare Ziehkante zum Seitenbereich" }
 )
 
 Write-Host "[patches] Pruefe mQorva-Aenderungen am OpenCode-Original ..."

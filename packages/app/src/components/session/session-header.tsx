@@ -329,8 +329,9 @@ export function SessionHeader(props: { sidePanelOpen?: boolean }) {
               /
             </span>
             <span class="min-w-0 truncate text-14-medium text-v2-text-text-strong">{sessionTitle()}</span>
+            {/* mQorva: Das Sitzungsmenü steht direkt hinter dem Titel, nicht am rechten Rand. */}
+            <div id="opencode-session-title-actions" class="flex shrink-0 items-center" />
           </div>
-          <div id="opencode-session-title-actions" class="flex shrink-0 items-center" />
           <SessionHeaderV2Actions state={v2ActionsState()} />
         </header>
       </Show>

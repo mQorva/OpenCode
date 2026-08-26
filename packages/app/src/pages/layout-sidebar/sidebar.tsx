@@ -34,8 +34,6 @@ import {
   createHomeController,
   getProjectAvatarSource,
   getProjectAvatarVariant,
-  ContextMenu,
-  DropdownMenu,
   ServerConnection,
   ButtonV2,
   DialogFooter,
@@ -44,6 +42,7 @@ import {
   DialogV2,
   Icon,
   IconButton,
+  MenuV2,
   IconButtonV2,
   Persist,
   ResizeHandle,
@@ -83,52 +82,35 @@ function ProjectMenuItems(props: {
   workspacesEnabled?: boolean
   onClearNotifications?: () => void
   onClose: () => void
-  context?: boolean
 }) {
   const language = useLanguage()
-  const Menu = props.context ? ContextMenu : DropdownMenu
 
   return (
     <>
-      <Menu.Item onSelect={props.onNewChat}>
-        <Menu.ItemLabel>{language.t("command.session.new")}</Menu.ItemLabel>
-      </Menu.Item>
-      <Menu.Item onSelect={props.onEdit}>
-        <Menu.ItemLabel>{language.t("sidebarLayout.projectSettings")}</Menu.ItemLabel>
-      </Menu.Item>
+      <MenuV2.Item onSelect={props.onNewChat}>{language.t("command.session.new")}</MenuV2.Item>
+      <MenuV2.Item onSelect={props.onEdit}>{language.t("sidebarLayout.projectSettings")}</MenuV2.Item>
       <Show when={props.onToggleWorkspaces}>
-        <Menu.Item onSelect={props.onToggleWorkspaces}>
-          <Menu.ItemLabel>
-            {language.t(props.workspacesEnabled ? "sidebar.workspaces.disable" : "sidebar.workspaces.enable")}
-          </Menu.ItemLabel>
-        </Menu.Item>
+        <MenuV2.Item onSelect={props.onToggleWorkspaces}>
+          {language.t(props.workspacesEnabled ? "sidebar.workspaces.disable" : "sidebar.workspaces.enable")}
+        </MenuV2.Item>
       </Show>
       <Show when={props.onClearNotifications}>
-        <Menu.Item onSelect={props.onClearNotifications}>
-          <Menu.ItemLabel>{language.t("sidebar.project.clearNotifications")}</Menu.ItemLabel>
-        </Menu.Item>
+        <MenuV2.Item onSelect={props.onClearNotifications}>
+          {language.t("sidebar.project.clearNotifications")}
+        </MenuV2.Item>
       </Show>
-      <Menu.Separator />
-      <Menu.Item onSelect={props.onCopyName}>
-        <Menu.ItemLabel>{language.t("sidebarLayout.copyProjectName")}</Menu.ItemLabel>
-      </Menu.Item>
-      <Menu.Item onSelect={props.onCopyPath}>
-        <Menu.ItemLabel>{language.t("sidebarLayout.copyProjectPath")}</Menu.ItemLabel>
-      </Menu.Item>
+      <MenuV2.Separator />
+      <MenuV2.Item onSelect={props.onCopyName}>{language.t("sidebarLayout.copyProjectName")}</MenuV2.Item>
+      <MenuV2.Item onSelect={props.onCopyPath}>{language.t("sidebarLayout.copyProjectPath")}</MenuV2.Item>
       <Show when={props.onReveal}>
-        <Menu.Item onSelect={props.onReveal}>
-          <Menu.ItemLabel>{language.t("sidebarLayout.revealProject")}</Menu.ItemLabel>
-        </Menu.Item>
+        <MenuV2.Item onSelect={props.onReveal}>{language.t("sidebarLayout.revealProject")}</MenuV2.Item>
       </Show>
-      <Menu.Separator />
-      <Menu.Item onSelect={props.onClose}>
-        <Menu.ItemLabel>{language.t("sidebarLayout.removeProject")}</Menu.ItemLabel>
-      </Menu.Item>
+      <MenuV2.Separator />
+      <MenuV2.Item onSelect={props.onClose}>{language.t("sidebarLayout.removeProject")}</MenuV2.Item>
     </>
   )
 }
 
-/** Dropping a session here pins it; dropping it back on a project group unpins it. */
 function PinnedBlock(props: ParentProps) {
   const droppable = createDroppable(PINNED_ORDER_KEY)
 
@@ -156,7 +138,7 @@ function DraftItem(props: { draft: DraftTab; active: boolean; onSelect: () => vo
       use:draggable={draggable}
       data-sidebar-row=""
       classList={{
-        "group/draft relative w-full h-8 min-w-0 flex items-center rounded-lg pl-8 pr-1 text-13-regular transition-colors": true,
+        "group/draft relative w-full h-8 min-w-0 flex items-center rounded-lg pl-8 pr-1 text-[13px] font-[440] leading-4 tracking-[-0.04px] transition-colors": true,
         "bg-v2-background-bg-layer-02 text-text-strong": props.active,
         "text-text-base hover:bg-v2-background-bg-layer-02/60 hover:text-text-strong": !props.active,
         "opacity-50": draggable.isActiveDraggable,
@@ -230,7 +212,6 @@ function ProjectGroup(props: {
     if (!colour) return undefined
     return `var(--v2-avatar-bg-${getProjectAvatarVariant(colour)})`
   }
-  const [menuOpen, setMenuOpen] = createSignal(false)
   const shown = () => visibleSessions(props.group.sessions, props.sessionsExpanded)
   const hidden = () => hiddenCount(props.group.sessions, props.sessionsExpanded)
   const empty = () => props.group.sessions.length === 0 && props.drafts.length === 0
@@ -244,8 +225,8 @@ function ProjectGroup(props: {
         "outline outline-1 outline-border-active": droppable.isActiveDroppable,
       }}
     >
-      <ContextMenu>
-        <ContextMenu.Trigger
+      <MenuV2.Context>
+        <MenuV2.Context.Trigger
           as="div"
           data-sidebar-row=""
           classList={{
@@ -269,46 +250,16 @@ function ProjectGroup(props: {
             >
               {(source) => <img src={source()} alt="" class="size-4 shrink-0 rounded-[4px] object-cover" />}
             </Show>
-            <SidebarMarquee class="text-13-medium text-text-strong">{displayName(props.group.project)}</SidebarMarquee>
+            <SidebarMarquee class="text-[13px] font-[530] leading-4 tracking-[-0.04px] text-text-strong">
+              {displayName(props.group.project)}
+            </SidebarMarquee>
             <Show when={props.unseenCount > 0}>
-              <span class="min-w-5 rounded-full bg-v2-background-bg-strong px-1.5 text-center text-11-medium text-v2-text-text-muted">
+              <span class="min-w-5 rounded-full bg-v2-background-bg-strong px-1.5 text-center text-[11px] font-[530] leading-4 tracking-[0.05px] text-v2-text-text-muted">
                 {props.unseenCount}
               </span>
             </Show>
           </button>
-          <div
-            classList={{
-              "shrink-0 items-center pr-1": true,
-              flex: menuOpen(),
-              "hidden group-hover/project:flex group-focus-within/project:flex": !menuOpen(),
-            }}
-          >
-            <DropdownMenu open={menuOpen()} onOpenChange={setMenuOpen} gutter={4} placement="bottom-end" flip={false}>
-              <DropdownMenu.Trigger
-                as={IconButton}
-                icon="dot-grid"
-                iconSize="small"
-                variant="ghost"
-                class="!size-7 shrink-0 rounded-md text-icon-base"
-                title={language.t("common.moreOptions")}
-                aria-label={language.t("common.moreOptions")}
-              />
-              <DropdownMenu.Portal>
-                <DropdownMenu.Content>
-                  <ProjectMenuItems
-                    onNewChat={props.onNewChat}
-                    onEdit={props.onEditProject}
-                    onCopyName={props.onCopyProjectName}
-                    onCopyPath={props.onCopyProjectPath}
-                    onReveal={props.onRevealProject}
-                    onToggleWorkspaces={props.onToggleWorkspaces}
-                    workspacesEnabled={props.workspacesEnabled}
-                    onClearNotifications={props.onClearNotifications}
-                    onClose={props.onCloseProject}
-                  />
-                </DropdownMenu.Content>
-              </DropdownMenu.Portal>
-            </DropdownMenu>
+          <div class="shrink-0 items-center pr-1 hidden group-hover/project:flex group-focus-within/project:flex">
             <Tooltip value={language.t("command.session.new")} placement="top">
               <IconButton
                 icon="speech-bubble"
@@ -320,11 +271,10 @@ function ProjectGroup(props: {
               />
             </Tooltip>
           </div>
-        </ContextMenu.Trigger>
-        <ContextMenu.Portal>
-          <ContextMenu.Content>
+        </MenuV2.Context.Trigger>
+        <MenuV2.Context.Portal>
+          <MenuV2.Context.Content>
             <ProjectMenuItems
-              context
               onNewChat={props.onNewChat}
               onEdit={props.onEditProject}
               onCopyName={props.onCopyProjectName}
@@ -335,9 +285,9 @@ function ProjectGroup(props: {
               onClearNotifications={props.onClearNotifications}
               onClose={props.onCloseProject}
             />
-          </ContextMenu.Content>
-        </ContextMenu.Portal>
-      </ContextMenu>
+          </MenuV2.Context.Content>
+        </MenuV2.Context.Portal>
+      </MenuV2.Context>
 
       <Show when={!props.collapsed}>
         {/* Guide line in the indent: turns a list with padding into a readable tree. */}
@@ -356,7 +306,7 @@ function ProjectGroup(props: {
           <Show
             when={!empty()}
             fallback={
-              <div class="pl-8 pr-2 py-1 text-12-regular text-text-weaker">
+              <div class="pl-8 pr-2 py-1 text-[12px] font-[440] leading-4 tracking-[-0.04px] text-text-weaker">
                 {language.t("sidebarLayout.noSessions")}
               </div>
             }
@@ -389,7 +339,7 @@ function ProjectGroup(props: {
             <button
               type="button"
               onClick={props.onExpandSessions}
-              class="pl-8 pr-2 py-1 text-left text-12-regular text-text-weak hover:text-text-base"
+              class="pl-8 pr-2 py-1 text-left text-[12px] font-[440] leading-4 tracking-[-0.04px] text-text-weak hover:text-text-base"
             >
               {language.t("sidebarLayout.showMore")}
             </button>
@@ -903,7 +853,7 @@ export function Sidebar() {
             }}
             placeholder={language.t("sidebarLayout.search")}
             aria-label={language.t("sidebarLayout.search")}
-            class="w-full rounded-md bg-v2-background-bg-layer-02 py-1.5 ps-2 pe-7 text-13-regular text-text-strong outline-none"
+            class="w-full rounded-md bg-v2-background-bg-layer-02 py-1.5 ps-2 pe-7 text-[13px] font-[440] leading-4 tracking-[-0.04px] text-text-strong outline-none"
           />
           <Show when={filter()}>
             <IconButton
@@ -922,7 +872,7 @@ export function Sidebar() {
         <button
           type="button"
           onClick={() => newChat()}
-          class="w-full h-9 flex items-center gap-2 rounded-lg px-2 text-14-regular text-text-base hover:bg-v2-background-bg-layer-02/60 hover:text-text-strong"
+          class="w-full h-9 flex items-center gap-2 rounded-lg px-2 text-[13px] font-[440] leading-4 tracking-[-0.04px] text-text-base hover:bg-v2-background-bg-layer-02/60 hover:text-text-strong"
         >
           <Icon name="speech-bubble" size="small" class="text-icon-base" />
           <span class="flex-1 text-left truncate">{language.t("sidebarLayout.newChat")}</span>
@@ -947,14 +897,16 @@ export function Sidebar() {
               <Show
                 when={!noResults()}
                 fallback={
-                  <div class="px-2 py-6 text-center text-12-regular text-text-weak">
+                  <div class="px-2 py-6 text-center text-[12px] font-[440] leading-4 tracking-[-0.04px] text-text-weak">
                     {language.t("home.sessions.search.noResults", { query: `"${filter().trim()}"` })}
                   </div>
                 }
               >
                 <Show when={chatDrafts().length > 0 || chatSessions().length > 0}>
                   <div class="flex flex-col gap-0.5">
-                    <div class="px-2 py-1 text-12-medium text-text-weak">{language.t("sidebarLayout.chats")}</div>
+                    <div class="px-2 py-1 text-[11px] font-[530] leading-4 tracking-[0.05px] text-text-weak">
+                      {language.t("sidebarLayout.chats")}
+                    </div>
                     <For each={chatDrafts()}>
                       {(draft) => (
                         <DraftItem
@@ -991,7 +943,9 @@ export function Sidebar() {
 
                 <Show when={split().pinned.length > 0}>
                   <PinnedBlock>
-                    <div class="px-2 py-1 text-12-medium text-text-weak">{language.t("sidebarLayout.pinned")}</div>
+                    <div class="px-2 py-1 text-[11px] font-[530] leading-4 tracking-[0.05px] text-text-weak">
+                      {language.t("sidebarLayout.pinned")}
+                    </div>
                     <For each={split().pinned}>
                       {(entry) => (
                         <SessionItem
@@ -1017,7 +971,7 @@ export function Sidebar() {
                 </Show>
 
                 <div class="flex flex-col gap-2">
-                  <div class="flex items-center gap-1 px-2 py-1 text-12-medium text-text-weak">
+                  <div class="flex items-center gap-1 px-2 py-1 text-[11px] font-[530] leading-4 tracking-[0.05px] text-text-weak">
                     <span class="flex-1">{language.t("sidebarLayout.projects")}</span>
                     <Tooltip placement="top" value={language.t("sidebarLayout.addProject")}>
                       <IconButton
@@ -1095,7 +1049,7 @@ export function Sidebar() {
         <button
           type="button"
           onClick={() => showSettings()}
-          class="w-full h-9 flex items-center gap-2 rounded-lg px-2 text-13-regular text-text-base hover:bg-v2-background-bg-layer-02/60 hover:text-text-strong"
+          class="w-full h-9 flex items-center gap-2 rounded-lg px-2 text-[13px] font-[440] leading-4 tracking-[-0.04px] text-text-base hover:bg-v2-background-bg-layer-02/60 hover:text-text-strong"
         >
           <Icon name="settings-gear" size="small" class="text-icon-base" />
           <span class="flex-1 text-left truncate">{language.t("sidebar.settings")}</span>

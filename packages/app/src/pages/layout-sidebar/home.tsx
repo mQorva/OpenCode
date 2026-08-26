@@ -44,8 +44,12 @@ export function SidebarHome() {
   return (
     <Show when={layout.projects.list().length === 0}>
       <div class="flex-1 w-full min-h-0 flex flex-col items-center justify-center gap-2 px-6 text-center">
-        <div class="text-14-medium text-text-base">{language.t("sidebarLayout.empty.title")}</div>
-        <div class="text-13-regular text-text-weak">{language.t("sidebarLayout.empty.description")}</div>
+        <div class="text-[13px] font-[530] leading-4 tracking-[-0.04px] text-text-base">
+          {language.t("sidebarLayout.empty.title")}
+        </div>
+        <div class="text-[13px] font-[440] leading-4 tracking-[-0.04px] text-text-weak">
+          {language.t("sidebarLayout.empty.description")}
+        </div>
       </div>
     </Show>
   )
