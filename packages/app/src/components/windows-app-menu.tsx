@@ -72,9 +72,11 @@ export function WindowsAppMenu(props: {
       )
 
   if (props.distributed) {
+    // The app-name menu replaces the standalone wordmark; macOS keeps its native app menu,
+    // so only this Windows titlebar row relabels the file menu.
+    const menuLabel = (menu: DesktopMenu) => language.t(menu.id === "file" ? "desktop.menu.app" : menu.labelKey)
     return (
       <div class="flex h-full shrink-0 items-center gap-0.5" data-component="desktop-app-menu-bar">
-        <div class="px-2 text-13-medium text-v2-text-text-strong select-none">OpenCode</div>
         {DESKTOP_MENU.filter((menu) => desktopMenuVisible(menu, "windows")).map((menu) => (
           <DropdownMenu gutter={2} modal={false} placement="bottom-start">
             <DropdownMenu.Trigger
@@ -82,7 +84,7 @@ export function WindowsAppMenu(props: {
               type="button"
               class="h-7 rounded-md px-2 text-13-regular text-v2-text-text-muted hover:bg-v2-background-bg-hover hover:text-v2-text-text-strong data-[expanded]:bg-v2-background-bg-hover data-[expanded]:text-v2-text-text-strong"
             >
-              {language.t(menu.labelKey)}
+              {menuLabel(menu)}
             </DropdownMenu.Trigger>
             <DropdownMenu.Portal>
               <DropdownMenu.Content class="desktop-app-menu">

@@ -14,13 +14,14 @@ import { createResizeObserver } from "@solid-primitives/resize-observer"
 import { createStore } from "solid-js/store"
 import { useI18n } from "../context/i18n"
 
-export type ScrollViewThumbVisibility = "hover" | "scroll"
+export type ScrollViewThumbVisibility = "hover" | "scroll" | "always"
 
 export interface ScrollViewProps extends ComponentProps<"div"> {
   viewportRef?: (el: HTMLDivElement) => void
   orientation?: "vertical" | "horizontal" // currently only vertical is fully implemented for thumb
   /**
-   * `hover`: show while hovered or scrolling. `scroll`: show only while scrolling.
+   * `hover`: show while hovered or scrolling. `scroll`: show only while scrolling. `always`: keep it visible
+   * whenever the content overflows.
    *
    * In most cases, scrolling a container = hovering over it, so this change has no effect.
    * This is a special case to account for the home page scroll, where scrolling a container != hovering over it
@@ -30,6 +31,8 @@ export interface ScrollViewProps extends ComponentProps<"div"> {
   thumbContainer?: HTMLElement | Accessor<HTMLElement | undefined>
   /** Element whose hover reveals the thumb. Defaults to the ScrollView root when unset. */
   thumbHoverTarget?: HTMLElement | Accessor<HTMLElement | undefined>
+  /** Gap kept free at both ends of the track. `0` runs the thumb edge to edge. */
+  thumbInset?: number
 }
 
 export const scrollKey = (event: Pick<KeyboardEvent, "key" | "altKey" | "ctrlKey" | "metaKey" | "shiftKey">) => {
@@ -88,8 +91,10 @@ export function scrollTopFromThumbPointer(input: {
   thumbHeight: number
   /** Viewport height used for max scroll. Defaults to `clientHeight` (track == viewport). */
   scrollClientHeight?: number
+  /** Gap kept free at both ends of the track. Defaults to `8`. */
+  padding?: number
 }) {
-  const padding = 8
+  const padding = input.padding ?? 8
   const maxThumbTop = input.clientHeight - padding * 2 - input.thumbHeight
   if (maxThumbTop <= 0) return 0
   const thumbTop = Math.max(0, Math.min(input.pointer - input.viewportTop - padding - input.grabOffset, maxThumbTop))
@@ -98,7 +103,7 @@ export function scrollTopFromThumbPointer(input: {
 
 export function ScrollView(props: ScrollViewProps) {
   const i18n = useI18n()
-  const merged = mergeProps({ orientation: "vertical", thumbVisibility: "hover" }, props)
+  const merged = mergeProps({ orientation: "vertical", thumbVisibility: "hover", thumbInset: 8 }, props)
   const [local, events, rest] = splitProps(
     merged,
     [
@@ -109,6 +114,7 @@ export function ScrollView(props: ScrollViewProps) {
       "thumbVisibility",
       "thumbContainer",
       "thumbHoverTarget",
+      "thumbInset",
       "style",
     ],
     [
@@ -161,6 +167,7 @@ export function ScrollView(props: ScrollViewProps) {
   }
 
   const thumbVisible = () => {
+    if (local.thumbVisibility === "always") return true
     if (isDragging()) return true
     if (isScrolling()) return true
     return local.thumbVisibility === "hover" && isHovered()
@@ -180,7 +187,7 @@ export function ScrollView(props: ScrollViewProps) {
     }
 
     setState("showThumb", true)
-    const trackPadding = 8
+    const trackPadding = local.thumbInset
     const trackClientHeight = thumbMount()?.clientHeight || clientHeight
     const trackHeight = trackClientHeight - trackPadding * 2
 
@@ -253,6 +260,7 @@ export function ScrollView(props: ScrollViewProps) {
         scrollClientHeight: clientHeight,
         scrollHeight,
         thumbHeight: thumbHeight(),
+        padding: local.thumbInset,
       })
     }
 

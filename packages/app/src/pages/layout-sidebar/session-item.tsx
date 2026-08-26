@@ -1,5 +1,7 @@
 import { createEffect, createSignal, Show, type Accessor } from "solid-js"
+import { createDraggable, createDroppable } from "@thisbeyond/solid-dnd"
 import { ContextMenu, DropdownMenu, IconButton, Spinner, Tooltip, useLanguage } from "./upstream"
+import { SidebarMarquee } from "./marquee"
 import type { SidebarSession } from "./sessions"
 import { isNewChat } from "@/utils/session-title"
 
@@ -14,19 +16,6 @@ function PinIcon(props: { filled?: boolean }) {
       />
     </svg>
   )
-}
-
-function relativeAge(timestamp: number, locale: string) {
-  const minutes = Math.round((timestamp - Date.now()) / 60_000)
-  const format = new Intl.RelativeTimeFormat(locale, { numeric: "auto" })
-  if (Math.abs(minutes) < 60) return format.format(minutes, "minute")
-  const hours = Math.round(minutes / 60)
-  if (Math.abs(hours) < 24) return format.format(hours, "hour")
-  const days = Math.round(hours / 24)
-  if (Math.abs(days) < 30) return format.format(days, "day")
-  const months = Math.round(days / 30)
-  if (Math.abs(months) < 12) return format.format(months, "month")
-  return format.format(Math.round(months / 12), "year")
 }
 
 function SessionMenuItems(props: {
@@ -84,6 +73,8 @@ function SessionMenuItems(props: {
 
 export function SessionItem(props: {
   entry: SidebarSession
+  /** Key used for dragging and as a drop target; omitted where reordering makes no sense. */
+  dragID?: string
   active: boolean
   pinned: boolean
   unread: boolean
@@ -105,6 +96,9 @@ export function SessionItem(props: {
     if (isNewChat(value)) return language.t("sidebarLayout.newChat")
     return value || language.t("sidebarLayout.untitled")
   }
+  const dragID = () => props.dragID ?? `static:${props.entry.session.id}`
+  const draggable = createDraggable(dragID())
+  const droppable = createDroppable(dragID())
   const [editing, setEditing] = createSignal(false)
   const [value, setValue] = createSignal("")
   const [saving, setSaving] = createSignal(false)
@@ -139,7 +133,15 @@ export function SessionItem(props: {
     <ContextMenu>
       <ContextMenu.Trigger
         as="div"
+        data-sidebar-row=""
+        ref={(el: HTMLElement) => {
+          if (!props.dragID) return
+          draggable(el)
+          droppable(el)
+        }}
+        data-drop={props.dragID && droppable.isActiveDroppable ? "" : undefined}
         classList={{
+          "opacity-50": !!props.dragID && draggable.isActiveDraggable,
           "group/session relative w-full min-w-0 h-8 flex items-center rounded-lg text-13-regular transition-colors outline-none": true,
           "pl-2": !props.indent,
           "pl-8": props.indent,
@@ -149,9 +151,6 @@ export function SessionItem(props: {
             !props.active,
         }}
       >
-        <Show when={props.active}>
-          <span class="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-icon-strong-base" />
-        </Show>
         <Show
           when={editing()}
           fallback={
@@ -159,16 +158,10 @@ export function SessionItem(props: {
               type="button"
               onClick={props.onSelect}
               title={title()}
-              class="min-w-0 h-full flex-1 flex items-center gap-2 truncate text-left outline-none"
+              class="min-w-0 h-full flex-1 flex items-center gap-2 text-left outline-none"
               aria-current={props.active ? "page" : undefined}
             >
-              <Show when={props.unread && props.pinned}>
-                <span
-                  class="size-1.5 shrink-0 rounded-full bg-v2-icon-icon-accent"
-                  aria-label={language.t("sidebarLayout.unread")}
-                />
-              </Show>
-              <span class="truncate">{title()}</span>
+              <SidebarMarquee>{title()}</SidebarMarquee>
             </button>
           }
         >
@@ -194,35 +187,12 @@ export function SessionItem(props: {
         </Show>
 
         <Show when={!editing()}>
-          <Show
-            when={props.working()}
-            fallback={
-              <Show when={!menuOpen() && !props.pinned}>
-                <Show
-                  when={props.unread}
-                  fallback={
-                    <span class="shrink-0 px-1 text-11-regular text-text-weaker group-hover/session:hidden group-focus-within/session:hidden">
-                      {relativeAge(props.entry.session.time.updated, language.locale())}
-                    </span>
-                  }
-                >
-                  <span
-                    class="shrink-0 mx-1 size-1.5 rounded-full bg-v2-icon-icon-accent group-hover/session:hidden group-focus-within/session:hidden"
-                    aria-label={language.t("sidebarLayout.unread")}
-                  />
-                </Show>
-              </Show>
-            }
-          >
-            <span class="shrink-0 px-1 group-hover/session:hidden group-focus-within/session:hidden">
-              <Spinner class="size-3.5" />
-            </span>
-          </Show>
+          {/* Actions first, status last: the spinner keeps its place while the actions slide in. */}
           <div
             classList={{
               "shrink-0 items-center": true,
-              flex: menuOpen() || props.pinned,
-              "hidden group-hover/session:flex group-focus-within/session:flex": !menuOpen() && !props.pinned,
+              flex: menuOpen(),
+              "hidden group-hover/session:flex group-focus-within/session:flex": !menuOpen(),
             }}
           >
             <DropdownMenu open={menuOpen()} onOpenChange={setMenuOpen} gutter={4} placement="bottom-end" flip={false}>
@@ -278,6 +248,40 @@ export function SessionItem(props: {
               </Tooltip>
             </Show>
           </div>
+
+          {/* A running session must stay recognisable while the pointer is on the row. */}
+          <Show
+            when={props.working()}
+            fallback={
+              <span
+                classList={{
+                  "shrink-0 flex items-center": true,
+                  hidden: menuOpen(),
+                  "group-hover/session:hidden group-focus-within/session:hidden": !menuOpen(),
+                }}
+              >
+                <Show
+                  when={props.unread}
+                  fallback={
+                    <Show when={props.pinned}>
+                      <span class="px-1 text-icon-weak" aria-hidden="true">
+                        <PinIcon filled />
+                      </span>
+                    </Show>
+                  }
+                >
+                  <span
+                    class="mx-1 size-1.5 rounded-full bg-v2-icon-icon-accent"
+                    aria-label={language.t("sidebarLayout.unread")}
+                  />
+                </Show>
+              </span>
+            }
+          >
+            <span class="shrink-0 px-1">
+              <Spinner class="size-3.5" />
+            </span>
+          </Show>
         </Show>
       </ContextMenu.Trigger>
       <ContextMenu.Portal>

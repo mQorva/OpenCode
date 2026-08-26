@@ -26,6 +26,9 @@ export type DraftTab = {
   server: ServerConnection.Key
   directory: string
   worktree?: string
+  // Sidebar-only marker: the chat has no project yet and lives in the unassigned block.
+  // `directory` still carries a runnable location for the first prompt.
+  unassigned?: boolean
 }
 
 export type Tab = SessionTab | DraftTab

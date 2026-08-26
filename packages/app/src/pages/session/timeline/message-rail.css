@@ -1,0 +1,99 @@
+[data-slot="session-message-rail"] {
+  position: absolute;
+  inset-block: var(--rail-inset-top, 12px) 12px;
+  inset-inline-start: 0;
+  z-index: 40;
+  width: 26px;
+  pointer-events: none;
+}
+
+[data-slot="session-message-rail"] nav {
+  position: relative;
+  height: 100%;
+  pointer-events: auto;
+}
+
+[data-slot="session-message-rail-mark"] {
+  position: absolute;
+  inset-inline-start: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-start;
+  width: 26px;
+  height: var(--mark-hit, 11px);
+  margin-block-start: calc(var(--mark-hit, 11px) / -2);
+  padding: 0 0 0 5px;
+  border: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+[data-slot="session-message-rail-mark"]::before {
+  content: "";
+  display: block;
+  width: var(--mark-width, 9px);
+  height: 1.5px;
+  border-radius: 9999px;
+  background: var(--v2-text-text-faint);
+  opacity: 0.5;
+  /* Short, so the marks track the pointer instead of lagging behind it. */
+  transition:
+    width 90ms ease-out,
+    opacity 90ms ease-out,
+    background-color 90ms ease-out;
+}
+
+[data-slot="session-message-rail-mark"][data-near="true"]::before {
+  opacity: 1;
+  background: var(--v2-text-text-muted);
+}
+
+[data-slot="session-message-rail-mark"][data-active="true"]::before {
+  height: 2px;
+  opacity: 1;
+  background: var(--v2-text-text-base);
+}
+
+[data-slot="session-message-rail-tip"] {
+  position: absolute;
+  inset-inline-start: 30px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  width: max-content;
+  max-width: min(360px, 42vw);
+  min-width: 160px;
+  padding: 7px 10px;
+  transform: translateY(-50%);
+  border: 1px solid var(--v2-border-border-base, var(--border-weaker-base));
+  border-radius: 8px;
+  background: var(--v2-background-bg-base);
+  box-shadow: var(--v2-elevation-raised);
+  pointer-events: none;
+  overflow-wrap: anywhere;
+}
+
+[data-slot="session-message-rail-tip-title"] {
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: var(--v2-text-text-base);
+  font-size: 12px;
+  font-weight: 530;
+  line-height: 16px;
+  letter-spacing: -0.04px;
+}
+
+[data-slot="session-message-rail-tip-body"] {
+  display: -webkit-box;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  color: var(--v2-text-text-muted);
+  font-size: 12px;
+  font-weight: 440;
+  line-height: 16px;
+  letter-spacing: -0.04px;
+}

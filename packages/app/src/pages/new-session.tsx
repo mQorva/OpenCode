@@ -60,7 +60,7 @@ export default function NewSessionPage() {
   )
 
   return (
-    <div class="relative size-full overflow-hidden bg-v2-background-bg-deep flex flex-col">
+    <div class="relative size-full overflow-hidden bg-v2-background-bg-base flex flex-col">
       {suspendUntilPromptReady()}
       <header class="h-12 shrink-0 flex items-center gap-1 px-3">
         <Show when={!layout.sidebar.opened()}>

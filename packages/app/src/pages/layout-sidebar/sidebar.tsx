@@ -1,13 +1,16 @@
-import { createMemo, createResource, createSignal, For, Show } from "solid-js"
+import { createMemo, createResource, createSignal, For, Show, type ParentProps } from "solid-js"
 import { createStore, produce } from "solid-js/store"
 import {
   DragDropProvider,
   DragDropSensors,
+  closestCenter,
   createDraggable,
   createDroppable,
   type DragEventHandler,
 } from "@thisbeyond/solid-dnd"
 import { SessionItem } from "./session-item"
+import { SidebarMarquee } from "./marquee"
+import "./sidebar.css"
 import { ProjectStartDialog } from "./project-start-dialog"
 import {
   draftsForProject,
@@ -17,6 +20,11 @@ import {
   sessionTreeIDs,
   splitPinned,
   togglePin,
+  applyOrder,
+  reorder,
+  CHATS_ORDER_KEY,
+  PINNED_ORDER_KEY,
+  unassignedDrafts,
   visibleSessions,
   type SidebarProject,
   type SidebarSession,
@@ -24,6 +32,8 @@ import {
 import {
   displayName,
   createHomeController,
+  getProjectAvatarSource,
+  getProjectAvatarVariant,
   ContextMenu,
   DropdownMenu,
   ServerConnection,
@@ -37,6 +47,7 @@ import {
   IconButtonV2,
   Persist,
   ResizeHandle,
+  ScrollView,
   normalizeSessionInfo,
   pathKey,
   persisted,
@@ -117,6 +128,24 @@ function ProjectMenuItems(props: {
   )
 }
 
+/** Dropping a session here pins it; dropping it back on a project group unpins it. */
+function PinnedBlock(props: ParentProps) {
+  const droppable = createDroppable(PINNED_ORDER_KEY)
+
+  return (
+    <div
+      // @ts-expect-error -- solid-dnd directive
+      use:droppable={droppable}
+      classList={{
+        "flex flex-col gap-0.5 rounded-md": true,
+        "outline outline-1 outline-border-active": droppable.isActiveDroppable,
+      }}
+    >
+      {props.children}
+    </div>
+  )
+}
+
 function DraftItem(props: { draft: DraftTab; active: boolean; onSelect: () => void; onClose: () => void }) {
   const language = useLanguage()
   const draggable = createDraggable(props.draft.draftID)
@@ -125,6 +154,7 @@ function DraftItem(props: { draft: DraftTab; active: boolean; onSelect: () => vo
     <div
       // @ts-expect-error -- solid-dnd directive
       use:draggable={draggable}
+      data-sidebar-row=""
       classList={{
         "group/draft relative w-full h-8 min-w-0 flex items-center rounded-lg pl-8 pr-1 text-13-regular transition-colors": true,
         "bg-v2-background-bg-layer-02 text-text-strong": props.active,
@@ -132,16 +162,13 @@ function DraftItem(props: { draft: DraftTab; active: boolean; onSelect: () => vo
         "opacity-50": draggable.isActiveDraggable,
       }}
     >
-      <Show when={props.active}>
-        <span class="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-icon-strong-base" />
-      </Show>
       <button
         type="button"
         onClick={props.onSelect}
-        class="min-w-0 h-full flex-1 truncate text-left outline-none"
+        class="min-w-0 h-full flex-1 text-left outline-none"
         aria-current={props.active ? "page" : undefined}
       >
-        {language.t("sidebarLayout.draft")}
+        <SidebarMarquee>{language.t("sidebarLayout.draft")}</SidebarMarquee>
       </button>
       <Tooltip value={language.t("common.close")} placement="top">
         <IconButton
@@ -195,6 +222,14 @@ function ProjectGroup(props: {
 }) {
   const language = useLanguage()
   const droppable = createDroppable(props.group.project.worktree)
+  // Projects carry a colour and an optional icon, both editable in the project dialog.
+  // Show them here so a long list stays scannable instead of eleven identical folders.
+  const projectIcon = () => getProjectAvatarSource(props.group.project.id, props.group.project.icon)
+  const projectColor = () => {
+    const colour = props.group.project.icon?.color
+    if (!colour) return undefined
+    return `var(--v2-avatar-bg-${getProjectAvatarVariant(colour)})`
+  }
   const [menuOpen, setMenuOpen] = createSignal(false)
   const shown = () => visibleSessions(props.group.sessions, props.sessionsExpanded)
   const hidden = () => hiddenCount(props.group.sessions, props.sessionsExpanded)
@@ -212,15 +247,13 @@ function ProjectGroup(props: {
       <ContextMenu>
         <ContextMenu.Trigger
           as="div"
+          data-sidebar-row=""
           classList={{
-            "group/project relative h-8 flex items-center min-w-0 rounded-lg transition-colors": true,
+            "group/project relative h-9 flex items-center min-w-0 rounded-lg transition-colors": true,
             "bg-v2-background-bg-layer-02 text-text-strong": props.active,
             "hover:bg-v2-background-bg-layer-02/60 focus-within:bg-v2-background-bg-layer-02/60": !props.active,
           }}
         >
-          <Show when={props.active}>
-            <span class="absolute left-0 top-1/2 h-4 w-0.5 -translate-y-1/2 rounded-full bg-icon-strong-base" />
-          </Show>
           <button
             type="button"
             onClick={props.onToggleCollapsed}
@@ -228,8 +261,15 @@ function ProjectGroup(props: {
             aria-expanded={!props.collapsed}
             aria-current={props.active ? "page" : undefined}
           >
-            <Icon name="folder" size="small" class="text-icon-base shrink-0" />
-            <span class="flex-1 truncate text-13-medium text-text-base">{displayName(props.group.project)}</span>
+            <Show
+              when={projectIcon()}
+              fallback={
+                <Icon name="folder" size="small" class="text-icon-base shrink-0" style={{ color: projectColor() }} />
+              }
+            >
+              {(source) => <img src={source()} alt="" class="size-4 shrink-0 rounded-[4px] object-cover" />}
+            </Show>
+            <SidebarMarquee class="text-13-medium text-text-strong">{displayName(props.group.project)}</SidebarMarquee>
             <Show when={props.unseenCount > 0}>
               <span class="min-w-5 rounded-full bg-v2-background-bg-strong px-1.5 text-center text-11-medium text-v2-text-text-muted">
                 {props.unseenCount}
@@ -300,55 +340,61 @@ function ProjectGroup(props: {
       </ContextMenu>
 
       <Show when={!props.collapsed}>
-        <For each={props.drafts}>
-          {(draft) => (
-            <DraftItem
-              draft={draft}
-              active={draft.draftID === props.activeDraftID}
-              onSelect={() => props.onSelectDraft(draft)}
-              onClose={() => props.onCloseDraft(draft)}
-            />
-          )}
-        </For>
-
-        <Show
-          when={!empty()}
-          fallback={
-            <div class="pl-8 pr-2 py-1 text-12-regular text-text-weaker">{language.t("sidebarLayout.noSessions")}</div>
-          }
-        >
-          <For each={shown()}>
-            {(entry) => (
-              <SessionItem
-                entry={entry}
-                indent
-                active={entry.session.id === props.activeSessionID}
-                pinned={props.isPinned(entry)}
-                unread={props.isUnread(entry)}
-                working={() => props.sessionWorking(entry)}
-                onSelect={() => props.onSelect(entry)}
-                onRename={(title) => props.onRename(entry, title)}
-                onMarkUnread={() => props.onMarkUnread(entry)}
-                onTogglePin={() => props.onTogglePin(entry)}
-                onArchive={props.canArchive ? () => props.onArchive(entry) : undefined}
-                onDelete={() => props.onDelete(entry)}
-                onCopyTitle={() => props.onCopySessionTitle(entry)}
-                onCopyID={() => props.onCopySessionID(entry)}
-                onCopyProject={props.onCopySessionProject}
+        {/* Guide line in the indent: turns a list with padding into a readable tree. */}
+        <div data-slot="sidebar-project-children" class="relative flex flex-col gap-0.5">
+          <For each={props.drafts}>
+            {(draft) => (
+              <DraftItem
+                draft={draft}
+                active={draft.draftID === props.activeDraftID}
+                onSelect={() => props.onSelectDraft(draft)}
+                onClose={() => props.onCloseDraft(draft)}
               />
             )}
           </For>
-        </Show>
 
-        <Show when={hidden() > 0}>
-          <button
-            type="button"
-            onClick={props.onExpandSessions}
-            class="pl-8 pr-2 py-1 text-left text-12-regular text-text-weak hover:text-text-base"
+          <Show
+            when={!empty()}
+            fallback={
+              <div class="pl-8 pr-2 py-1 text-12-regular text-text-weaker">
+                {language.t("sidebarLayout.noSessions")}
+              </div>
+            }
           >
-            {language.t("sidebarLayout.showMore")}
-          </button>
-        </Show>
+            <For each={shown()}>
+              {(entry) => (
+                <SessionItem
+                  entry={entry}
+                  dragID={sessionPinKey(entry)}
+                  indent
+                  active={entry.session.id === props.activeSessionID}
+                  pinned={props.isPinned(entry)}
+                  unread={props.isUnread(entry)}
+                  working={() => props.sessionWorking(entry)}
+                  onSelect={() => props.onSelect(entry)}
+                  onRename={(title) => props.onRename(entry, title)}
+                  onMarkUnread={() => props.onMarkUnread(entry)}
+                  onTogglePin={() => props.onTogglePin(entry)}
+                  onArchive={props.canArchive ? () => props.onArchive(entry) : undefined}
+                  onDelete={() => props.onDelete(entry)}
+                  onCopyTitle={() => props.onCopySessionTitle(entry)}
+                  onCopyID={() => props.onCopySessionID(entry)}
+                  onCopyProject={props.onCopySessionProject}
+                />
+              )}
+            </For>
+          </Show>
+
+          <Show when={hidden() > 0}>
+            <button
+              type="button"
+              onClick={props.onExpandSessions}
+              class="pl-8 pr-2 py-1 text-left text-12-regular text-text-weak hover:text-text-base"
+            >
+              {language.t("sidebarLayout.showMore")}
+            </button>
+          </Show>
+        </div>
       </Show>
     </div>
   )
@@ -373,8 +419,14 @@ export function Sidebar() {
   const [pinned, setPinned] = persisted(Persist.window("sidebar-layout.pinned"), createStore<string[]>([]))
   const [unread, setUnread] = persisted(Persist.window("sidebar-layout.unread"), createStore<string[]>([]))
   const [collapsed, setCollapsed] = persisted(Persist.window("sidebar-layout.collapsed"), createStore<string[]>([]))
+  const [order, setOrder] = persisted(Persist.window("sidebar-layout.order"), createStore<Record<string, string[]>>({}))
   const [expandedSessions, setExpandedSessions] = createSignal<string[]>([])
   const [searching, setSearching] = createSignal(false)
+  const [scrolled, setScrolled] = createSignal(false)
+  const closeSearch = () => {
+    setSearching(false)
+    setFilter("")
+  }
   const [filter, setFilter] = createSignal("")
   const [protocol] = createResource(() => serverSDK().protocol)
   const route = createMemo(() => layout.route())
@@ -424,12 +476,18 @@ export function Sidebar() {
     }),
   )
 
+  const needle = createMemo(() => filter().trim().toLowerCase())
+  const matches = (entry: SidebarSession) => (entry.session.title ?? "").toLowerCase().includes(needle())
+
   const filtered = createMemo(() => {
-    const needle = filter().trim().toLowerCase()
-    if (!needle) return groups()
-    return groups().map((group) => ({
+    const base = needle()
+      ? groups()
+          .map((group) => ({ project: group.project, sessions: group.sessions.filter(matches) }))
+          .filter((group) => group.sessions.length > 0)
+      : groups()
+    return base.map((group) => ({
       project: group.project,
-      sessions: group.sessions.filter((entry) => (entry.session.title ?? "").toLowerCase().includes(needle)),
+      sessions: applyOrder(group.sessions, order[pathKey(group.project.worktree)]),
     }))
   })
 
@@ -439,6 +497,44 @@ export function Sidebar() {
   }
 
   const split = createMemo(() => splitPinned(filtered(), [...pinned]))
+  const noResults = createMemo(
+    () => !!needle() && split().projects.length === 0 && split().pinned.length === 0 && chatSessions().length === 0,
+  )
+
+  const chatDrafts = createMemo(() => (needle() ? [] : unassignedDrafts([...tabs.store]).reverse()))
+
+  const ownedDirectories = createMemo(() => {
+    const keys = new Set<string>()
+    for (const group of groups()) {
+      keys.add(pathKey(group.project.worktree))
+      for (const sandbox of group.project.sandboxes ?? []) keys.add(pathKey(sandbox))
+    }
+    return keys
+  })
+
+  // Sessions started outside every open project — e.g. a prompt submitted in an unassigned chat
+  // before it was dragged into one. They would otherwise disappear from the sidebar entirely.
+  const chatSessions = createMemo<SidebarSession[]>(() => {
+    const path = serverSync().data.path
+    const directory = path.directory || path.home
+    if (!directory || ownedDirectories().has(pathKey(directory))) return []
+    const [store] = serverSync().child(directory, { bootstrap: true })
+    const sessions = sortedRootSessions(store, 0)
+      .filter((session) => !ownedDirectories().has(pathKey(session.directory ?? directory)))
+      .map((session) => ({ session, server: server.key, directory: session.directory ?? directory }))
+    const current = activeSession()
+    if (
+      current &&
+      !current.parentID &&
+      !current.time.archived &&
+      !ownedDirectories().has(pathKey(current.directory)) &&
+      !sessions.some((entry) => entry.session.id === current.id)
+    ) {
+      sessions.unshift({ session: current, server: server.key, directory: current.directory })
+    }
+    const rest = sessions.filter((entry) => !pinned.includes(sessionPinKey(entry)))
+    return applyOrder(needle() ? rest.filter(matches) : rest, order[CHATS_ORDER_KEY])
+  })
 
   const activeProjectWorktree = createMemo(() => {
     const sessionID = activeSessionID()
@@ -457,7 +553,7 @@ export function Sidebar() {
     const draftID = activeDraftID()
     if (!draftID) return undefined
     const draft = tabs.store.find((tab) => tab.type === "draft" && tab.draftID === draftID)
-    if (!draft || draft.type !== "draft") return undefined
+    if (!draft || draft.type !== "draft" || draft.unassigned === true) return undefined
     const directory = draft.worktree ?? draft.directory
     const key = pathKey(directory)
     return layout.projects
@@ -481,8 +577,7 @@ export function Sidebar() {
   const toggle = (entry: SidebarSession) => setPinned(togglePin([...pinned], sessionPinKey(entry)))
   const isPinned = (entry: SidebarSession) => pinned.includes(sessionPinKey(entry))
   const isUnread = (entry: SidebarSession) => unread.includes(sessionPinKey(entry))
-  const sessionWorking = (entry: SidebarSession) =>
-    serverSync().session.data.session_working(entry.session.id)
+  const sessionWorking = (entry: SidebarSession) => serverSync().session.data.session_working(entry.session.id)
   const markUnread = (entry: SidebarSession) => {
     const key = sessionPinKey(entry)
     if (!unread.includes(key)) setUnread((items) => [...items, key])
@@ -583,16 +678,17 @@ export function Sidebar() {
     ))
   }
 
-  // A new chat starts in the project the user is currently looking at, falling back to the first
-  // one in the list. It can be dragged into another project afterwards.
-  const currentProject = () => {
-    const active = activeProjectWorktree()
-    if (active) return layout.projects.list().find((project) => project.worktree === active)
-    return layout.projects.list()[0]
+  // A new chat starts without a project: it lands in the unassigned chats block and can be
+  // dragged into a project afterwards. Until then its directory is the server's own location,
+  // so submitting a prompt still works.
+  const newChat = () => {
+    const path = serverSync().data.path
+    const directory = path.directory || path.home || layout.projects.list()[0]?.worktree
+    if (!directory) return
+    void tabs.newDraft({ server: server.key, directory, unassigned: true })
   }
 
-  const newChat = (project = currentProject()) => {
-    if (!project) return
+  const newProjectChat = (project: LocalProject) => {
     void tabs.newDraft({ server: server.key, directory: project.worktree, worktree: project.worktree })
   }
 
@@ -694,12 +790,67 @@ export function Sidebar() {
     if (index !== -1) tabs.closeTab(index)
   }
 
+  const projectWorktrees = createMemo(() => new Set(groups().map((group) => group.project.worktree)))
+
+  /** Which block a session key currently lives in — reordering only works inside one block. */
+  const blockOf = (key: string) => {
+    if (pinned.includes(key)) return PINNED_ORDER_KEY
+    if (chatSessions().some((entry) => sessionPinKey(entry) === key)) return CHATS_ORDER_KEY
+    const group = split().projects.find((item) => item.sessions.some((entry) => sessionPinKey(entry) === key))
+    return group ? pathKey(group.project.worktree) : undefined
+  }
+
+  /** Resolve a drop target to a project — dropping on a row inside a group counts as the group. */
+  const worktreeOf = (key: string) => {
+    if (projectWorktrees().has(key)) return key
+    const group = groups().find((item) => item.sessions.some((entry) => sessionPinKey(entry) === key))
+    return group?.project.worktree
+  }
+
+  const keysOf = (block: string) => {
+    if (block === PINNED_ORDER_KEY) return [...pinned]
+    if (block === CHATS_ORDER_KEY) return chatSessions().map(sessionPinKey)
+    const group = split().projects.find((item) => pathKey(item.project.worktree) === block)
+    return group ? group.sessions.map(sessionPinKey) : []
+  }
+
   const onDragEnd: DragEventHandler = ({ draggable, droppable }) => {
     if (!draggable || !droppable) return
-    const tab = tabs.store.find((item) => item.type === "draft" && item.draftID === String(draggable.id))
-    const move = moveDraftTarget(tab, String(droppable.id))
-    if (!move) return
-    tabs.updateDraft(move.draftID, { directory: move.directory, worktree: move.worktree })
+    const from = String(draggable.id)
+    const to = String(droppable.id)
+    if (from === to) return
+
+    // A draft has no working directory yet, so it is the only entry that can change project.
+    const tab = tabs.store.find((item) => item.type === "draft" && item.draftID === from)
+    if (tab) {
+      const target = worktreeOf(to)
+      if (!target) return
+      const move = moveDraftTarget(tab, target)
+      if (!move) return
+      tabs.updateDraft(move.draftID, { directory: move.directory, worktree: move.worktree })
+      return
+    }
+
+    if (to === PINNED_ORDER_KEY) {
+      if (!pinned.includes(from)) setPinned([...pinned, from])
+      return
+    }
+
+    // Dropped back onto a project group: that means "unpin", nothing else — a started session
+    // stays bound to its directory.
+    if (projectWorktrees().has(to)) {
+      if (pinned.includes(from)) setPinned(pinned.filter((key) => key !== from))
+      return
+    }
+
+    const block = blockOf(from)
+    if (!block || block !== blockOf(to)) return
+    const next = reorder(keysOf(block), from, to)
+    if (block === PINNED_ORDER_KEY) {
+      setPinned(next)
+      return
+    }
+    setOrder(block, next)
   }
 
   return (
@@ -729,25 +880,41 @@ export function Sidebar() {
             size="large"
             class="!size-8 shrink-0"
             icon={<Icon name="magnifying-glass" size="small" />}
-            onClick={() => {
-              const next = !searching()
-              setSearching(next)
-              if (!next) setFilter("")
-            }}
+            onClick={() => (searching() ? closeSearch() : setSearching(true))}
             aria-label={language.t("sidebarLayout.search")}
           />
         </Tooltip>
       </div>
 
       <Show when={searching()}>
-        <div class="shrink-0 px-4 pb-2">
+        <div class="shrink-0 px-4 pb-2 relative">
           <input
-            autofocus
+            ref={(el) => queueMicrotask(() => el.focus())}
             value={filter()}
             onInput={(event) => setFilter(event.currentTarget.value)}
+            onKeyDown={(event) => {
+              if (event.key !== "Escape") return
+              event.preventDefault()
+              if (filter()) {
+                setFilter("")
+                return
+              }
+              closeSearch()
+            }}
             placeholder={language.t("sidebarLayout.search")}
-            class="w-full rounded-md bg-v2-background-bg-layer-02 px-2 py-1.5 text-13-regular text-text-strong outline-none"
+            aria-label={language.t("sidebarLayout.search")}
+            class="w-full rounded-md bg-v2-background-bg-layer-02 py-1.5 ps-2 pe-7 text-13-regular text-text-strong outline-none"
           />
+          <Show when={filter()}>
+            <IconButton
+              icon="close-small"
+              iconSize="small"
+              variant="ghost"
+              class="!size-6 absolute end-5 top-1/2 -translate-y-1/2 rounded-md text-icon-base"
+              onClick={() => setFilter("")}
+              aria-label={language.t("common.clear")}
+            />
+          </Show>
         </div>
       </Show>
 
@@ -762,100 +929,165 @@ export function Sidebar() {
         </button>
       </div>
 
-      <DragDropProvider onDragEnd={onDragEnd}>
+      <DragDropProvider onDragEnd={onDragEnd} collisionDetector={closestCenter}>
         <DragDropSensors />
-        <div class="flex-1 min-h-0 overflow-y-auto px-2 pb-3 flex flex-col gap-4">
-          <Show when={split().pinned.length > 0}>
-            <div class="flex flex-col gap-0.5">
-              <div class="px-2 py-1 text-12-medium text-text-weak">{language.t("sidebarLayout.pinned")}</div>
-              <For each={split().pinned}>
-                {(entry) => (
-                  <SessionItem
-                    entry={entry}
-                    active={entry.session.id === activeSessionID()}
-                    pinned
-                    unread={isUnread(entry)}
-                    working={() => sessionWorking(entry)}
-                    onSelect={() => select(entry)}
-                    onRename={(title) => renameSession(entry, title)}
-                    onMarkUnread={() => markUnread(entry)}
-                    onTogglePin={() => toggle(entry)}
-                    onArchive={protocol() === "v1" ? () => archiveSession(entry) : undefined}
-                    onDelete={() => confirmDelete(entry)}
-                    onCopyTitle={() => copy(entry.session.title || language.t("sidebarLayout.untitled"))}
-                    onCopyID={() => copy(entry.session.id)}
-                    onCopyProject={() => copy(projectNameFor(entry))}
-                  />
-                )}
-              </For>
-            </div>
-          </Show>
+        <div data-slot="sidebar-list" class="relative flex-1 min-h-0">
+          <div
+            data-slot="sidebar-list-fade"
+            aria-hidden="true"
+            classList={{ "opacity-100": scrolled(), "opacity-0": !scrolled() }}
+          />
+          <ScrollView
+            class="h-full"
+            thumbVisibility="always"
+            thumbInset={0}
+            onScroll={(event) => setScrolled(event.currentTarget.scrollTop > 0)}
+          >
+            <div class="px-2 pb-3 flex flex-col gap-4">
+              <Show
+                when={!noResults()}
+                fallback={
+                  <div class="px-2 py-6 text-center text-12-regular text-text-weak">
+                    {language.t("home.sessions.search.noResults", { query: `"${filter().trim()}"` })}
+                  </div>
+                }
+              >
+                <Show when={chatDrafts().length > 0 || chatSessions().length > 0}>
+                  <div class="flex flex-col gap-0.5">
+                    <div class="px-2 py-1 text-12-medium text-text-weak">{language.t("sidebarLayout.chats")}</div>
+                    <For each={chatDrafts()}>
+                      {(draft) => (
+                        <DraftItem
+                          draft={draft}
+                          active={draft.draftID === activeDraftID()}
+                          onSelect={() => tabs.select(draft)}
+                          onClose={() => closeDraft(draft)}
+                        />
+                      )}
+                    </For>
+                    <For each={chatSessions()}>
+                      {(entry) => (
+                        <SessionItem
+                          entry={entry}
+                          dragID={sessionPinKey(entry)}
+                          active={entry.session.id === activeSessionID()}
+                          pinned={isPinned(entry)}
+                          unread={isUnread(entry)}
+                          working={() => sessionWorking(entry)}
+                          onSelect={() => select(entry)}
+                          onRename={(title) => renameSession(entry, title)}
+                          onMarkUnread={() => markUnread(entry)}
+                          onTogglePin={() => toggle(entry)}
+                          onArchive={protocol() === "v1" ? () => archiveSession(entry) : undefined}
+                          onDelete={() => confirmDelete(entry)}
+                          onCopyTitle={() => copy(entry.session.title || language.t("sidebarLayout.untitled"))}
+                          onCopyID={() => copy(entry.session.id)}
+                          onCopyProject={() => copy(projectNameFor(entry))}
+                        />
+                      )}
+                    </For>
+                  </div>
+                </Show>
 
-          <div class="flex flex-col gap-2">
-            <div class="flex items-center gap-1 px-2 py-1 text-12-medium text-text-weak">
-              <span class="flex-1">{language.t("sidebarLayout.projects")}</span>
-              <Tooltip placement="top" value={language.t("sidebarLayout.addProject")}>
-                <IconButton
-                  icon="plus"
-                  variant="ghost"
-                  onClick={addProject}
-                  aria-label={language.t("sidebarLayout.addProject")}
-                />
-              </Tooltip>
+                <Show when={split().pinned.length > 0}>
+                  <PinnedBlock>
+                    <div class="px-2 py-1 text-12-medium text-text-weak">{language.t("sidebarLayout.pinned")}</div>
+                    <For each={split().pinned}>
+                      {(entry) => (
+                        <SessionItem
+                          entry={entry}
+                          dragID={sessionPinKey(entry)}
+                          active={entry.session.id === activeSessionID()}
+                          pinned
+                          unread={isUnread(entry)}
+                          working={() => sessionWorking(entry)}
+                          onSelect={() => select(entry)}
+                          onRename={(title) => renameSession(entry, title)}
+                          onMarkUnread={() => markUnread(entry)}
+                          onTogglePin={() => toggle(entry)}
+                          onArchive={protocol() === "v1" ? () => archiveSession(entry) : undefined}
+                          onDelete={() => confirmDelete(entry)}
+                          onCopyTitle={() => copy(entry.session.title || language.t("sidebarLayout.untitled"))}
+                          onCopyID={() => copy(entry.session.id)}
+                          onCopyProject={() => copy(projectNameFor(entry))}
+                        />
+                      )}
+                    </For>
+                  </PinnedBlock>
+                </Show>
+
+                <div class="flex flex-col gap-2">
+                  <div class="flex items-center gap-1 px-2 py-1 text-12-medium text-text-weak">
+                    <span class="flex-1">{language.t("sidebarLayout.projects")}</span>
+                    <Tooltip placement="top" value={language.t("sidebarLayout.addProject")}>
+                      <IconButton
+                        icon="plus"
+                        variant="ghost"
+                        onClick={addProject}
+                        aria-label={language.t("sidebarLayout.addProject")}
+                      />
+                    </Tooltip>
+                  </div>
+                  <For each={split().projects}>
+                    {(group) => (
+                      <ProjectGroup
+                        group={group}
+                        active={group.project.worktree === activeProjectWorktree()}
+                        drafts={needle() ? [] : draftsForProject([...tabs.store], group.project.worktree)}
+                        collapsed={collapsed.includes(group.project.worktree)}
+                        sessionsExpanded={expandedSessions().includes(group.project.worktree)}
+                        activeSessionID={activeSessionID()}
+                        activeDraftID={activeDraftID()}
+                        isPinned={isPinned}
+                        isUnread={isUnread}
+                        sessionWorking={sessionWorking}
+                        onToggleCollapsed={() =>
+                          setCollapsed((items) =>
+                            items.includes(group.project.worktree)
+                              ? items.filter((item) => item !== group.project.worktree)
+                              : [...items, group.project.worktree],
+                          )
+                        }
+                        onExpandSessions={() => setExpandedSessions([...expandedSessions(), group.project.worktree])}
+                        onSelect={select}
+                        onSelectDraft={(draft) => tabs.select(draft)}
+                        onCloseDraft={closeDraft}
+                        onRename={renameSession}
+                        onMarkUnread={markUnread}
+                        onTogglePin={toggle}
+                        onNewChat={() => newProjectChat(group.project)}
+                        onEditProject={() => editProject(group.project)}
+                        onCopyProjectName={() => copy(displayName(group.project))}
+                        onCopyProjectPath={() => copy(group.project.worktree)}
+                        onRevealProject={platform.revealPath ? () => revealProject(group.project) : undefined}
+                        workspacesEnabled={layout.sidebar.workspaces(group.project.worktree)()}
+                        onToggleWorkspaces={
+                          group.project.vcs === "git"
+                            ? () => layout.sidebar.toggleWorkspaces(group.project.worktree)
+                            : undefined
+                        }
+                        unseenCount={projectUnseenCount(group.project)}
+                        onClearNotifications={
+                          projectUnseenCount(group.project) > 0
+                            ? () => clearProjectNotifications(group.project)
+                            : undefined
+                        }
+                        onCloseProject={() => layout.projects.close(group.project.worktree)}
+                        onCopySessionTitle={(entry) =>
+                          copy(entry.session.title || language.t("sidebarLayout.untitled"))
+                        }
+                        onCopySessionID={(entry) => copy(entry.session.id)}
+                        onCopySessionProject={() => copy(displayName(group.project))}
+                        onArchive={archiveSession}
+                        onDelete={confirmDelete}
+                        canArchive={protocol() === "v1"}
+                      />
+                    )}
+                  </For>
+                </div>
+              </Show>
             </div>
-            <For each={split().projects}>
-              {(group) => (
-                <ProjectGroup
-                  group={group}
-                  active={group.project.worktree === activeProjectWorktree()}
-                  drafts={draftsForProject([...tabs.store], group.project.worktree)}
-                  collapsed={collapsed.includes(group.project.worktree)}
-                  sessionsExpanded={expandedSessions().includes(group.project.worktree)}
-                  activeSessionID={activeSessionID()}
-                  activeDraftID={activeDraftID()}
-                  isPinned={isPinned}
-                  isUnread={isUnread}
-                  sessionWorking={sessionWorking}
-                  onToggleCollapsed={() =>
-                    setCollapsed((items) =>
-                      items.includes(group.project.worktree)
-                        ? items.filter((item) => item !== group.project.worktree)
-                        : [...items, group.project.worktree],
-                    )
-                  }
-                  onExpandSessions={() => setExpandedSessions([...expandedSessions(), group.project.worktree])}
-                  onSelect={select}
-                  onSelectDraft={(draft) => tabs.select(draft)}
-                  onCloseDraft={closeDraft}
-                  onRename={renameSession}
-                  onMarkUnread={markUnread}
-                  onTogglePin={toggle}
-                  onNewChat={() => newChat(group.project)}
-                  onEditProject={() => editProject(group.project)}
-                  onCopyProjectName={() => copy(displayName(group.project))}
-                  onCopyProjectPath={() => copy(group.project.worktree)}
-                  onRevealProject={platform.revealPath ? () => revealProject(group.project) : undefined}
-                  workspacesEnabled={layout.sidebar.workspaces(group.project.worktree)()}
-                  onToggleWorkspaces={
-                    group.project.vcs === "git"
-                      ? () => layout.sidebar.toggleWorkspaces(group.project.worktree)
-                      : undefined
-                  }
-                  unseenCount={projectUnseenCount(group.project)}
-                  onClearNotifications={
-                    projectUnseenCount(group.project) > 0 ? () => clearProjectNotifications(group.project) : undefined
-                  }
-                  onCloseProject={() => layout.projects.close(group.project.worktree)}
-                  onCopySessionTitle={(entry) => copy(entry.session.title || language.t("sidebarLayout.untitled"))}
-                  onCopySessionID={(entry) => copy(entry.session.id)}
-                  onCopySessionProject={() => copy(displayName(group.project))}
-                  onArchive={archiveSession}
-                  onDelete={confirmDelete}
-                  canArchive={protocol() === "v1"}
-                />
-              )}
-            </For>
-          </div>
+          </ScrollView>
         </div>
       </DragDropProvider>
 

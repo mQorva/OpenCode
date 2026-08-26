@@ -328,6 +328,54 @@ function SessionProviders(props: ParentProps) {
   )
 }
 
+const SCROLL_STEP = 64
+const SCROLL_STEP_REPEAT_MS = 55
+
+/**
+ * Stepper at either end of the scrollbar. Click nudges, holding repeats. Mouse-only by design:
+ * keyboard and wheel already scroll the region, so these stay out of the tab order.
+ */
+function ScrollStep(props: { direction: "up" | "down"; onStep: (delta: number) => void }) {
+  let timer: ReturnType<typeof setInterval> | undefined
+  const delta = () => (props.direction === "up" ? -SCROLL_STEP : SCROLL_STEP)
+  const stop = () => {
+    if (timer === undefined) return
+    clearInterval(timer)
+    timer = undefined
+  }
+  onCleanup(stop)
+
+  return (
+    <button
+      type="button"
+      data-slot="session-scroll-step"
+      data-direction={props.direction}
+      aria-hidden="true"
+      tabIndex={-1}
+      class="pointer-events-auto flex h-3 w-3 shrink-0 items-center justify-center border-none bg-transparent p-0 text-v2-text-text-faint transition-colors hover:text-v2-text-text-muted"
+      onPointerDown={(event) => {
+        event.preventDefault()
+        props.onStep(delta())
+        stop()
+        timer = setInterval(() => props.onStep(delta()), SCROLL_STEP_REPEAT_MS)
+      }}
+      onPointerUp={stop}
+      onPointerLeave={stop}
+      onPointerCancel={stop}
+    >
+      <svg width="7" height="5" viewBox="0 0 7 5" fill="none" aria-hidden="true">
+        <path
+          d={props.direction === "up" ? "M1 4L3.5 1L6 4" : "M1 1L3.5 4L6 1"}
+          stroke="currentColor"
+          stroke-width="1.2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        />
+      </svg>
+    </button>
+  )
+}
+
 function SessionRouteFrame(props: ParentProps<{ padded?: boolean }>) {
   return (
     <div class="relative size-full overflow-hidden flex flex-col" classList={{ "p-2": props.padded }}>
@@ -343,8 +391,7 @@ function SessionPanelFrame(props: ParentProps<{ newLayout: boolean; raised?: boo
     <div
       classList={{
         "flex-1 min-h-0 flex flex-col": true,
-        "bg-v2-background-bg-base": props.newLayout && settings.general.layoutMode() !== "sidebar",
-        "bg-v2-background-bg-layer-01": props.newLayout && settings.general.layoutMode() === "sidebar",
+        "bg-v2-background-bg-base": props.newLayout,
         "bg-background-stronger": !props.newLayout,
         "rounded-[10px] overflow-hidden": props.newLayout && settings.general.layoutMode() !== "sidebar",
         "shadow-[var(--v2-elevation-raised)]":
@@ -1492,6 +1539,15 @@ export default function Page() {
     ),
   )
 
+  const [thumbTrack, setThumbTrack] = createSignal<HTMLDivElement>()
+
+  const stepScroll = (delta: number) => {
+    const el = scroller
+    if (!el) return
+    markScrollGesture(el)
+    el.scrollBy({ top: delta, behavior: "auto" })
+  }
+
   const autoScroll = createAutoScroll({
     working: () => true,
     overflowAnchor: "none",
@@ -2075,6 +2131,13 @@ export default function Page() {
 
   const sessionPanelContent = () => (
     <>
+      {/* The timeline stops above the composer, so its scrollbar would too. Portal the thumb
+          into a track that spans the whole panel instead, with a stepper at each end. */}
+      <div data-slot="session-scroll-track" class="pointer-events-none absolute inset-y-0 end-0 z-50 flex w-3 flex-col">
+        <ScrollStep direction="up" onStep={stepScroll} />
+        <div ref={setThumbTrack} class="relative min-h-0 flex-1" />
+        <ScrollStep direction="down" onStep={stepScroll} />
+      </div>
       {sessionSync() ?? ""}
       <Show when={!isDesktop() && !!params.id && settings.general.newLayoutDesigns() && !mobileTabsBottom()}>
         {mobileTabs(true)}
@@ -2104,6 +2167,7 @@ export default function Page() {
                   onResumeScroll={resumeScroll}
                   setScrollRef={setScrollRef}
                   onScheduleScrollState={scheduleScrollState}
+                  thumbContainer={thumbTrack}
                   onAutoScrollHandleScroll={autoScroll.handleScroll}
                   onMarkScrollGesture={markScrollGesture}
                   hasScrollGesture={hasScrollGesture}
@@ -2363,31 +2427,31 @@ export default function Page() {
               </div>
             </Show>
             <div class="min-h-0 flex-1 flex flex-col">
-            <Suspense>
-              <SessionSidePanel
-                canReview={canReview}
-                diffs={reviewDiffs}
-                diffsReady={reviewReady}
-                empty={reviewEmptyText}
-                hasReview={hasReview}
-                reviewHasFocusableContent={() => hasReview() || reviewV2State.sidebarOpened()}
-                reviewCount={reviewCount}
-                reviewPanel={reviewPanelV2}
-                reviewSidebarToggle={(disabled) => (
-                  <SessionReviewV2SidebarToggle
-                    opened={reviewV2State.sidebarOpened()}
-                    disabled={disabled}
-                    onToggle={reviewV2State.toggleSidebar}
-                  />
-                )}
-                fileBrowserState={reviewV2State}
-                activeDiff={activeReviewFile()}
-                focusReviewDiff={focusReviewDiff}
-                reviewSnap={ui.reviewSnap}
-                size={size}
-                stacked={sidebarLayout()}
-              />
-            </Suspense>
+              <Suspense>
+                <SessionSidePanel
+                  canReview={canReview}
+                  diffs={reviewDiffs}
+                  diffsReady={reviewReady}
+                  empty={reviewEmptyText}
+                  hasReview={hasReview}
+                  reviewHasFocusableContent={() => hasReview() || reviewV2State.sidebarOpened()}
+                  reviewCount={reviewCount}
+                  reviewPanel={reviewPanelV2}
+                  reviewSidebarToggle={(disabled) => (
+                    <SessionReviewV2SidebarToggle
+                      opened={reviewV2State.sidebarOpened()}
+                      disabled={disabled}
+                      onToggle={reviewV2State.toggleSidebar}
+                    />
+                  )}
+                  fileBrowserState={reviewV2State}
+                  activeDiff={activeReviewFile()}
+                  focusReviewDiff={focusReviewDiff}
+                  reviewSnap={ui.reviewSnap}
+                  size={size}
+                  stacked={sidebarLayout()}
+                />
+              </Suspense>
             </div>
           </div>
         </Show>

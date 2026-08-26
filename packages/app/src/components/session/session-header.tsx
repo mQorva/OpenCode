@@ -330,6 +330,7 @@ export function SessionHeader(props: { sidePanelOpen?: boolean }) {
             </span>
             <span class="min-w-0 truncate text-14-medium text-v2-text-text-strong">{sessionTitle()}</span>
           </div>
+          <div id="opencode-session-title-actions" class="flex shrink-0 items-center" />
           <SessionHeaderV2Actions state={v2ActionsState()} />
         </header>
       </Show>

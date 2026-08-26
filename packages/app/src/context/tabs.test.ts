@@ -23,6 +23,23 @@ describe("tab migration", () => {
     expect(migrateTabs([{ type: "session", sessionId: "a", dirBase64: "legacy" }], server)).toEqual([sessionTab("a")])
   })
 
+  test("keeps the unassigned flag on persisted drafts and drops bogus values", () => {
+    expect(
+      migrateTabs(
+        [
+          { type: "draft", draftID: "d1", directory: "/home", unassigned: true },
+          { type: "draft", draftID: "d2", directory: "/proj", worktree: "/proj", unassigned: false },
+          { type: "draft", draftID: "d3", directory: "/proj", unassigned: "yes" },
+        ],
+        server,
+      ),
+    ).toEqual([
+      { type: "draft", draftID: "d1", server, directory: "/home", worktree: undefined, unassigned: true },
+      { type: "draft", draftID: "d2", server, directory: "/proj", worktree: "/proj" },
+      { type: "draft", draftID: "d3", server, directory: "/proj", worktree: undefined },
+    ])
+  })
+
   test("replaces invalid top-level persisted data", () => {
     expect(migrateTabs(null, server)).toEqual([])
     expect(migrateTabs({}, server)).toEqual([])

@@ -7,7 +7,8 @@ Dateien, Terminal und Einstellungen bleiben OpenCode-Funktionen.
 
 - Die obere App-Leiste enthält den Umschalter der linken Seitenleiste. Er bleibt auf derselben
   Zeile wie das Anwendungsmenü und die Fenstersteuerung.
-- Die linke Leiste gruppiert Chats nach OpenCode-Projekt. Ihre Breite ist ziehbar und wird im
+- Die linke Leiste gruppiert Chats nach OpenCode-Projekt und führt oben einen separaten Block
+  „Chats“ für Einträge außerhalb aller Projekte. Ihre Breite ist ziehbar und wird im
   bestehenden Layout-Speicher gesichert.
 - Der zentrale Bereich ist der Chat. In einem neuen Chat wird das Projekt allein über die linke
   Leiste bestimmt; der Composer zeigt keinen zweiten Projektwähler.
@@ -17,7 +18,12 @@ Dateien, Terminal und Einstellungen bleiben OpenCode-Funktionen.
 
 ## Aktionen
 
-- „Neuer Chat“ erzeugt einen vorhandenen OpenCode-Entwurf im ausgewählten Projekt.
+- „Neuer Chat“ erzeugt einen OpenCode-Entwurf ohne Projektzuordnung im Block „Chats“. Per
+  Drag & Drop lässt sich der Entwurf einem Projekt zuordnen; bis dahin läuft die erste Nachricht
+  im Server-Arbeitsverzeichnis. Bereits gestartete Sitzungen bleiben an ihr Verzeichnis
+  gebunden und sind nicht verschiebbar.
+- Sitzungen, deren Verzeichnis zu keinem geöffneten Projekt gehört, erscheinen ebenfalls im
+  Block „Chats“.
 - „Projekt öffnen“ verwendet den bestehenden Verzeichnisauswahldialog.
 - Das Projekt-Kontextmenü erstellt Chats oder entfernt das Projekt nur aus der OpenCode-Liste;
   es löscht kein Verzeichnis.

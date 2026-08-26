@@ -3,6 +3,7 @@ import { createStore } from "solid-js/store"
 import { Sidebar } from "./sidebar"
 import { DebugBar, TabsInfoPopup, Titlebar, ToastRegion, setV2Toast, useLayout, usePlatform } from "./upstream"
 import type { TitlebarUpdate } from "./upstream"
+import "./shell.css"
 
 /**
  * Sidebar layout shell: window title bar without tabs, a grouped session sidebar on the left,
@@ -27,7 +28,8 @@ export default function SidebarLayout(props: ParentProps) {
 
   return (
     <div
-      class="relative bg-v2-background-bg-deep flex-1 min-h-0 min-w-0 flex flex-col select-none [&_input]:select-text [&_textarea]:select-text [&_[contenteditable]]:select-text"
+      data-slot="sidebar-shell"
+      class="relative bg-v2-background-bg-base flex-1 min-h-0 min-w-0 flex flex-col select-none [&_input]:select-text [&_textarea]:select-text [&_[contenteditable]]:select-text"
       style={{
         "padding-top": "env(safe-area-inset-top, 0px)",
         "padding-bottom": "env(safe-area-inset-bottom, 0px)",
@@ -48,7 +50,10 @@ export default function SidebarLayout(props: ParentProps) {
           <Sidebar />
         </Show>
         <div class="flex-1 min-h-0 min-w-0 flex flex-col border-t border-border-weaker-base">
-          <main class="flex-1 min-h-0 min-w-0 overflow-x-hidden flex flex-col items-start contain-strict">
+          <main
+            data-slot="sidebar-workspace"
+            class="flex-1 min-h-0 min-w-0 overflow-x-hidden flex flex-col items-start contain-strict"
+          >
             <Suspense>{props.children}</Suspense>
           </main>
         </div>

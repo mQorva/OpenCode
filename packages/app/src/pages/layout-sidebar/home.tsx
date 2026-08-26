@@ -1,12 +1,12 @@
 import { useNavigate } from "@solidjs/router"
 import { createEffect, Show } from "solid-js"
-import { useLanguage, useLayout, useServer, useSettings, useTabs } from "./upstream"
+import { useLanguage, useLayout, useServer, useServerSync, useSettings, useTabs } from "./upstream"
 import { tabHref } from "@/context/tabs"
 
 /**
  * The sidebar layout has no separate start page: the sidebar already lists every project and
  * session, and it carries "open project". Landing on "/" therefore goes straight back into the
- * work — the most recent session, or a fresh draft in the first project.
+ * work — the most recent session, or a fresh unassigned draft.
  *
  * Only when there is no project at all does anything render here, and then just a pointer at the
  * sidebar.
@@ -15,6 +15,7 @@ export function SidebarHome() {
   const language = useLanguage()
   const layout = useLayout()
   const server = useServer()
+  const serverSync = useServerSync()
   const tabs = useTabs()
   const navigate = useNavigate()
 
@@ -32,10 +33,12 @@ export function SidebarHome() {
       return
     }
 
-    const project = layout.projects.list()[0]
-    if (!project || creating) return
+    if (creating) return
+    const path = serverSync().data.path
+    const directory = path.directory || path.home
+    if (!directory) return
     creating = true
-    void tabs.newDraft({ server: server.key, directory: project.worktree, worktree: project.worktree })
+    void tabs.newDraft({ server: server.key, directory, unassigned: true })
   })
 
   return (

@@ -1,0 +1,91 @@
+/* Registered so the two fade widths can be interpolated in keyframes — plain custom properties
+   would jump between values instead of following the drift. */
+@property --marquee-fade-in {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 0px;
+}
+
+@property --marquee-fade-out {
+  syntax: "<length>";
+  inherits: false;
+  initial-value: 18px;
+}
+
+[data-marquee] {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  /* Fill the remaining row space when the parent row/button is a flex container. */
+  flex: 1 1 0%;
+}
+
+[data-marquee] > span {
+  display: inline-block;
+  white-space: nowrap;
+}
+
+/* Truncated titles fade out softly at the end instead of showing ellipsis dots. Each side only
+   fades while something is actually hidden there: nothing on the left until the text has moved,
+   nothing on the right once it has reached its end. */
+[data-marquee][data-truncated] {
+  -webkit-mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 var(--marquee-fade-in),
+    #000 calc(100% - var(--marquee-fade-out)),
+    transparent 100%
+  );
+  mask-image: linear-gradient(
+    to right,
+    transparent 0,
+    #000 var(--marquee-fade-in),
+    #000 calc(100% - var(--marquee-fade-out)),
+    transparent 100%
+  );
+}
+
+/* Mask and text share duration and easing, so the fades track the drift exactly. */
+[data-sidebar-row]:hover [data-marquee][data-truncated],
+[data-sidebar-row]:focus-within [data-marquee][data-truncated] {
+  animation: sidebar-marquee-mask var(--marquee-duration, 3s) ease-in-out 1 forwards;
+}
+
+[data-sidebar-row]:hover [data-marquee][data-truncated] > span,
+[data-sidebar-row]:focus-within [data-marquee][data-truncated] > span {
+  animation: sidebar-marquee var(--marquee-duration, 3s) ease-in-out 1 forwards;
+  will-change: transform;
+}
+
+@keyframes sidebar-marquee {
+  0%,
+  6% {
+    transform: translateX(0);
+  }
+  94%,
+  100% {
+    transform: translateX(var(--marquee-shift, 0px));
+  }
+}
+
+@keyframes sidebar-marquee-mask {
+  0%,
+  6% {
+    --marquee-fade-in: 0px;
+    --marquee-fade-out: 18px;
+  }
+  94%,
+  100% {
+    --marquee-fade-in: 12px;
+    --marquee-fade-out: 0px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-sidebar-row]:hover [data-marquee][data-truncated],
+  [data-sidebar-row]:focus-within [data-marquee][data-truncated],
+  [data-sidebar-row]:hover [data-marquee][data-truncated] > span,
+  [data-sidebar-row]:focus-within [data-marquee][data-truncated] > span {
+    animation: none;
+  }
+}

@@ -1,3 +1,17 @@
+/* The Windows caption buttons are drawn natively over a transparent overlay, so the
+   header has to paint the strip it leaves free — otherwise that strip shows the window
+   background and reads as a separate colour next to the titlebar. */
+[data-slot="titlebar-v2"]::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 100%;
+  width: var(--titlebar-controls-width, 0px);
+  background-color: inherit;
+  pointer-events: none;
+}
+
 [data-slot="titlebar-tab-item"] {
   user-select: none;
 }

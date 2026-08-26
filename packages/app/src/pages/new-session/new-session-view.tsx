@@ -40,7 +40,8 @@ export function NewSessionView(props: {
     <div class="@container relative flex flex-col min-h-0 h-full flex-1">
       <div
         data-component="session-new-design"
-        class="relative flex-1 min-h-0 overflow-hidden bg-v2-background-bg-deep"
+        class="relative flex-1 min-h-0 overflow-hidden"
+        classList={{ "bg-v2-background-bg-base": sidebarLayout(), "bg-v2-background-bg-deep": !sidebarLayout() }}
       >
         <Show
           when={sidebarLayout()}
@@ -82,13 +83,18 @@ export function NewSessionView(props: {
             </div>
           }
         >
+          <div class="pointer-events-none absolute inset-x-0 top-[25.375%] hidden justify-center px-6 md:flex">
+            <div class={NEW_SESSION_CONTENT_WIDTH}>
+              <WordmarkV2 class="h-auto w-full text-v2-background-bg-inverse" />
+            </div>
+          </div>
           <div class="h-full flex flex-col">
             <div class="flex-1" />
             <div
               class="shrink-0 flex justify-center px-6 transition-[padding-bottom] duration-[250ms] ease-[cubic-bezier(0.215,0.61,0.355,1)] motion-reduce:transition-none"
               classList={{ "pb-2": providerTip.present(), "pb-8": !providerTip.present() }}
             >
-<div class="w-full max-w-200 2xl:max-w-[1000px]">
+              <div class="w-full max-w-200 2xl:max-w-[1000px]">
                 <PromptInputV2Composer controller={props.input} />
               </div>
             </div>

@@ -1,0 +1,32 @@
+/* Guide line in the indent of a project's sessions: without it the list reads as
+   arbitrary padding rather than as a group. */
+[data-slot="sidebar-project-children"]::before {
+  content: "";
+  position: absolute;
+  inset-block: 2px;
+  inset-inline-start: 16px;
+  width: 1px;
+  background: var(--border-weaker-base);
+  pointer-events: none;
+}
+
+[data-slot="sidebar-list-fade"] {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  z-index: 10;
+  height: 20px;
+  background: linear-gradient(to bottom, var(--v2-background-bg-layer-01), transparent);
+  pointer-events: none;
+  transition: opacity 120ms ease;
+}
+
+/* The shared handle ships without a colour; each host paints its own. */
+[data-component="sidebar-layout-sidebar"] [data-component="resize-handle"]::after {
+  background: var(--v2-border-border-muted, var(--border-weak-base));
+}
+
+/* Drop marker while reordering: the dragged row lands in front of this one. */
+[data-sidebar-row][data-drop] {
+  box-shadow: inset 0 1.5px 0 var(--border-active);
+}

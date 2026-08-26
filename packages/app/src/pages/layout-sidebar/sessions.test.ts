@@ -1,14 +1,18 @@
 import { describe, expect, test } from "bun:test"
 import {
+  applyOrder,
   draftsForProject,
   hiddenCount,
   moveDraftTarget,
   pinKey,
+  reorder,
+  sessionPinKey,
   sessionTreeIDs,
   splitPinned,
   togglePin,
   visibleSessions,
   type SidebarProject,
+  type SidebarSession,
 } from "./sessions"
 
 const entry = (id: string, worktree: string) =>
@@ -112,5 +116,36 @@ describe("sessionTreeIDs", () => {
     ]
 
     expect(sessionTreeIDs(sessions, "root")).toEqual(["root", "child", "grandchild"])
+  })
+})
+
+describe("manual order", () => {
+  const entry = (id: string): SidebarSession => ({
+    session: { id } as SidebarSession["session"],
+    server: "srv" as SidebarSession["server"],
+    directory: "/work",
+  })
+  const key = (id: string) => sessionPinKey(entry(id))
+
+  test("keeps stored order and puts unknown entries first", () => {
+    const sessions = [entry("c"), entry("a"), entry("b")]
+    const ordered = applyOrder(sessions, [key("b"), key("a")])
+    expect(ordered.map((item) => item.session.id)).toEqual(["c", "b", "a"])
+  })
+
+  test("returns the input untouched without a stored order", () => {
+    const sessions = [entry("a"), entry("b")]
+    expect(applyOrder(sessions, undefined)).toBe(sessions)
+    expect(applyOrder(sessions, [])).toBe(sessions)
+  })
+
+  test("reorder drops the moved key in front of the target", () => {
+    expect(reorder(["a", "b", "c"], "c", "a")).toEqual(["c", "a", "b"])
+    expect(reorder(["a", "b", "c"], "a", "c")).toEqual(["b", "a", "c"])
+  })
+
+  test("reorder ignores an unknown target and a self drop", () => {
+    expect(reorder(["a", "b"], "a", "zzz")).toEqual(["a", "b"])
+    expect(reorder(["a", "b"], "a", "a")).toEqual(["a", "b"])
   })
 })

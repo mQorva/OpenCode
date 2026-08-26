@@ -178,7 +178,9 @@ export function Titlebar(props: {
       data-slot={useV2Titlebar() ? "titlebar-v2" : undefined}
       classList={{
         "shrink-0 relative flex flex-row": true,
-        "h-9 bg-v2-background-bg-deep overflow-visible": useV2Titlebar(),
+        "h-9 overflow-visible": useV2Titlebar(),
+        "bg-v2-background-bg-deep": useV2Titlebar() && settings.general.layoutMode() !== "sidebar",
+        "bg-v2-background-bg-layer-01": useV2Titlebar() && settings.general.layoutMode() === "sidebar",
         "h-10 bg-background-base overflow-hidden": !useV2Titlebar(),
         "order-last": bottom(),
       }}
@@ -190,6 +192,9 @@ export function Titlebar(props: {
         "max-width": windows() ? `env(titlebar-area-width, calc(100vw - ${windowsControlsWidth()}))` : undefined,
         // Native Windows caption controls remain on the physical right in both writing directions.
         "margin-right": windows() ? "auto" : undefined,
+        // The header stops before the native caption buttons; this lets the titlebar
+        // background continue underneath them instead of showing the window behind.
+        "--titlebar-controls-width": windows() ? windowsControlsWidth() : "0px",
       }}
       data-tauri-drag-region
     >
@@ -387,27 +392,43 @@ export function Titlebar(props: {
                 <Show when={props.distributedMenu}>
                   <ChannelIndicator debugTools={props.debugTools} />
                 </Show>
+                {/* In the sidebar layout the only other toggles live inside the sidebar and in the
+                    session header — with the sidebar closed on a route without one, this is the way back. */}
+                <Show when={settings.general.layoutMode() === "sidebar" && !layout.sidebar.opened()}>
+                  <TooltipV2 placement="bottom" value={language.t("sidebarLayout.toggle")} class="shrink-0">
+                    <IconButtonV2
+                      type="button"
+                      variant="ghost-muted"
+                      size="large"
+                      class="!size-8 shrink-0"
+                      onClick={() => layout.sidebar.toggle()}
+                      aria-label={language.t("sidebarLayout.toggle")}
+                      aria-expanded={false}
+                      icon={<Icon name="layout-left" size="small" />}
+                    />
+                  </TooltipV2>
+                </Show>
                 <Show when={!props.distributedMenu}>
                   <TooltipV2
-                  placement="bottom"
-                  value={
-                    <>
-                      {language.t("home.title")}
-                      <KeybindV2 keys={command.keybindParts("home.toggle")} variant="neutral" />
-                    </>
-                  }
-                  class="shrink-0"
+                    placement="bottom"
+                    value={
+                      <>
+                        {language.t("home.title")}
+                        <KeybindV2 keys={command.keybindParts("home.toggle")} variant="neutral" />
+                      </>
+                    }
+                    class="shrink-0"
                   >
                     <IconButtonV2
-                    type="button"
-                    variant="ghost-muted"
-                    size="large"
-                    class="!w-9 shrink-0"
-                    icon={<IconV2 name="grid-plus" />}
-                    state={layout.route().type === "home" ? "pressed" : undefined}
-                    onClick={toggleHome}
-                    aria-label={language.t("home.title")}
-                    aria-pressed={layout.route().type === "home"}
+                      type="button"
+                      variant="ghost-muted"
+                      size="large"
+                      class="!w-9 shrink-0"
+                      icon={<IconV2 name="grid-plus" />}
+                      state={layout.route().type === "home" ? "pressed" : undefined}
+                      onClick={toggleHome}
+                      aria-label={language.t("home.title")}
+                      aria-pressed={layout.route().type === "home"}
                     />
                   </TooltipV2>
                 </Show>
