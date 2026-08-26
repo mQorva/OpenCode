@@ -1,0 +1,65 @@
+/* Held back briefly, then faded in: a workspace that resolves quickly should show nothing at all,
+   because a skeleton that flashes for 80ms reads as a glitch rather than as loading. The delay is
+   on an animation, not a timer, so nothing has to be scheduled in JS. */
+[data-slot="workspace-skeleton"] {
+  --skeleton-fill: color-mix(in oklab, var(--v2-text-text-base) 8%, var(--v2-background-bg-base));
+  --skeleton-fill-strong: color-mix(in oklab, var(--v2-text-text-base) 12%, var(--v2-background-bg-base));
+
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  opacity: 0;
+  animation: workspace-skeleton-appear 160ms ease-out 150ms forwards;
+}
+
+@keyframes workspace-skeleton-appear {
+  to {
+    opacity: 1;
+  }
+}
+
+[data-slot="workspace-skeleton-block"] {
+  border-radius: 8px;
+  background: var(--skeleton-fill);
+  /* A shallow, slow breath rather than a blink — the wide swing of a default pulse pulls the eye
+     to the placeholder instead of to the content that is about to replace it. */
+  animation: workspace-skeleton-breathe 2400ms ease-in-out infinite;
+}
+
+[data-slot="workspace-skeleton-block"][data-strong="true"] {
+  background: var(--skeleton-fill-strong);
+}
+
+@keyframes workspace-skeleton-breathe {
+  0%,
+  100% {
+    opacity: 0.68;
+  }
+  50% {
+    opacity: 0.82;
+  }
+}
+
+/* Offset so the blocks do not breathe in lockstep, which would read as one flashing slab. */
+[data-slot="workspace-skeleton-row"]:nth-child(2n) [data-slot="workspace-skeleton-block"] {
+  animation-delay: -800ms;
+}
+
+[data-slot="workspace-skeleton-row"]:nth-child(3n) [data-slot="workspace-skeleton-block"] {
+  animation-delay: -1600ms;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="workspace-skeleton"] {
+    opacity: 1;
+    animation: none;
+  }
+
+  [data-slot="workspace-skeleton-block"] {
+    /* The midpoint of the breath, not an endpoint. */
+    opacity: 0.76;
+    animation: none;
+  }
+}

@@ -1,5 +1,6 @@
 import { createEffect, Show, Suspense, type ParentProps } from "solid-js"
 import { createStore } from "solid-js/store"
+import { WorkspaceSkeleton } from "@/components/workspace-skeleton"
 import { Sidebar } from "./sidebar"
 import { DebugBar, TabsInfoPopup, Titlebar, ToastRegion, setV2Toast, useLayout, usePlatform } from "./upstream"
 import type { TitlebarUpdate } from "./upstream"
@@ -54,7 +55,7 @@ export default function SidebarLayout(props: ParentProps) {
             data-slot="sidebar-workspace"
             class="flex-1 min-h-0 min-w-0 overflow-x-hidden flex flex-col items-start contain-strict"
           >
-            <Suspense>{props.children}</Suspense>
+            <Suspense fallback={<WorkspaceSkeleton />}>{props.children}</Suspense>
           </main>
         </div>
       </div>

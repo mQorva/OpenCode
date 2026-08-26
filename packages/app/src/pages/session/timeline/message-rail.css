@@ -1,9 +1,56 @@
+/* The pointer's distance from the rail top, as a plain number. Parked far outside the track,
+   which reads as "no pointer". */
+@property --rail-pointer {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: -9999;
+}
+
+/* Registered so the engine computes these instead of substituting them as text — an unregistered
+   custom property is a token sequence, and the arithmetic below would never resolve. Being typed
+   also makes the falloff animatable, so the growth interpolates on the property itself rather
+   than on the transform it feeds. */
+@property --mark-y {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+@property --mark-distance {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 0;
+}
+
+@property --mark-ratio {
+  syntax: "<number>";
+  inherits: false;
+  initial-value: 1;
+}
+
+/* Inherited, unlike the two above: the mark itself is empty and everything visible is drawn by its
+   ::before, which only sees a non-inherited property as its initial value. */
+@property --mark-falloff {
+  syntax: "<number>";
+  inherits: true;
+  initial-value: 0;
+}
+
 [data-slot="session-message-rail"] {
+  /* Track geometry, in pixels but held unitless so the falloff below can divide by it. */
+  --mark-length: 21;
+  --mark-length-rest: 6;
+  /* Gap between the timeline edge and the start of a mark. */
+  --mark-inset: 5;
+  /* How far from the pointer a mark still grows. */
+  --mark-reach: 56;
+  --mark-rest-scale: calc(var(--mark-length-rest) / var(--mark-length));
+
   position: absolute;
   inset-block: var(--rail-inset-top, 12px) 12px;
   inset-inline-start: 0;
   z-index: 40;
-  width: 26px;
+  width: calc((var(--mark-length) + var(--mark-inset)) * 1px);
   pointer-events: none;
 }
 
@@ -11,47 +58,83 @@
   position: relative;
   height: 100%;
   pointer-events: auto;
+  touch-action: none;
 }
 
 [data-slot="session-message-rail-mark"] {
   position: absolute;
   inset-inline-start: 0;
+  top: calc(var(--mark-y, 0) * 1px);
   display: flex;
   align-items: center;
   justify-content: flex-start;
-  width: 26px;
+  width: calc((var(--mark-length) + var(--mark-inset)) * 1px);
   height: var(--mark-hit, 11px);
   margin-block-start: calc(var(--mark-hit, 11px) / -2);
-  padding: 0 0 0 5px;
+  padding: 0 0 0 calc(var(--mark-inset) * 1px);
   border: none;
   background: transparent;
   cursor: pointer;
 }
 
+/* Distance from the pointer, clamped to the reach and normalised to 0…1. `max()` rather than
+   `abs()` — same result, and it does not depend on a newer engine. */
+[data-slot="session-message-rail-mark"] {
+  --mark-distance: max(
+    calc(var(--rail-pointer) - var(--mark-y, 0)),
+    calc(var(--mark-y, 0) - var(--rail-pointer))
+  );
+  --mark-ratio: min(1, calc(var(--mark-distance) / var(--mark-reach)));
+  /* Cosine falloff: growth tapers off instead of ending in a hard edge. */
+  --mark-falloff: calc((cos(var(--mark-ratio) * 180deg) + 1) / 2);
+  --mark-scale: calc(var(--mark-rest-scale) + (1 - var(--mark-rest-scale)) * var(--mark-falloff));
+}
+
 [data-slot="session-message-rail-mark"]::before {
   content: "";
   display: block;
-  width: var(--mark-width, 9px);
-  height: 1.5px;
-  border-radius: 9999px;
+  width: calc(var(--mark-length) * 1px);
+  /* Whole pixels and square ends, both for sharpness: 1.5px straddles a device pixel at 1x and
+     renders as a grey smear, and a pill radius is scaled along with the mark — the round caps
+     turn into ellipses whose squash changes throughout the animation, which is what makes the
+     line look like it is wavering rather than growing. */
+  height: 2px;
   background: var(--v2-text-text-faint);
-  opacity: 0.5;
-  /* Short, so the marks track the pointer instead of lagging behind it. */
+  opacity: calc(0.32 + 0.38 * var(--mark-falloff));
+  /* Scale rather than width: growth stays on the compositor instead of laying out the whole
+     rail on every frame. */
+  transform: scaleX(var(--mark-scale));
+  transform-origin: 0 50%;
+  /* Damped spring — the mark arrives instead of braking. Overshoots by under 1%, so it reads as
+     liveliness rather than as a wobble. */
   transition:
-    width 90ms ease-out,
-    opacity 90ms ease-out,
-    background-color 90ms ease-out;
+    transform 160ms linear(0, 0.398 10%, 0.682 20%, 0.843 30%, 0.925 40%, 0.972 50%, 1.004 60%, 1.008 70%, 1.003 80%, 1),
+    opacity 160ms ease-out,
+    background-color 160ms ease-out;
 }
 
 [data-slot="session-message-rail-mark"][data-near="true"]::before {
-  opacity: 1;
   background: var(--v2-text-text-muted);
 }
 
+/* The active mark carries its weight through colour, not through a taller line: changing the
+   height would make the row it sits in a different size from its neighbours. */
 [data-slot="session-message-rail-mark"][data-active="true"]::before {
-  height: 2px;
-  opacity: 1;
+  opacity: 0.85;
   background: var(--v2-text-text-base);
+}
+
+/* While the pointer is in the rail, the active mark steps back so "where I am" stops competing
+   with "where I am pointing". The one under the pointer is exempt. */
+[data-slot="session-message-rail"][data-pointing="true"]
+  [data-slot="session-message-rail-mark"][data-active="true"]:not([data-near="true"])::before {
+  opacity: calc(0.32 + 0.38 * var(--mark-falloff));
+  background: var(--v2-text-text-faint);
+}
+
+/* Dragging along the rail: the mark under the finger has to track it, not trail behind. */
+[data-slot="session-message-rail"][data-scrubbing="true"] [data-slot="session-message-rail-mark"]::before {
+  transition-duration: 0s;
 }
 
 [data-slot="session-message-rail-tip"] {
@@ -64,11 +147,13 @@
   width: max-content;
   max-width: min(360px, 42vw);
   min-width: 160px;
-  padding: 7px 10px;
+  padding: 8px 11px;
   transform: translateY(-50%);
   border: 1px solid var(--v2-border-border-base, var(--border-weaker-base));
   border-radius: 8px;
-  background: var(--v2-background-bg-base);
+  /* Layer-02, like the command palette: the preview floats over the timeline, and bg-base would
+     read as a hole in dark mode rather than as a surface above it. */
+  background: var(--v2-background-bg-layer-02);
   box-shadow: var(--v2-elevation-raised);
   pointer-events: none;
   overflow-wrap: anywhere;
@@ -80,9 +165,9 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
   color: var(--v2-text-text-base);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 530;
-  line-height: 16px;
+  line-height: 18px;
   letter-spacing: -0.04px;
 }
 
@@ -92,8 +177,14 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
   color: var(--v2-text-text-muted);
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 440;
-  line-height: 16px;
+  line-height: 18px;
   letter-spacing: -0.04px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-slot="session-message-rail-mark"]::before {
+    transition-duration: 0s;
+  }
 }

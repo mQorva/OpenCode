@@ -197,9 +197,15 @@ export function PromptInputV2(props: PromptInputV2Props) {
           </Show>
         </div>
 
-        <div class="flex h-11 items-center px-2">
+        {/* Two groups rather than one: attaching and choosing an agent are things you do to the
+            message, so they stay at the left edge next to the text. Model, effort and context
+            describe how the message will be answered and sit next to the submit button. The
+            container gap therefore only shows between that group and submit — the spacer absorbs
+            the ones on the left — and it is wider than the gap inside a group, so send/stop reads
+            as the action rather than as one more setting in the row. */}
+        <div class="flex h-11 items-center gap-3 px-2">
           <div
-            class="flex min-w-0 flex-1 items-center gap-1"
+            class="flex shrink-0 items-center gap-1"
             aria-hidden={state.mode === "shell"}
             inert={state.mode === "shell" ? true : undefined}
             style={buttons()}
@@ -227,6 +233,14 @@ export function PromptInputV2(props: PromptInputV2Props) {
                 />
               )}
             </Show>
+          </div>
+          <div class="flex-1" />
+          <div
+            class="flex min-w-0 items-center gap-1"
+            aria-hidden={state.mode === "shell"}
+            inert={state.mode === "shell" ? true : undefined}
+            style={buttons()}
+          >
             <Show
               when={props.modelControl}
               fallback={

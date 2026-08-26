@@ -64,6 +64,7 @@ import { TerminalProvider, useTerminal } from "@/context/terminal"
 import { PromptInput } from "@/components/prompt-input"
 import { PromptInputV2Composer, usePromptInputV2Controller } from "@/components/prompt-input-v2"
 import { useSettingsCommand } from "@/components/settings-dialog"
+import { WorkspaceSkeleton } from "@/components/workspace-skeleton"
 import { setCursorPosition } from "@/components/prompt-input/editor-dom"
 import { promptLength } from "@/components/prompt-input/history"
 import { type FollowupDraft, sendFollowupDraft } from "@/components/prompt-input/submit"
@@ -73,7 +74,13 @@ import {
   createSessionComposerRegionController,
   SessionComposerRegion,
 } from "@/pages/session/composer"
-import { createOpenReviewFile, createSessionTabs, createSizing, shouldShowFileTree } from "@/pages/session/helpers"
+import {
+  createOpenReviewFile,
+  createSessionTabs,
+  createSizing,
+  focusTerminalById,
+  shouldShowFileTree,
+} from "@/pages/session/helpers"
 import { createCommandPaletteFileOpener } from "@/components/command-palette"
 import { OpenFileProvider } from "@opencode-ai/session-ui/context/open-file"
 import { MessageTimeline } from "@/pages/session/timeline/message-timeline"
@@ -2171,7 +2178,10 @@ export default function Page() {
             </div>
           </Match>
           <Match when={params.id}>
-            <Show when={messagesReady() ? params.id : undefined} keyed>
+            {/* Without a fallback the timeline area is blank until messages arrive, which on a
+                slow session switch is indistinguishable from an empty conversation. The composer
+                below is rendered separately, so the placeholder leaves it out. */}
+            <Show when={messagesReady() ? params.id : undefined} keyed fallback={<WorkspaceSkeleton composer={false} />}>
               {(_id) => (
                 <OpenFileProvider open={openChatFilePath}>
                   <MessageTimeline
@@ -2445,19 +2455,45 @@ export default function Page() {
                   panelToggle={
                     sidebarLayout()
                       ? () => (
-                          <TooltipV2 placement="bottom" value={language.t("command.review.toggle")}>
-                            <IconButtonV2
-                              type="button"
-                              variant="ghost-muted"
-                              size="large"
-                              class="!size-8 shrink-0"
-                              onClick={() => view().reviewPanel.toggle()}
-                              aria-label={language.t("command.review.toggle")}
-                              aria-expanded={view().reviewPanel.opened()}
-                              aria-controls="review-panel"
-                              icon={<Icon name="layout-right" size="small" />}
-                            />
-                          </TooltipV2>
+                          <>
+                            {/* mQorva: Der Terminal-Schalter wandert mit ins Panel, sobald es offen
+                                ist — im Chat-Kopf ist er dann ausgeblendet. Sonst stünden die
+                                beiden Panel-Schalter an weit auseinanderliegenden Stellen. */}
+                            <TooltipV2 placement="bottom" value={language.t("command.terminal.toggle")}>
+                              <IconButtonV2
+                                type="button"
+                                variant="ghost-muted"
+                                size="large"
+                                class="!size-8 shrink-0"
+                                state={view().terminal.opened() ? "pressed" : undefined}
+                                onClick={() => {
+                                  const opening = !view().terminal.opened()
+                                  view().terminal.toggle()
+                                  if (!opening) return
+                                  const id = terminal.active()
+                                  if (!id) return
+                                  focusTerminalById(id)
+                                }}
+                                aria-label={language.t("command.terminal.toggle")}
+                                aria-expanded={view().terminal.opened()}
+                                aria-controls="terminal-panel"
+                                icon={<Icon name="layout-bottom" size="small" />}
+                              />
+                            </TooltipV2>
+                            <TooltipV2 placement="bottom" value={language.t("command.review.toggle")}>
+                              <IconButtonV2
+                                type="button"
+                                variant="ghost-muted"
+                                size="large"
+                                class="!size-8 shrink-0"
+                                onClick={() => view().reviewPanel.toggle()}
+                                aria-label={language.t("command.review.toggle")}
+                                aria-expanded={view().reviewPanel.opened()}
+                                aria-controls="review-panel"
+                                icon={<Icon name="layout-right" size="small" />}
+                              />
+                            </TooltipV2>
+                          </>
                         )
                       : undefined
                   }

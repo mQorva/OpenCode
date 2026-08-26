@@ -33,7 +33,8 @@ import { KeybindV2 } from "@opencode-ai/ui/v2/keybind-v2"
 import { TooltipV2 } from "@opencode-ai/ui/v2/tooltip-v2"
 import { reviewTooltipKeybind } from "../command-tooltip-keybind"
 import { useTitlebarRightMount } from "../titlebar"
-import { displayName, projectForSession } from "@/pages/layout/helpers"
+import { displayName, getProjectAvatarSource, projectForSession } from "@/pages/layout/helpers"
+import { getProjectAvatarVariant } from "@/context/layout"
 
 const OPEN_APPS = [
   "vscode",
@@ -167,6 +168,14 @@ export function SessionHeader(props: { sidePanelOpen?: boolean }) {
     if (fallback) return displayName(fallback)
     return getFilename(projectDirectory()) || language.t("sidebarLayout.project")
   })
+  // Same two-step as the sidebar's project rows: a stored image if there is one, otherwise a
+  // folder tinted with the project's colour.
+  const projectIcon = () => getProjectAvatarSource(project()?.id, project()?.icon)
+  const projectColor = () => {
+    const colour = project()?.icon?.color
+    if (!colour) return undefined
+    return `var(--v2-avatar-bg-${getProjectAvatarVariant(colour)})`
+  }
   const sessionTitle = createMemo(() => {
     if (!params.id) return language.t("command.session.new")
     const title = activeSession()?.title
@@ -255,6 +264,9 @@ export function SessionHeader(props: { sidePanelOpen?: boolean }) {
     terminalLabel: language.t("command.terminal.toggle"),
     terminalOpened: view().terminal.opened(),
     onTerminalToggle: toggleTerminal,
+    // With the side panel open both panel toggles live in the panel's own header, so this one
+    // would be a duplicate sitting far away from its counterpart.
+    terminalVisible: !(sidebarLayout() && props.sidePanelOpen),
     reviewLabel: language.t("command.review.toggle"),
     reviewKeybind: reviewTooltipKeybind(command),
     reviewVisible: isDesktop() && !(sidebarLayout() && props.sidePanelOpen),
@@ -324,11 +336,25 @@ export function SessionHeader(props: { sidePanelOpen?: boolean }) {
             </TooltipV2>
           </Show>
           <div class="min-w-0 flex-1 flex items-center gap-2 text-13-regular">
+            {/* mQorva: Projekt-Icon wie in der Seitenleiste — dieselbe Darstellung, damit der Kopf
+                dasselbe Projekt erkennbar macht wie die Liste daneben: hinterlegtes Bild, sonst
+                ein Ordnersymbol in der Projektfarbe. */}
+            <Show
+              when={projectIcon()}
+              fallback={
+                <Icon name="folder" size="small" class="text-icon-base shrink-0" style={{ color: projectColor() }} />
+              }
+            >
+              {(source) => <img src={source()} alt="" class="size-4 shrink-0 rounded-[4px] object-cover" />}
+            </Show>
             <span class="max-w-[42%] truncate text-v2-text-text-muted">{name()}</span>
             <span class="shrink-0 text-v2-text-text-faint" aria-hidden="true">
               /
             </span>
-            <span class="min-w-0 truncate text-14-medium text-v2-text-text-strong">{sessionTitle()}</span>
+            {/* text-base, nicht die frühere Klasse text-v2-text-text-strong: die gibt es im Theme
+                nicht, der Titel erbte dadurch die volle Body-Farbe und stach gegen den auf
+                grey-400 gedämpften Workspace-Text heraus. */}
+            <span class="min-w-0 truncate text-14-medium text-v2-text-text-base">{sessionTitle()}</span>
             {/* mQorva: Das Sitzungsmenü steht direkt hinter dem Titel, nicht am rechten Rand. */}
             <div id="opencode-session-title-actions" class="flex shrink-0 items-center" />
           </div>
@@ -567,6 +593,7 @@ type SessionHeaderV2ActionsState = {
   statusLabel: string
   terminalLabel: string
   terminalOpened: boolean
+  terminalVisible: boolean
   onTerminalToggle: () => void
   reviewLabel: string
   reviewKeybind: string[]
@@ -583,20 +610,22 @@ function SessionHeaderV2Actions(props: { state: SessionHeaderV2ActionsState }) {
           <StatusPopoverV2 />
         </Tooltip>
       </Show>
-      <TooltipV2 class="shrink-0" placement="bottom" value={props.state.terminalLabel}>
-        <IconButtonV2
-          type="button"
-          variant="ghost-muted"
-          size="large"
-          class="!size-8 shrink-0"
-          state={props.state.terminalOpened ? "pressed" : undefined}
-          onClick={props.state.onTerminalToggle}
-          aria-label={props.state.terminalLabel}
-          aria-expanded={props.state.terminalOpened}
-          aria-controls="terminal-panel"
-          icon={<Icon name="layout-bottom" size="small" />}
-        />
-      </TooltipV2>
+      <Show when={props.state.terminalVisible}>
+        <TooltipV2 class="shrink-0" placement="bottom" value={props.state.terminalLabel}>
+          <IconButtonV2
+            type="button"
+            variant="ghost-muted"
+            size="large"
+            class="!size-8 shrink-0"
+            state={props.state.terminalOpened ? "pressed" : undefined}
+            onClick={props.state.onTerminalToggle}
+            aria-label={props.state.terminalLabel}
+            aria-expanded={props.state.terminalOpened}
+            aria-controls="terminal-panel"
+            icon={<Icon name="layout-bottom" size="small" />}
+          />
+        </TooltipV2>
+      </Show>
       <Show when={props.state.reviewVisible}>
         <TooltipV2
           class="shrink-0"

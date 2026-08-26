@@ -10,15 +10,19 @@ export type MessageRailItem = {
 }
 
 const MARK_SPACING_MAX = 11
-/** How far from the pointer a mark still grows, in pixels. */
-const REACH = 56
-const WIDTH_BASE = 9
-const WIDTH_BOOST = 11
+/** Parked far outside the track, which the stylesheet reads as "no pointer". */
+const POINTER_AWAY = -9999
 
 /**
  * Slim rail along the left edge of the timeline: one mark per user message, evenly spaced so the
  * conversation reads as a fixed set of stops rather than a scaled-down map. Marks near the pointer
- * grow, which makes a dense rail aimable; the one under the pointer previews its prompt.
+ * grow, which makes a dense rail aimable; the one under the pointer previews its prompt. Dragging
+ * along the rail scrubs through the conversation.
+ *
+ * The growth itself is CSS: the pointer position goes onto the track as one custom property and
+ * each mark works out its own distance from there. That keeps a pointer move at a single style
+ * write instead of a re-render across every mark, and the marks scale rather than resize, so the
+ * rail never lays out mid-gesture.
  */
 export function MessageRail(props: {
   items: MessageRailItem[]
@@ -29,7 +33,8 @@ export function MessageRail(props: {
   onSelect: (id: string) => void
 }) {
   const [height, setHeight] = createSignal(0)
-  const [pointer, setPointer] = createSignal<number>()
+  const [hovered, setHovered] = createSignal<number>()
+  const [scrubbing, setScrubbing] = createSignal(false)
   let track: HTMLElement | undefined
 
   const observer = new ResizeObserver((entries) => {
@@ -48,19 +53,24 @@ export function MessageRail(props: {
 
   const offsetOf = (index: number) => layout().top + layout().spacing * (index + 0.5)
 
-  const widthOf = (index: number) => {
-    const y = pointer()
-    if (y === undefined) return WIDTH_BASE
-    const distance = Math.abs(offsetOf(index) - y)
-    if (distance >= REACH) return WIDTH_BASE
-    // Cosine falloff: the growth tapers off instead of ending in a hard edge.
-    const falloff = (Math.cos((distance / REACH) * Math.PI) + 1) / 2
-    return WIDTH_BASE + WIDTH_BOOST * falloff
+  /** Coalesce moves to one style write per frame — a pointer can outrun the compositor. */
+  let pending: number | undefined
+  let frame: number | undefined
+  const paint = (y: number) => {
+    pending = y
+    if (frame !== undefined) return
+    frame = requestAnimationFrame(() => {
+      frame = undefined
+      track?.style.setProperty("--rail-pointer", String(pending))
+    })
   }
+  onCleanup(() => {
+    if (frame !== undefined) cancelAnimationFrame(frame)
+  })
 
-  const hovered = createMemo(() => {
-    const y = pointer()
-    if (y === undefined || props.items.length === 0) return
+  /** Nearest mark, or undefined when the pointer sits between groups. */
+  const nearest = (y: number): number | undefined => {
+    if (props.items.length === 0) return undefined
     let best = 0
     let bestDistance = Infinity
     props.items.forEach((_, index) => {
@@ -69,9 +79,29 @@ export function MessageRail(props: {
       bestDistance = distance
       best = index
     })
-    if (bestDistance > layout().spacing) return
+    if (bestDistance > layout().spacing) return undefined
     return best
-  })
+  }
+
+  const aim = (y: number) => {
+    paint(y)
+    setHovered(nearest(y))
+  }
+
+  const clear = () => {
+    paint(POINTER_AWAY)
+    setHovered(undefined)
+  }
+
+  const select = (index: number | undefined) => {
+    const item = index === undefined ? undefined : props.items[index]
+    if (item && item.id !== props.activeID) props.onSelect(item.id)
+  }
+
+  const localY = (event: PointerEvent) => {
+    if (!track) return 0
+    return event.clientY - track.getBoundingClientRect().top
+  }
 
   const tipTop = () => {
     const index = hovered()
@@ -81,7 +111,12 @@ export function MessageRail(props: {
 
   return (
     <Show when={props.items.length > 1}>
-      <div data-slot="session-message-rail" style={{ "--rail-inset-top": props.insetTop }}>
+      <div
+        data-slot="session-message-rail"
+        data-pointing={hovered() !== undefined ? "true" : undefined}
+        data-scrubbing={scrubbing() ? "true" : undefined}
+        style={{ "--rail-inset-top": props.insetTop }}
+      >
         <nav
           aria-label={props.label}
           ref={(el) => {
@@ -89,10 +124,34 @@ export function MessageRail(props: {
             observer.observe(el)
           }}
           onPointerMove={(event) => {
-            if (!track) return
-            setPointer(event.clientY - track.getBoundingClientRect().top)
+            const y = localY(event)
+            aim(y)
+            if (!scrubbing()) return
+            // Scrubbing follows the rail rather than the pointer's own target, so a drag that
+            // wanders sideways keeps selecting.
+            select(nearest(y))
           }}
-          onPointerLeave={() => setPointer(undefined)}
+          onPointerDown={(event) => {
+            if (event.button !== 0) return
+            setScrubbing(true)
+            event.currentTarget.setPointerCapture(event.pointerId)
+            const y = localY(event)
+            aim(y)
+            // Capturing the pointer routes the rest of the gesture — the click included — to this
+            // element, so a mark's own onClick never runs for pointer input. Selecting here is
+            // what makes a plain click work at all, and it doubles as the start of a scrub.
+            select(nearest(y))
+          }}
+          onPointerUp={(event) => {
+            if (!scrubbing()) return
+            setScrubbing(false)
+            event.currentTarget.releasePointerCapture(event.pointerId)
+          }}
+          onPointerCancel={() => setScrubbing(false)}
+          onPointerLeave={() => {
+            if (scrubbing()) return
+            clear()
+          }}
         >
           <For each={props.items}>
             {(item, index) => (
@@ -102,16 +161,20 @@ export function MessageRail(props: {
                 data-active={props.activeID === item.id ? "true" : undefined}
                 data-near={hovered() === index() ? "true" : undefined}
                 style={{
-                  top: `${offsetOf(index())}px`,
-                  "--mark-width": `${widthOf(index()).toFixed(2)}px`,
+                  "--mark-y": offsetOf(index()).toFixed(2),
                   // Hit area follows the spacing so neighbouring marks never overlap.
                   "--mark-hit": `${Math.max(3, layout().spacing).toFixed(2)}px`,
                 }}
                 aria-label={item.title}
                 aria-current={props.activeID === item.id ? "true" : undefined}
-                onFocus={() => setPointer(offsetOf(index()))}
-                onBlur={() => setPointer(undefined)}
-                onClick={() => props.onSelect(item.id)}
+                onFocus={() => aim(offsetOf(index()))}
+                onBlur={clear}
+                // Keyboard activation only — `detail` is 0 for Enter/Space. Pointer clicks are
+                // handled on the rail itself, see onPointerDown.
+                onClick={(event) => {
+                  if (event.detail !== 0) return
+                  props.onSelect(item.id)
+                }}
               />
             )}
           </For>

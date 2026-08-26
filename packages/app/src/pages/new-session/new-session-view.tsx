@@ -20,7 +20,7 @@ import { useSDK } from "@/context/sdk"
 import { useServerSync } from "@/context/server-sync"
 import { useSettings } from "@/context/settings"
 import { useProviders } from "@/hooks/use-providers"
-import { NEW_SESSION_CONTENT_WIDTH } from "@/pages/session/new-session-layout"
+import { NEW_SESSION_CONTENT_WIDTH, NEW_SESSION_SIDEBAR_CONTENT_WIDTH } from "@/pages/session/new-session-layout"
 import { Persist, persisted } from "@/utils/persist"
 import type { NewSessionDraftController } from "./new-session-draft-controller"
 import type { NewSessionWorkspaceController } from "./new-session-workspace-controller"
@@ -83,18 +83,20 @@ export function NewSessionView(props: {
             </div>
           }
         >
-          <div class="pointer-events-none absolute inset-x-0 top-[25.375%] hidden justify-center px-6 md:flex">
-            <div class={NEW_SESSION_CONTENT_WIDTH}>
+          <div class="pointer-events-none absolute inset-x-0 top-[25.375%] hidden justify-center md:flex">
+            <div class={NEW_SESSION_SIDEBAR_CONTENT_WIDTH}>
               <WordmarkV2 class="h-auto w-full text-v2-background-bg-inverse" />
             </div>
           </div>
           <div class="h-full flex flex-col">
             <div class="flex-1" />
+            {/* The bottom inset matches a running session's dock, so sending the first message
+                does not drop the composer. */}
             <div
-              class="shrink-0 flex justify-center px-6 transition-[padding-bottom] duration-[250ms] ease-[cubic-bezier(0.215,0.61,0.355,1)] motion-reduce:transition-none"
-              classList={{ "pb-2": providerTip.present(), "pb-8": !providerTip.present() }}
+              class="shrink-0 flex justify-center transition-[padding-bottom] duration-[250ms] ease-[cubic-bezier(0.215,0.61,0.355,1)] motion-reduce:transition-none"
+              classList={{ "pb-2": providerTip.present(), "pb-3": !providerTip.present() }}
             >
-              <div class="w-full max-w-200 2xl:max-w-[1000px]">
+              <div class={NEW_SESSION_SIDEBAR_CONTENT_WIDTH}>
                 <PromptInputV2Composer controller={props.input} />
               </div>
             </div>
