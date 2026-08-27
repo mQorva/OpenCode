@@ -135,6 +135,9 @@ export function SessionComposerRegion(props: {
                 <SessionFollowupDock
                   items={controller.followup()!.items}
                   sending={controller.followup()!.sending}
+                  paused={controller.followup()!.paused}
+                  onPauseToggle={controller.followup()!.onPauseToggle}
+                  onItemPauseToggle={controller.followup()!.onItemPauseToggle}
                   onSend={controller.followup()!.onSend}
                   onEdit={controller.followup()!.onEdit}
                   onRemove={controller.followup()!.onRemove}

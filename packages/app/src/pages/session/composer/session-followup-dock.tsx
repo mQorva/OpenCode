@@ -24,13 +24,40 @@ function TrashIcon() {
   )
 }
 
+function PauseIcon() {
+  return (
+    <svg viewBox="0 0 20 20" aria-hidden="true" class="size-4">
+      <path d="M7.5 4.5v11M12.5 4.5v11" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" />
+    </svg>
+  )
+}
+
+function ResumeIcon() {
+  return (
+    <svg viewBox="0 0 20 20" aria-hidden="true" class="size-4">
+      <path
+        d="M6.5 4.5l9 5.5-9 5.5z"
+        fill="none"
+        stroke="currentColor"
+        stroke-width="1.4"
+        stroke-linejoin="round"
+        stroke-linecap="round"
+      />
+    </svg>
+  )
+}
+
 export function SessionFollowupDock(props: {
-  items: { id: string; text: string }[]
+  items: { id: string; text: string; paused?: boolean }[]
   sending?: string
+  /** Queue-wide, not per item: while paused nothing is sent on its own. */
+  paused?: boolean
   onSend: (id: string) => void
   onEdit: (id: string) => void
   onRemove: (id: string) => void
   onMove: (fromID: string, toID: string) => void
+  onItemPauseToggle: (id: string) => void
+  onPauseToggle: () => void
 }) {
   const language = useLanguage()
   const [store, setStore] = createStore({
@@ -76,10 +103,48 @@ export function SessionFollowupDock(props: {
         }}
       >
         <span class="shrink-0 text-13-medium text-text-strong cursor-default">{label()}</span>
+        <Show when={props.paused}>
+          <span class="shrink-0 text-13-regular text-text-weak cursor-default">
+            {language.t("session.followupDock.pausedHint")}
+          </span>
+        </Show>
         <Show when={store.collapsed && preview()}>
           <span class="min-w-0 flex-1 truncate text-13-regular text-text-base cursor-default">{preview()}</span>
         </Show>
-        <div class="ml-auto shrink-0">
+        <div class="ml-auto shrink-0 flex items-center gap-1">
+          {/* Pausing holds the whole queue, which is why it sits in the header rather than on a
+              row. Aborting a run already sets this state — until now nothing showed it, so a
+              queue could sit still with no indication why. */}
+          <Tooltip
+            value={
+              props.paused ? language.t("session.followupDock.resume") : language.t("session.followupDock.pause")
+            }
+            placement="top"
+          >
+            <IconButtonV2
+              type="button"
+              size="small"
+              variant="ghost-muted"
+              class="shrink-0 text-v2-icon-icon-muted"
+              state={props.paused ? "pressed" : undefined}
+              aria-pressed={props.paused ? "true" : "false"}
+              aria-label={
+                props.paused ? language.t("session.followupDock.resume") : language.t("session.followupDock.pause")
+              }
+              onMouseDown={(event: MouseEvent) => {
+                event.preventDefault()
+                event.stopPropagation()
+              }}
+              onClick={(event: MouseEvent) => {
+                event.stopPropagation()
+                props.onPauseToggle()
+              }}
+            >
+              <Show when={props.paused} fallback={<PauseIcon />}>
+                <ResumeIcon />
+              </Show>
+            </IconButtonV2>
+          </Tooltip>
           <IconButton
             data-collapsed={store.collapsed ? "true" : "false"}
             icon="chevron-down"
@@ -133,9 +198,43 @@ export function SessionFollowupDock(props: {
                   onDragEnd={() => setDragging(undefined)}
                   onPointerDown={(event) => event.stopPropagation()}
                 />
-                <span class="min-w-0 flex-1 truncate text-13-regular text-text-base cursor-default select-none">
+                <span
+                  classList={{
+                    "min-w-0 flex-1 truncate text-13-regular cursor-default select-none": true,
+                    "text-text-base": !item.paused,
+                    // A held-back entry stays readable but stops looking like it is next in line.
+                    "text-text-weak line-through decoration-text-weaker": !!item.paused,
+                  }}
+                >
                   {item.text}
                 </span>
+                <Tooltip
+                  value={
+                    item.paused
+                      ? language.t("session.followupDock.item.resume")
+                      : language.t("session.followupDock.item.pause")
+                  }
+                  placement="top"
+                >
+                  <IconButtonV2
+                    type="button"
+                    size="small"
+                    variant="ghost-muted"
+                    class="shrink-0 text-v2-icon-icon-muted"
+                    state={item.paused ? "pressed" : undefined}
+                    aria-pressed={item.paused ? "true" : "false"}
+                    aria-label={
+                      item.paused
+                        ? language.t("session.followupDock.item.resume")
+                        : language.t("session.followupDock.item.pause")
+                    }
+                    onClick={() => props.onItemPauseToggle(item.id)}
+                  >
+                    <Show when={item.paused} fallback={<PauseIcon />}>
+                      <ResumeIcon />
+                    </Show>
+                  </IconButtonV2>
+                </Tooltip>
                 <Tooltip value={language.t("session.followupDock.steer")} placement="top">
                   <ButtonV2
                     size="small"
@@ -180,6 +279,11 @@ export function SessionFollowupDock(props: {
                       </MenuV2.Item>
                       <MenuV2.Item onSelect={() => props.onEdit(item.id)}>
                         {language.t("session.followupDock.edit")}
+                      </MenuV2.Item>
+                      <MenuV2.Item onSelect={() => props.onItemPauseToggle(item.id)}>
+                        {item.paused
+                          ? language.t("session.followupDock.item.resume")
+                          : language.t("session.followupDock.item.pause")}
                       </MenuV2.Item>
                       <MenuV2.Separator />
                       <MenuV2.Item onSelect={() => props.onRemove(item.id)}>

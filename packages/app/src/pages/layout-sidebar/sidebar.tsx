@@ -6,6 +6,7 @@ import {
   closestCenter,
   createDraggable,
   createDroppable,
+  useDragDropContext,
   type DragEventHandler,
 } from "@thisbeyond/solid-dnd"
 import { SessionItem } from "./session-item"
@@ -201,9 +202,20 @@ function ProjectGroup(props: {
   onArchive: (entry: SidebarSession) => void
   onDelete: (entry: SidebarSession) => void
   canArchive: boolean
+  /** Whether a dragged key is an unassigned draft — the only thing a project can take in. */
+  isDraft: (key: string) => boolean
 }) {
   const language = useLanguage()
   const droppable = createDroppable(props.group.project.worktree)
+  const dnd = useDragDropContext()
+  // A started session is bound to the directory it runs in and cannot change project, so only a
+  // draft may land here. Without this the group lit up for every drag and promised a move that
+  // never happened.
+  const acceptsDrop = () => {
+    const active = dnd?.[0].active.draggable?.id
+    if (active === undefined || active === null) return false
+    return props.isDraft(String(active))
+  }
   // Projects carry a colour and an optional icon, both editable in the project dialog.
   // Show them here so a long list stays scannable instead of eleven identical folders.
   const projectIcon = () => getProjectAvatarSource(props.group.project.id, props.group.project.icon)
@@ -222,7 +234,7 @@ function ProjectGroup(props: {
       use:droppable={droppable}
       classList={{
         "flex flex-col gap-0.5 rounded-md": true,
-        "outline outline-1 outline-border-active": droppable.isActiveDroppable,
+        "outline outline-1 outline-border-active": droppable.isActiveDroppable && acceptsDrop(),
       }}
     >
       <MenuV2.Context>
@@ -764,6 +776,8 @@ export function Sidebar() {
     return group ? group.sessions.map(sessionPinKey) : []
   }
 
+  const isDraftKey = (key: string) => tabs.store.some((item) => item.type === "draft" && item.draftID === key)
+
   const onDragEnd: DragEventHandler = ({ draggable, droppable }) => {
     if (!draggable || !droppable) return
     const from = String(draggable.id)
@@ -786,12 +800,9 @@ export function Sidebar() {
       return
     }
 
-    // Dropped back onto a project group: that means "unpin", nothing else — a started session
-    // stays bound to its directory.
-    if (projectWorktrees().has(to)) {
-      if (pinned.includes(from)) setPinned(pinned.filter((key) => key !== from))
-      return
-    }
+    // A started session belongs to the directory it runs in, so a project group is not a target
+    // for it — dropping there does nothing. Unpinning lives in the row's own menu.
+    if (projectWorktrees().has(to)) return
 
     const block = blockOf(from)
     if (!block || block !== blockOf(to)) return
@@ -986,6 +997,7 @@ export function Sidebar() {
                     {(group) => (
                       <ProjectGroup
                         group={group}
+                        isDraft={isDraftKey}
                         active={group.project.worktree === activeProjectWorktree()}
                         drafts={needle() ? [] : draftsForProject([...tabs.store], group.project.worktree)}
                         collapsed={collapsed.includes(group.project.worktree)}

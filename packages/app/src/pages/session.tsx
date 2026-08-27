@@ -115,7 +115,8 @@ import { useUsageExceededDialogs } from "./session/usage-exceeded-dialogs"
 import { createSessionOwnership } from "./session/session-ownership"
 import { createSessionLineage } from "./session/session-lineage"
 
-type FollowupItem = FollowupDraft & { id: string }
+/** `paused` holds a single entry back: the queue skips it and moves on to the next one. */
+type FollowupItem = FollowupDraft & { id: string; paused?: boolean }
 type FollowupEdit = Pick<FollowupItem, "id" | "prompt" | "context">
 const emptyFollowups: FollowupItem[] = []
 
@@ -1854,7 +1855,9 @@ export default function Page() {
     setFollowup("paused", draft.sessionID, undefined)
   }
 
-  const followupDock = createMemo(() => queuedFollowups().map((item) => ({ id: item.id, text: followupText(item) })))
+  const followupDock = createMemo(() =>
+    queuedFollowups().map((item) => ({ id: item.id, text: followupText(item), paused: !!item.paused })),
+  )
 
   const sendFollowup = (sessionID: string, id: string, opts?: { manual?: boolean }) => {
     if (sync().session.get(sessionID)?.parentID) return Promise.resolve()
@@ -1891,6 +1894,12 @@ export default function Page() {
   const removeFollowup = (sessionID: string, id: string) => {
     setFollowup("items", sessionID, (items) => (items ?? []).filter((entry) => entry.id !== id))
     setFollowup("failed", sessionID, (value) => (value === id ? undefined : value))
+  }
+
+  const toggleFollowupPause = (sessionID: string, id: string) => {
+    setFollowup("items", sessionID, (items) =>
+      (items ?? []).map((entry) => (entry.id === id ? { ...entry, paused: entry.paused ? undefined : true } : entry)),
+    )
   }
 
   const moveFollowup = (sessionID: string, fromID: string, toID: string) => {
@@ -2019,7 +2028,9 @@ export default function Page() {
     const sessionID = params.id
     if (!sessionID) return
 
-    const item = queuedFollowups()[0]
+    // First entry that is not held back — a paused one is skipped rather than blocking the ones
+    // behind it, which is what makes pausing a single message useful.
+    const item = queuedFollowups().find((entry) => !entry.paused)
     if (!item) return
     if (followupBusy(sessionID)) return
     if (followup.failed[sessionID] === item.id) return
@@ -2249,10 +2260,17 @@ export default function Page() {
                 ? {
                     items: followupDock(),
                     sending: sendingFollowup(),
+                    paused: !!followup.paused[params.id],
                     onSend: (id) => void sendFollowup(params.id!, id, { manual: true }),
                     onEdit: editFollowup,
                     onRemove: (id) => removeFollowup(params.id!, id),
                     onMove: (fromID, toID) => moveFollowup(params.id!, fromID, toID),
+                    onItemPauseToggle: (id) => toggleFollowupPause(params.id!, id),
+                    onPauseToggle: () => {
+                      const id = params.id
+                      if (!id) return
+                      setFollowup("paused", id, followup.paused[id] ? undefined : true)
+                    },
                   }
                 : undefined,
             revert: () =>
