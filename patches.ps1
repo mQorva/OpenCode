@@ -3,7 +3,7 @@
 Prueft, ob die mQorva-Aenderungen am OpenCode-Original noch vorhanden sind.
 
 .DESCRIPTION
-Nach einem Upstream-Update (sync.ps1) kann ein Merge einzelne Anpassungen verschlucken.
+Nach einem Upstream-Update (Sync-Upstream.ps1) kann ein Merge einzelne Anpassungen verschlucken.
 Dieses Skript prueft je Aenderung einen Marker-String und meldet, was fehlt.
 Die vollstaendige Beschreibung jeder Aenderung steht in plans/upstream-patches.md.
 

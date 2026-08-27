@@ -49,15 +49,15 @@ kopiert. Ein bereits initialisiertes mQorva-Profil wird niemals überschrieben.
 
 ## Aktualisierung aus OpenCode
 
-1. Aktuellen mQorva-Stand committen und auf `origin` sichern.
-2. Status ohne Änderungen prüfen: `./sync.ps1 -Status`.
-3. Upstream übernehmen: `./sync.ps1 -Update`.
+1. Aktuellen mQorva-Stand committen und auf `origin` sichern: `./git-sync.ps1`.
+2. Status ohne Änderungen prüfen: `./Sync-Upstream.ps1 -Status`.
+3. Upstream übernehmen: `./Sync-Upstream.ps1 -Update`.
 4. Konflikte beheben und die Prüfungen erneut ausführen.
 5. `CHANGELOG.mqorva.md` ergänzen und eine neue mQorva-Revision festlegen, wenn ein neuer
    verteilter Stand entsteht.
 6. Den geprüften Stand mit `mqorva-v<OpenCode-Version>-r<Revision>` taggen.
 
-`sync.ps1 -Update` verweigert die Ausführung bei einem nicht sauberen Arbeitsverzeichnis. Es
+`Sync-Upstream.ps1 -Update` verweigert die Ausführung bei einem nicht sauberen Arbeitsverzeichnis. Es
 öffnet den Upstream-Merge zunächst ohne Commit, aktualisiert die OpenCode-Basis in
 `mqorva-version.json`, prüft die mQorva-Marker und führt die paketbezogenen Typechecks aus. Erst
 danach wird der gemeinsame, nachvollziehbare Merge-Commit erstellt. Bei Konflikten oder

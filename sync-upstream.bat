@@ -3,14 +3,14 @@ setlocal
 cd /d "%~dp0"
 
 if not "%~1"=="" (
-    powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0sync.ps1" %*
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0Sync-Upstream.ps1" %*
     goto :end
 )
 
 :menu
 cls
 echo ==========================================
-echo   OpenCode - mQorva Edition: Git-Sync
+echo   OpenCode - mQorva Edition: Upstream-Sync
 echo ==========================================
 echo.
 echo  [1] Updates aus OpenCode holen (-Update)
@@ -22,21 +22,21 @@ set /p choice="Waehle eine Option (1-4): "
 
 if "%choice%"=="1" (
     echo.
-    powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0sync.ps1" -Update
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0Sync-Upstream.ps1" -Update
     echo.
     pause
     goto :end
 )
 if "%choice%"=="2" (
     echo.
-    powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0sync.ps1" -Backup
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0Sync-Upstream.ps1" -Backup
     echo.
     pause
     goto :end
 )
 if "%choice%"=="3" (
     echo.
-    powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0sync.ps1" -Status
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0Sync-Upstream.ps1" -Status
     echo.
     pause
     goto :menu
