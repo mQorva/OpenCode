@@ -114,7 +114,7 @@ Sitzungen bleiben inhaltlich unverändert offen und laufen im Hintergrund weiter
 
 - Leere Zustände, Hover, aktive Markierung, Scrollverhalten bei vielen Sitzungen
 - Umbenennen/Archivieren aus der Liste heraus (Kontextmenü), soweit vorhandene Aktionen das hergeben
-- `plans/`-Eintrag und kurze Notiz in `CONTEXT.md`, welche Upstream-Dateien wir berühren — damit ein späterer `sync.ps1`-Merge die Stellen gezielt prüfen kann
+- `plans/`-Eintrag und kurze Notiz in `CONTEXT.md`, welche Upstream-Dateien wir berühren — damit ein späterer `Sync-Upstream.ps1`-Merge die Stellen gezielt prüfen kann
 
 ## Berührte Upstream-Dateien (bewusst klein gehalten)
 
@@ -129,7 +129,7 @@ Sitzungen bleiben inhaltlich unverändert offen und laufen im Hintergrund weiter
 
 Tatsächlicher Umfang nach der Umsetzung: 7 Dateien, rund 90 geänderte Zeilen, davon etwa 40 reine Einrückung. Alles Weitere liegt in `pages/layout-sidebar/` (`shell.tsx`, `header.tsx`, `sidebar.tsx`, `session-item.tsx`, `home.tsx`, `sessions.ts`, `upstream.ts` plus zwei Testdateien).
 
-**Jede dieser Änderungen ist einzeln in [upstream-patches.md](upstream-patches.md) dokumentiert und wird von `patches.ps1` geprüft.** Nach jedem `sync.ps1`: erst `patches.ps1` (meldet verschluckte Anpassungen), dann `check.ps1` (fängt Signaturänderungen).
+**Jede dieser Änderungen ist einzeln in [upstream-patches.md](upstream-patches.md) dokumentiert und wird von `patches.ps1` geprüft.** Nach jedem `Sync-Upstream.ps1`: erst `patches.ps1` (meldet verschluckte Anpassungen), dann `check.ps1` (fängt Signaturänderungen).
 
 Alles Weitere liegt in `pages/layout-sidebar/`.
 
