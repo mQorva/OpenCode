@@ -20,7 +20,7 @@ bleibt dadurch für Kompatibilitäts- und Updateprüfungen erhalten.
 ## Repository und Branches
 
 - `upstream`: offizielles Repository `anomalyco/opencode`
-- `origin`: mQorva-Repository `CannonRS/OpenCode`
+- `origin`: mQorva-Repository `mQorva/OpenCode`
 - `dev`: Integrationsbranch der mQorva Edition auf Basis von `upstream/dev`
 
 Änderungen der mQorva Edition werden als normale Git-Commits auf `dev` gesichert. Ein
