@@ -25,6 +25,18 @@
 }
 
 @layer components {
+  /* The dock surfaces (permission prompt, question prompt, revert bar) still carry colours from
+     the old palette. In the new layout those land beside the v2 ramp rather than on it: the shell
+     resolves to the same value as the workspace background, so the card is invisible and only its
+     border describes it, and the tray comes out darker than everything around it. Put both on the
+     surface the composer beside them already uses, which is what they are — one object above the
+     page, not a hole in it. */
+  body[data-new-layout] {
+    --dock-shell-surface: var(--v2-background-bg-layer-01);
+    --dock-tray-surface: var(--v2-background-bg-layer-01);
+    --dock-tray-border: var(--v2-border-border-muted);
+  }
+
   [data-component="getting-started"] {
     container-type: inline-size;
     container-name: getting-started;
