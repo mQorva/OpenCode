@@ -1,680 +1,248 @@
 <#
 .SYNOPSIS
-    Synchronisiert mit dem konfigurierten Git-Remote (z. B. GitHub).
+Synchronisiert die OpenCode-mQorva-Edition mit dem eigenen Repository und optional mit OpenCode-Upstream.
 
 .DESCRIPTION
-    Fehlt "origin", wird es mit -OriginUrl angelegt (Vorgabe: öffentliches Repo
-    mQorva/Schreibkraft). Danach wie gewohnt Pull/Push; Upstream setzt -u beim
-    ersten Push.
+Ohne Parameter werden lokale Änderungen einmal gesammelt committet, `origin/dev` eingebunden und
+der fertige Stand zu `origin` gepusht. Mit `-Update` folgt danach der kontrollierte Merge von
+`upstream/dev`, einschließlich Versionsdatei, Patch-Markern und Paketprüfungen.
 
-    Es wird immer auf -Branch gewechselt (Vorgabe: dev); Pull/Push ohne Upstream
-    nutzt ausdrücklich diesen Branch (origin/<Branch>).
+.PARAMETER Update
+Holt nach der normalen Origin-Synchronisierung zusätzlich `upstream/dev`, prüft den Merge und pusht
+den fertigen Merge-Commit zu `origin/dev`.
 
-    Ohne gemeinsamen Vorfahren mit dem Remote-Branch erkennt das Skript das und
-    nutzt automatisch --allow-unrelated-histories beim Pull (GitHub-README/LICENSE
-    + lokaler erster Commit). -AllowUnrelatedHistories erzwingt das zusätzlich.
+.PARAMETER Status
+Aktualisiert nur die Remote-Referenzen und zeigt den exakten Ahead/Behind-Stand an.
 
-.PARAMETER Action
-    Pull, Push oder PullPush (Standard: erst pull, dann push).
-
-.PARAMETER SkipPull
-    Nur bei PullPush: kein pull, nur push (kann fehlschlagen, wenn Remote voraus ist).
-
-.PARAMETER Branch
-    Branch für git switch und für explizite pull/push origin/<Branch> (Vorgabe: main).
-
-.PARAMETER Rebase
-    Bei Pull: git pull --rebase (wird ignoriert, wenn -AllowUnrelatedHistories gesetzt).
-
-.PARAMETER AllowUnrelatedHistories
-    Bei Pull: erzwingt --allow-unrelated-histories (selten nötig; meist automatisch).
-
-.PARAMETER PushForceWithLease
-    Bei Push: git push --force-with-lease (nur mit Absicht).
+.PARAMETER SkipCheck
+Überspringt beim Upstream-Merge `check.ps1`. `patches.ps1` und `git diff --check` bleiben aktiv.
 
 .PARAMETER NoAutoCommit
-    Bei Push/PullPush: lokale Änderungen nicht automatisch committen.
+Verhindert den Standard-Auto-Commit. Bei lokalen Änderungen wird die Synchronisierung abgebrochen.
 
 .PARAMETER CommitMessage
-    Commit-Nachricht für den automatischen Commit bei Push/PullPush.
-    Ohne Angabe wird sie aus den vorgemerkten Änderungen abgeleitet.
+Optionale Nachricht für den einmaligen Auto-Commit des lokalen Arbeitsstands.
 
 .PARAMETER OriginUrl
-    URL für "git remote add origin", falls origin noch fehlt (HTTPS oder SSH).
-
-.PARAMETER ReleaseSetup
-    Erstellt oder aktualisiert nach dem Push ein GitHub Release und lädt den
-    Setup-Installer aus artifacts\installer hoch. Installiert GitHub CLI (gh)
-    automatisch, falls sie fehlt.
-    Fragt interaktiv Draft/Pre-Release und bei Bedarf Überschreiben ab. Alias: -Release.
+URL zum Anlegen von `origin`, falls das Remote noch fehlt.
 #>
+[CmdletBinding()]
 param(
-    [ValidateSet("Pull", "Push", "PullPush")]
-    [string]$Action = "PullPush",
-    [string]$Branch = "dev",
-    [switch]$Rebase,
-    [switch]$AllowUnrelatedHistories,
-    [switch]$PushForceWithLease,
-    [switch]$SkipPull,
+    [Parameter()]
+    [switch]$Update,
+
+    [Parameter()]
+    [switch]$Status,
+
+    [Parameter()]
+    [switch]$SkipCheck,
+
+    [Parameter()]
     [switch]$NoAutoCommit,
+
+    [Parameter()]
     [string]$CommitMessage = "",
-    [string]$OriginUrl = "https://github.com/mQorva/OpenCode.git",
-    [Alias("Release")]
-    [switch]$ReleaseSetup
+
+    [Parameter()]
+    [string]$OriginUrl = "https://github.com/mQorva/OpenCode.git"
 )
 
+Set-StrictMode -Version Latest
 $ErrorActionPreference = "Stop"
+
 $repoRoot = $PSScriptRoot
-$script:GitHubCliCommand = $null
+$branch = "dev"
+$upstreamUrl = "https://github.com/anomalyco/opencode.git"
 
-if ([string]::IsNullOrWhiteSpace($Branch)) {
-    throw "Branch darf nicht leer sein (Vorgabe: main)."
-}
-
-$syncBranch = $Branch.Trim()
-
-if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
-    throw "git wurde nicht gefunden. Git for Windows installieren und die Sitzung neu starten."
-}
-
-function Invoke-RepoGit {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string[]]$Arguments
-    )
+function Invoke-Git {
+    param([Parameter(Mandatory = $true)][string[]]$Arguments)
 
     Write-Host ("git " + ($Arguments -join " "))
     & git -C $repoRoot @Arguments
     if ($LASTEXITCODE -ne 0) {
-        throw "git-Befehl ist fehlgeschlagen (Exit $LASTEXITCODE)."
+        throw "Git-Befehl ist fehlgeschlagen (Exit $LASTEXITCODE): git $($Arguments -join ' ')"
     }
 }
 
-function Assert-GitRepo {
+function Get-GitOutput {
+    param([Parameter(Mandatory = $true)][string[]]$Arguments)
+
+    $value = (& git -C $repoRoot @Arguments 2>$null | Out-String).Trim()
+    if ($LASTEXITCODE -ne 0) {
+        throw "Git-Abfrage ist fehlgeschlagen (Exit $LASTEXITCODE): git $($Arguments -join ' ')"
+    }
+    return $value
+}
+
+function Test-Remote {
+    param([Parameter(Mandatory = $true)][string]$Name)
+
+    & git -C $repoRoot remote get-url $Name 2>$null | Out-Null
+    return $LASTEXITCODE -eq 0
+}
+
+function Initialize-Repository {
+    if (-not (Get-Command git -ErrorAction SilentlyContinue)) {
+        throw "git wurde nicht gefunden."
+    }
     if (-not (Test-Path -LiteralPath (Join-Path $repoRoot ".git"))) {
-        throw "Kein Git-Repository (.git fehlt unter $repoRoot)."
+        throw "Kein Git-Repository unter $repoRoot."
     }
+
+    if (-not (Test-Remote -Name "origin")) {
+        Invoke-Git @("remote", "add", "origin", $OriginUrl)
+    }
+    if (-not (Test-Remote -Name "upstream")) {
+        Invoke-Git @("remote", "add", "upstream", $upstreamUrl)
+    }
+
+    $current = Get-GitOutput @("branch", "--show-current")
+    if ($current -eq $branch) { return }
+    if (Test-WorkingTreeChanges) {
+        throw "Branch '$current' enthält lokale Änderungen. Vor dem Wechsel zu '$branch' zuerst sichern."
+    }
+    Invoke-Git @("switch", $branch)
 }
 
-function Get-AppVersion {
-    $propsPath = Join-Path $repoRoot "Directory.Build.props"
-    if (-not (Test-Path -LiteralPath $propsPath)) {
-        throw "Directory.Build.props fehlt im Repo-Root - -ReleaseSetup steht in diesem Repository nicht zur Verfügung."
-    }
-
-    [xml]$props = Get-Content -LiteralPath $propsPath
-    $version = $props.Project.PropertyGroup.AppVersion
-    if ([string]::IsNullOrWhiteSpace($version)) {
-        throw "AppVersion wurde in Directory.Build.props nicht gefunden."
-    }
-
-    return $version.Trim()
+function Test-WorkingTreeChanges {
+    return -not [string]::IsNullOrWhiteSpace((Get-GitOutput @("status", "--porcelain")))
 }
 
-function Get-CurrentBranchName {
-    $name = (& git -C $repoRoot branch --show-current 2>$null)
-    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($name)) {
-        throw "Kein Branch ermittelbar (detached HEAD?). Bitte einen Branch auschecken."
-    }
-
-    return $name.Trim()
-}
-
-function Ensure-TargetBranch {
-    Invoke-RepoGit @("switch", $syncBranch)
-    $current = Get-CurrentBranchName
-    if ($current -ne $syncBranch) {
-        throw "Erwartet Branch '$syncBranch', ausgecheckt ist '$current'."
-    }
-}
-
-function Test-UpstreamConfigured {
-    $null = & git -C $repoRoot rev-parse --abbrev-ref '@{upstream}' 2>$null
-    return ($LASTEXITCODE -eq 0)
-}
-
-function Test-OriginExists {
-    $null = & git -C $repoRoot remote get-url origin 2>$null
-    return ($LASTEXITCODE -eq 0)
-}
-
-function Ensure-Origin {
-    param([Parameter(Mandatory = $true)][string]$Url)
-
-    if (Test-OriginExists) {
-        $current = (& git -C $repoRoot remote get-url origin).Trim()
-        Write-Host "Remote origin: $current"
-        return
-    }
-
-    if ([string]::IsNullOrWhiteSpace($Url)) {
-        throw "Kein Remote 'origin' - bitte -OriginUrl setzen (oder einmalig manuell: git remote add origin ...)."
-    }
-
-    Invoke-RepoGit @("remote", "add", "origin", $Url.Trim())
-}
-
-function Show-Context {
-    Write-Host "Synchronisations-Branch: $syncBranch | Repo: $repoRoot"
-
-    if (Test-UpstreamConfigured) {
-        $upstream = (& git -C $repoRoot rev-parse --abbrev-ref '@{upstream}').Trim()
-        Write-Host "Upstream: $upstream"
-    }
-    else {
-        Write-Host "Kein Upstream - Pull/Push nutzen origin/$syncBranch (Tracking nach erstem Push -u)."
-    }
-}
-
-# Commit-Nachricht aus dem Staging-Bereich ableiten: Bereiche + Art der Änderungen.
 function New-SyncMessage {
     $rows = @(& git -C $repoRoot diff --cached --name-status)
     if (-not $rows) { return "chore: Arbeitsstand synchronisiert" }
 
-    $added = 0; $modified = 0; $deleted = 0; $renamed = 0
-    $areas = New-Object System.Collections.Generic.List[string]
-    $files = New-Object System.Collections.Generic.List[string]
-
-    foreach ($row in $rows) {
-        $parts = $row -split "`t"
-        $code = $parts[0]
-        $path = $parts[-1]
-        switch -Regex ($code) {
-            '^A' { $added++ }
-            '^D' { $deleted++ }
-            '^R' { $renamed++ }
-            '^C' { $added++ }
-            default { $modified++ }
-        }
-        $files.Add($path)
-        $seg = ($path -split '/')[0]
-        if ($seg -eq $path) { $seg = "Repo-Root" }
-        if (-not $areas.Contains($seg)) { $areas.Add($seg) }
-    }
-
-    $total = $rows.Count
-    if ($total -eq 1) {
-        $scope = $files[0]
-    }
-    elseif ($areas.Count -le 3) {
-        $scope = ($areas -join ', ')
-    }
-    else {
-        $scope = "{0}, {1}, {2} und {3} weitere Bereiche" -f $areas[0], $areas[1], $areas[2], ($areas.Count - 3)
-    }
-
-    $bits = @()
-    if ($added) { $bits += "$added neu" }
-    if ($modified) { $bits += "$modified geändert" }
-    if ($deleted) { $bits += "$deleted gelöscht" }
-    if ($renamed) { $bits += "$renamed verschoben" }
-
-    $summary = "chore: $scope aktualisiert ({0})" -f ($bits -join ', ')
-    if ($summary.Length -gt 72 -and $total -gt 1) {
-        $summary = "chore: $($areas.Count) Bereiche aktualisiert ({0} Dateien: {1})" -f $total, ($bits -join ', ')
-    }
-
-    return $summary
+    $areas = @(
+        $rows |
+            ForEach-Object {
+                $path = ($_ -split "`t")[-1]
+                $segment = ($path -split "/")[0]
+                if ($segment -eq $path) { "Repo-Root" } else { $segment }
+            } |
+            Select-Object -Unique
+    )
+    $scope = if ($areas.Count -le 3) { $areas -join ", " } else { "$($areas.Count) Bereiche" }
+    return "chore: $scope aktualisiert ($($rows.Count) Dateien)"
 }
 
-function Test-WorkingTreeHasChanges {
-    $status = (& git -C $repoRoot status --porcelain)
-    if ($LASTEXITCODE -ne 0) {
-        throw "Git-Status konnte nicht ermittelt werden."
+function Save-LocalChanges {
+    if (-not (Test-WorkingTreeChanges)) {
+        Write-Host "[origin] Keine lokalen Änderungen zu committen." -ForegroundColor DarkGray
+        return
     }
-
-    return ($null -ne $status -and $status.Count -gt 0)
-}
-
-function Invoke-AutoCommitLocalChanges {
     if ($NoAutoCommit) {
-        Write-Host "Auto-Commit ist deaktiviert (-NoAutoCommit)."
-        return
+        throw "Lokale Änderungen vorhanden und -NoAutoCommit gesetzt."
     }
 
-    if (-not (Test-WorkingTreeHasChanges)) {
-        Write-Host "Keine lokalen Änderungen für Auto-Commit."
-        return
-    }
-
-    Invoke-RepoGit @("add", "-A")
-
-    & git -C $repoRoot diff --cached --quiet
-    if ($LASTEXITCODE -eq 0) {
-        Write-Host "Keine committbaren Änderungen nach git add -A."
-        return
-    }
-    elseif ($LASTEXITCODE -ne 1) {
-        throw "Git-Diff gegen den Index ist fehlgeschlagen (Exit $LASTEXITCODE)."
-    }
-
+    Invoke-Git @("add", "-A")
     $message = $CommitMessage.Trim()
     if ([string]::IsNullOrWhiteSpace($message)) {
         $message = New-SyncMessage
-        Write-Host "Commit-Nachricht abgeleitet: $message"
     }
-
-    Invoke-RepoGit @("commit", "-m", $message)
+    Invoke-Git @("commit", "-m", $message)
 }
 
-function Test-RemoteBranchExists {
-    # Ein frisch angelegtes Repo kennt den Branch noch nicht; ein Pull bricht dann ab.
-    $refs = (& git -C $repoRoot ls-remote --heads origin $syncBranch 2>$null)
-    if ($LASTEXITCODE -ne 0) { return $false }
-
-    return -not [string]::IsNullOrWhiteSpace(($refs | Out-String).Trim())
+function Update-RemoteRefs {
+    Invoke-Git @("fetch", "origin", $branch)
+    Invoke-Git @("fetch", "upstream", $branch, "--tags")
 }
 
-function Invoke-RepoPull {
-    param(
-        [switch]$UseRebase,
-        [switch]$AllowUnrelated
-    )
+function Get-Comparison {
+    param([Parameter(Mandatory = $true)][string]$Other)
 
-    if (-not (Test-UpstreamConfigured) -and -not (Test-RemoteBranchExists)) {
-        Write-Host "Remote kennt den Branch '$syncBranch' noch nicht - Pull wird uebersprungen."
+    $parts = (Get-GitOutput @("rev-list", "--left-right", "--count", "$Other...HEAD")) -split "\s+"
+    return [pscustomobject]@{
+        RemoteOnly = [int]$parts[0]
+        LocalOnly = [int]$parts[1]
+    }
+}
+
+function Show-SyncStatus {
+    $origin = Get-Comparison -Other "origin/$branch"
+    $upstream = Get-Comparison -Other "upstream/$branch"
+    $head = Get-GitOutput @("rev-parse", "--short=10", "HEAD")
+    $upstreamHead = Get-GitOutput @("rev-parse", "--short=10", "upstream/$branch")
+
+    Write-Host ""
+    Write-Host "Stand ${branch}: $head" -ForegroundColor Cyan
+    Write-Host "origin/${branch}:   $($origin.RemoteOnly) zurück, $($origin.LocalOnly) voraus"
+    Write-Host "upstream/${branch}: $($upstream.RemoteOnly) zurück, $($upstream.LocalOnly) Fork-Commits voraus (Upstream $upstreamHead)"
+    if ($upstream.RemoteOnly -eq 0) {
+        Write-Host "[Status] Alle aktuellen Upstream-Commits sind im Fork enthalten." -ForegroundColor Green
+    } else {
+        Write-Host "[Status] $($upstream.RemoteOnly) Upstream-Commit(s) fehlen im Fork." -ForegroundColor Yellow
+    }
+}
+
+function Sync-Origin {
+    Save-LocalChanges
+    Invoke-Git @("pull", "--no-rebase", "origin", $branch)
+    Invoke-Git @("push", "origin", $branch)
+}
+
+function Merge-Upstream {
+    $comparison = Get-Comparison -Other "upstream/$branch"
+    if ($comparison.RemoteOnly -eq 0) {
+        Write-Host "[upstream] Bereits aktuell; kein Merge erforderlich." -ForegroundColor Green
         return
     }
-
-    $useUnrelatedMerge = [bool]$AllowUnrelated
-
-    if (-not $useUnrelatedMerge) {
-        $otherRef = $null
-        if (Test-UpstreamConfigured) {
-            $otherRef = (& git -C $repoRoot rev-parse --abbrev-ref '@{upstream}').Trim()
-        }
-        elseif (Test-OriginExists) {
-            $candidate = "origin/$syncBranch"
-            & git -C $repoRoot rev-parse --verify $candidate 2>$null | Out-Null
-            if ($LASTEXITCODE -eq 0) {
-                $otherRef = $candidate
-            }
-        }
-
-        if ($null -ne $otherRef) {
-            & git -C $repoRoot merge-base HEAD $otherRef 2>$null | Out-Null
-            if ($LASTEXITCODE -ne 0) {
-                $useUnrelatedMerge = $true
-                Write-Host "Hinweis: kein gemeinsamer Vorfahr mit $otherRef - Pull mit --allow-unrelated-histories."
-            }
-        }
+    if (Test-WorkingTreeChanges) {
+        throw "Der Arbeitsbaum ist vor dem Upstream-Merge nicht sauber."
     }
 
-    if ($useUnrelatedMerge) {
-        if ($UseRebase) {
-            Write-Host "Hinweis: -Rebase wird bei unrelated merge ignoriert (Merge)."
-        }
+    $upstreamCommit = Get-GitOutput @("rev-parse", "upstream/$branch")
+    $versionFile = Join-Path $repoRoot "mqorva-version.json"
+    $upstreamPackage = (Get-GitOutput @("show", "upstream/${branch}:packages/desktop/package.json")) | ConvertFrom-Json
+    $mqorva = Get-Content -Raw -LiteralPath $versionFile | ConvertFrom-Json
 
-        if (Test-UpstreamConfigured) {
-            Invoke-RepoGit @("pull", "--allow-unrelated-histories")
-        }
-        else {
-            Invoke-RepoGit @("pull", "origin", $syncBranch, "--allow-unrelated-histories")
-        }
-
-        return
-    }
-
-    if (Test-UpstreamConfigured) {
-        if ($UseRebase) {
-            Invoke-RepoGit @("pull", "--rebase")
-        }
-        else {
-            Invoke-RepoGit @("pull")
-        }
-
-        return
-    }
-
-    if (-not (Test-OriginExists)) {
-        throw "Intern: origin fehlt nach Ensure-Origin."
-    }
-
-    if ($UseRebase) {
-        Invoke-RepoGit @("pull", "--rebase", "origin", $syncBranch)
-    }
-    else {
-        Invoke-RepoGit @("pull", "origin", $syncBranch)
-    }
-}
-
-function Invoke-RepoPush {
-    param([switch]$ForceWithLease)
-
-    if (Test-UpstreamConfigured) {
-        if ($ForceWithLease) {
-            Invoke-RepoGit @("push", "--force-with-lease")
-        }
-        else {
-            Invoke-RepoGit @("push")
-        }
-
-        return
-    }
-
-    if (-not (Test-OriginExists)) {
-        throw "Intern: origin fehlt nach Ensure-Origin."
-    }
-
-    if ($ForceWithLease) {
-        Invoke-RepoGit @("push", "--force-with-lease", "-u", "origin", $syncBranch)
-    }
-    else {
-        Invoke-RepoGit @("push", "-u", "origin", $syncBranch)
-    }
-}
-
-function Add-DirectoryToPath {
-    param([Parameter(Mandatory = $true)][string]$Directory)
-
-    if (-not (Test-Path -LiteralPath $Directory)) {
-        return
-    }
-
-    $pathParts = @($env:PATH -split ';' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-    if (-not ($pathParts | Where-Object { $_ -ieq $Directory })) {
-        $env:PATH = "$Directory;$env:PATH"
-    }
-
-    $userPath = [Environment]::GetEnvironmentVariable("Path", "User")
-    $userParts = @($userPath -split ';' | Where-Object { -not [string]::IsNullOrWhiteSpace($_) })
-    if (-not ($userParts | Where-Object { $_ -ieq $Directory })) {
-        $newUserPath = if ([string]::IsNullOrWhiteSpace($userPath)) { $Directory } else { "$Directory;$userPath" }
-        [Environment]::SetEnvironmentVariable("Path", $newUserPath, "User")
-    }
-}
-
-function Get-GitHubCliCommand {
-    if (-not [string]::IsNullOrWhiteSpace($script:GitHubCliCommand) -and (Test-Path -LiteralPath $script:GitHubCliCommand)) {
-        return $script:GitHubCliCommand
-    }
-
-    $command = Get-Command gh -ErrorAction SilentlyContinue
-    if ($command) {
-        $script:GitHubCliCommand = $command.Source
-        return $script:GitHubCliCommand
-    }
-
-    $candidates = @(
-        (Join-Path $env:ProgramFiles "GitHub CLI\gh.exe"),
-        (Join-Path $env:ProgramFiles "GitHub CLI\bin\gh.exe"),
-        (Join-Path $env:LOCALAPPDATA "Programs\GitHub CLI\gh.exe"),
-        (Join-Path $env:LOCALAPPDATA "Programs\GitHub CLI\bin\gh.exe"),
-        (Join-Path $env:LOCALAPPDATA "Programs\GitHub CLI Portable\gh.exe"),
-        (Join-Path $env:LOCALAPPDATA "Programs\GitHub CLI Portable\bin\gh.exe")
-    )
-
-    foreach ($candidate in $candidates) {
-        if (Test-Path -LiteralPath $candidate) {
-            Add-DirectoryToPath -Directory (Split-Path -Parent $candidate)
-            $script:GitHubCliCommand = $candidate
-            return $script:GitHubCliCommand
-        }
-    }
-
-    return $null
-}
-
-function Install-GitHubCliWithWinget {
-    if (-not (Get-Command winget -ErrorAction SilentlyContinue)) {
-        return $false
-    }
-
-    Write-Host "GitHub CLI fehlt - installiere über winget ..."
-    & winget install --id GitHub.cli --source winget --accept-package-agreements --accept-source-agreements
+    & git -C $repoRoot merge "upstream/$branch" --no-ff --no-commit
     if ($LASTEXITCODE -ne 0) {
-        Write-Host "winget-Installation ist fehlgeschlagen (Exit $LASTEXITCODE) - nutze portablen Fallback."
-        return $false
+        throw "Konflikte beim Upstream-Merge. Der Merge bleibt zur manuellen Auflösung geöffnet."
     }
 
-    return ($null -ne (Get-GitHubCliCommand))
-}
+    $mqorva.upstream.commit = $upstreamCommit
+    $mqorva.upstream.version = $upstreamPackage.version
+    $json = $mqorva | ConvertTo-Json -Depth 10
+    [System.IO.File]::WriteAllText($versionFile, "$json`n", [System.Text.UTF8Encoding]::new($false))
+    Invoke-Git @("add", "--", "mqorva-version.json")
 
-function Install-GitHubCliPortable {
-    $installRoot = Join-Path $env:LOCALAPPDATA "Programs\GitHub CLI Portable"
-    $zipPath = Join-Path $env:TEMP "gh-windows-amd64.zip"
-    $extractRoot = Join-Path $env:TEMP ("gh-portable-" + [guid]::NewGuid().ToString("N"))
-
-    Write-Host "GitHub CLI fehlt - installiere portabel nach $installRoot ..."
-    New-Item -ItemType Directory -Force -Path $installRoot | Out-Null
-    New-Item -ItemType Directory -Force -Path $extractRoot | Out-Null
-
-    try {
-        $release = Invoke-RestMethod -Uri "https://api.github.com/repos/cli/cli/releases/latest" -Headers @{ "User-Agent" = "Schreibkraft-Sync-GitHub" }
-        $asset = $release.assets | Where-Object { $_.name -match "windows_amd64\.zip$" } | Select-Object -First 1
-        if ($null -eq $asset) {
-            throw "Kein windows_amd64.zip Asset im aktuellen GitHub CLI Release gefunden."
-        }
-
-        Invoke-WebRequest -Uri $asset.browser_download_url -OutFile $zipPath
-        Expand-Archive -LiteralPath $zipPath -DestinationPath $extractRoot -Force
-
-        $gh = Get-ChildItem -Path $extractRoot -Recurse -Filter gh.exe | Select-Object -First 1
-        if ($null -eq $gh) {
-            throw "gh.exe wurde im heruntergeladenen Archiv nicht gefunden."
-        }
-
-        Copy-Item -LiteralPath $gh.FullName -Destination (Join-Path $installRoot "gh.exe") -Force
-        $license = Get-ChildItem -Path (Split-Path -Parent $gh.FullName) -Filter LICENSE* -ErrorAction SilentlyContinue | Select-Object -First 1
-        if ($license) {
-            Copy-Item -LiteralPath $license.FullName -Destination $installRoot -Force
-        }
-
-        Add-DirectoryToPath -Directory $installRoot
-        $script:GitHubCliCommand = Join-Path $installRoot "gh.exe"
-        return $script:GitHubCliCommand
+    & (Join-Path $repoRoot "patches.ps1")
+    if ($LASTEXITCODE -ne 0) {
+        throw "Mindestens eine mQorva-Anpassung fehlt nach dem Upstream-Merge."
     }
-    finally {
-        Remove-Item -LiteralPath $zipPath -Force -ErrorAction SilentlyContinue
-        Remove-Item -LiteralPath $extractRoot -Recurse -Force -ErrorAction SilentlyContinue
-    }
-}
-
-function Ensure-GitHubCli {
-    $command = Get-GitHubCliCommand
-    if ($command) {
-        return $command
-    }
-
-    if (Install-GitHubCliWithWinget) {
-        return (Get-GitHubCliCommand)
-    }
-
-    return (Install-GitHubCliPortable)
-}
-
-function Ensure-GitHubCliAuthentication {
-    $null = & $script:GitHubCliCommand auth status 2>$null
-    if ($LASTEXITCODE -eq 0) {
-        return
-    }
-
-    $credentialInput = "protocol=https`nhost=github.com`n`n"
-    $filled = $credentialInput | git credential fill 2>$null
-    $token = ($filled | Where-Object { $_ -like "password=*" } | Select-Object -First 1) -replace "^password=", ""
-
-    if (-not [string]::IsNullOrWhiteSpace($token)) {
-        $env:GH_TOKEN = $token
-        $null = & $script:GitHubCliCommand auth status 2>$null
-        if ($LASTEXITCODE -eq 0) {
-            return
-        }
-    }
-
-    throw "GitHub CLI ist installiert, aber nicht angemeldet. Einmalig ausführen: gh auth login"
-}
-
-function Test-GitHubReleaseExists {
-    param([Parameter(Mandatory = $true)][string]$Tag)
-
-    $null = & $script:GitHubCliCommand release view $Tag 2>$null
-    return ($LASTEXITCODE -eq 0)
-}
-
-function Read-YesNo {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$Question,
-        [bool]$Default = $false
-    )
-
-    $suffix = if ($Default) { "[J/n]" } else { "[j/N]" }
-
-    while ($true) {
-        $answer = (Read-Host "$Question $suffix").Trim().ToLowerInvariant()
-        if ([string]::IsNullOrWhiteSpace($answer)) {
-            return $Default
-        }
-
-        switch ($answer) {
-            { $_ -in @("j", "ja", "y", "yes") } { return $true }
-            { $_ -in @("n", "nein", "no") } { return $false }
-            default { Write-Host "Bitte 'j' oder 'n' eingeben." }
-        }
-    }
-}
-
-function Get-ReleaseOptions {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$Version,
-        [Parameter(Mandatory = $true)]
-        [string]$DefaultSetupPath
-    )
-
-    $title = "Schreibkraft $Version"
-    $notes = "Setup-Installer für Schreibkraft $Version."
-    $setup = $DefaultSetupPath
-    $draft = $false
-    $prerelease = $false
-
-    Write-Host "Release-Version: $Version"
-    Write-Host "Release-Tag: v$Version"
-    Write-Host "Setup-Datei: $DefaultSetupPath"
-
-    $draft = Read-YesNo "Release als Draft erstellen?"
-    $prerelease = Read-YesNo "Release als Pre-Release markieren?"
-
-    [pscustomobject]@{
-        Title = $title
-        Notes = $notes
-        SetupPath = $setup
-        Draft = $draft
-        Prerelease = $prerelease
-    }
-}
-
-function Invoke-GitHubReleaseSetup {
-    if ($Action -eq "Pull") {
-        throw "-ReleaseSetup ist nur mit -Action Push oder PullPush sinnvoll."
-    }
-
-    $script:GitHubCliCommand = Ensure-GitHubCli
-    Ensure-GitHubCliAuthentication
-
-    $version = Get-AppVersion
-    $tag = "v$version"
-    $defaultSetup = Join-Path $repoRoot "artifacts\installer\Schreibkraft-$version.exe"
-    $options = Get-ReleaseOptions -Version $version -DefaultSetupPath $defaultSetup
-    $setup = $options.SetupPath
-
-    if (-not (Test-Path -LiteralPath $setup)) {
-        throw "Setup-Datei wurde nicht gefunden: $setup`nVorher .\Build.ps1 ausführen."
-    }
-
-    if (Test-GitHubReleaseExists -Tag $tag) {
-        if (-not (Read-YesNo "GitHub Release $tag existiert bereits. Setup-Asset überschreiben?")) {
-            throw "GitHub Release $tag existiert bereits. Version erhöhen oder Überschreiben bestätigen."
-        }
-
-        $head = (& git -C $repoRoot rev-parse HEAD).Trim()
-        Invoke-RepoGit @("tag", "-f", $tag, $head)
-        Invoke-RepoGit @("push", "origin", $tag, "--force")
-        Write-Host "GitHub Release $tag existiert - lade Setup-Asset neu hoch."
-        & $script:GitHubCliCommand release upload $tag $setup --clobber
+    if (-not $SkipCheck) {
+        & (Join-Path $repoRoot "check.ps1")
         if ($LASTEXITCODE -ne 0) {
-            throw "gh release upload ist fehlgeschlagen."
+            throw "Die Paketprüfungen nach dem Upstream-Merge sind fehlgeschlagen."
         }
-        return
     }
+    Invoke-Git @("diff", "--cached", "--check")
 
-    $head = (& git -C $repoRoot rev-parse HEAD).Trim()
-    Invoke-RepoGit @("tag", "-f", $tag, $head)
-    Invoke-RepoGit @("push", "origin", $tag, "--force")
-
-    $args = @("release", "create", $tag, $setup, "--title", $options.Title, "--notes", $options.Notes, "--target", $syncBranch)
-    if ($options.Draft) {
-        $args += "--draft"
-    }
-    if ($options.Prerelease) {
-        $args += "--prerelease"
-    }
-
-    Write-Host ("gh " + ($args -join " "))
-    & $script:GitHubCliCommand @args
-    if ($LASTEXITCODE -ne 0) {
-        throw "gh release create ist fehlgeschlagen."
-    }
+    Invoke-Git @("commit", "-m", "chore: sync upstream $($upstreamCommit.Substring(0, 10))")
+    Invoke-Git @("push", "origin", $branch)
+    Write-Host "[upstream] Merge geprüft und zu origin/$branch gepusht." -ForegroundColor Green
+    Write-Host "[Hinweis] Upstream-Kandidaten nach inhaltlichen Fork-Änderungen erneut prüfen." -ForegroundColor Yellow
 }
 
-function Clear-StaleIndexLock {
-    # Abgebrochene Git-Aufrufe lassen .git/index.lock liegen; jeder spätere Commit
-    # scheitert dann. Nur aufräumen, wenn wirklich kein git-Prozess sie halten kann.
-    $gitDir = (& git -C $repoRoot rev-parse --git-dir | Out-String).Trim()
-    if ([string]::IsNullOrWhiteSpace($gitDir)) { return }
-    if (-not [System.IO.Path]::IsPathRooted($gitDir)) { $gitDir = Join-Path $repoRoot $gitDir }
+try {
+    Initialize-Repository
+    Update-RemoteRefs
 
-    $lockFile = Join-Path $gitDir "index.lock"
-    if (-not (Test-Path -LiteralPath $lockFile)) { return }
-
-    $lockTime = (Get-Item -LiteralPath $lockFile).LastWriteTime
-    $ageMinutes = ((Get-Date) - $lockTime).TotalMinutes
-
-    # Nur ein git-Prozess, der VOR der Sperre gestartet wurde, kann ihr Halter sein.
-    # Zwei Sekunden Toleranz für die Zeitstempel-Auflösung.
-    $holders = @(
-        Get-Process git -ErrorAction SilentlyContinue | Where-Object {
-            try { $_.StartTime -le $lockTime.AddSeconds(2) } catch { $false }
-        }
-    ).Count
-
-    if ($holders -gt 0 -and $ageMinutes -lt 15) {
-        throw "Es läuft gerade ein anderer Git-Vorgang in diesem Repository ($holders Prozess(e), Sperre $([math]::Round($ageMinutes)) Minuten alt). Kurz warten und erneut starten."
+    if ($Status) {
+        Show-SyncStatus
+        exit 0
     }
 
-    Remove-Item -LiteralPath $lockFile -Force
-    $grund = if ($holders -gt 0) { "kein gesunder Vorgang hält den Index so lange" } else { "kein passender git-Prozess aktiv" }
-    Write-Host ("verwaiste Sperre entfernt (index.lock, {0:N0} Minuten alt, {1})" -f $ageMinutes, $grund) -ForegroundColor Yellow
-}
-
-Assert-GitRepo
-Clear-StaleIndexLock
-Ensure-Origin -Url $OriginUrl
-Ensure-TargetBranch
-Show-Context
-
-if ($Action -in @("Push", "PullPush")) {
-    Invoke-AutoCommitLocalChanges
-}
-
-switch ($Action) {
-    "Pull" {
-        Invoke-RepoPull -UseRebase:$Rebase -AllowUnrelated:$AllowUnrelatedHistories
+    Sync-Origin
+    Update-RemoteRefs
+    if ($Update) {
+        Merge-Upstream
+        Update-RemoteRefs
     }
-    "Push" {
-        Invoke-RepoPush -ForceWithLease:$PushForceWithLease
-    }
-    "PullPush" {
-        if (-not $SkipPull) {
-            Invoke-RepoPull -UseRebase:$Rebase -AllowUnrelated:$AllowUnrelatedHistories
-        }
-
-        Invoke-RepoPush -ForceWithLease:$PushForceWithLease
-    }
+    Show-SyncStatus
+    Write-Host "Fertig." -ForegroundColor Green
 }
-
-if ($ReleaseSetup) {
-    Invoke-GitHubReleaseSetup
+catch {
+    [Console]::Error.WriteLine("[git-sync] Fehlgeschlagen: {0}", $_.Exception.Message)
+    exit 1
 }
-
-Write-Host "Fertig ($Action)."

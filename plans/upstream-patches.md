@@ -3,7 +3,7 @@
 Alles, was der Fork am Original verändert. Jede Änderung ist hier so beschrieben, dass sie nach
 einem Upstream-Update von Hand wieder eingepflegt werden kann, auch wenn der Merge sie verschluckt.
 
-**Nach jedem `Sync-Upstream.ps1` in dieser Reihenfolge:**
+**Nach jedem `git-sync.ps1 -Update` in dieser Reihenfolge:**
 
 ```bash
 pwsh ./patches.ps1

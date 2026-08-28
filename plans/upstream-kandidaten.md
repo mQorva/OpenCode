@@ -2,26 +2,121 @@
 
 Bestandsaufnahme aller Fork-Änderungen gegenüber `anomalyco/opencode`: Was ist eigen, was ist Naht,
 was kann zurück ans Original? Grundlage für künftige Upstream-PRs und für die Pflege von
-`plans/upstream-patches.md`. Zuletzt vollständig gegen `upstream/dev` auf `755ebdb94e`
-(OpenCode 1.18.25) und den Fork-Stand `0df7986365` geprüft.
+`plans/upstream-patches.md`. Zuletzt vollständig gegen `upstream/dev` auf `1be9fd55a9`
+(OpenCode 1.18.25) und den Fork-Stand `1b06f6f95f` geprüft. Seit `755ebdb94e` kam upstream nur
+die Hy4-Vorschau-Dokumentation hinzu; sie berührt keine Kandidaten- oder Fork-Quelldatei.
+Für App-Features wurde zusätzlich der aktive Architekturzweig `upstream/v2` auf `1c8e557eb4`
+geprüft, weil dort bereits Funktionen und Dateistrukturen liegen, die `dev` noch nicht enthält.
 
 ## Stand der bisherigen Upstream-Versuche
 
 Die ersten drei Kandidaten wurden am 27. August 2026 jeweils als eigener, sauber von
 `upstream/dev` abgezweigter Ein-Commit-Branch gesendet. Die PRs wurden nicht fachlich abgelehnt,
 sondern automatisch geschlossen, weil ein vorheriges Issue und die vollständig ausgefüllte
-PR-Vorlage fehlten. Die alten Branches bleiben nur bis zur gesicherten Bereinigung erhalten und
-werden nicht unverändert wiederverwendet:
+PR-Vorlage fehlten. Die alten lokalen und `origin`-Branches wurden nach Sicherung ihrer Spitzen als
+lokale Archiv-Tags entfernt und werden nicht unverändert wiederverwendet:
 
 | Kandidat | Alter PR | Zustand | Nächster Schritt |
 |---|---:|---|---|
-| #1 | `anomalyco/opencode#45557` | geschlossen, nicht gemergt | Duplikate prüfen, Issue anlegen, frisch von aktuellem `upstream/dev` extrahieren und erneut testen |
-| #2 | `anomalyco/opencode#45607` | geschlossen, nicht gemergt | fehlenden Fehlerpfad-Test ergänzen, danach Issue und neuer kurzer Branch |
-| #3 | `anomalyco/opencode#45609` | geschlossen, nicht gemergt | Root-Fall testen, danach Issue und neuer kurzer Branch |
+| #1 | `anomalyco/opencode#45557` | geschlossen, nicht gemergt; Branch entfernt, Tag `archive/upstream-pr-45557` | Duplikate prüfen, Issue anlegen, frisch von aktuellem `upstream/dev` extrahieren und erneut testen |
+| #2 | `anomalyco/opencode#45607` | geschlossen, nicht gemergt; Branch entfernt, Tag `archive/upstream-pr-45607` | fehlenden Fehlerpfad-Test ergänzen, danach Issue und neuer kurzer Branch |
+| #3 | `anomalyco/opencode#45609` | geschlossen, nicht gemergt; Branch entfernt, Tag `archive/upstream-pr-45609` | Root-Fall testen, danach Issue und neuer kurzer Branch |
 
 `v2-compat.ts` und die zwischenzeitlichen Azure-Anpassungen sind keine neuen Fork-Kandidaten:
 Upstream enthält inzwischen die V2-Konfigurationskompatibilität und die aktuelle Azure-
 Authentifizierung selbst. Gegen den aktuellen Upstream bleibt in `config.ts` davon nur Kandidat #6.
+
+## Versandmodell: Branchpakete statt Fork-Historie
+
+Die 24 Fork-Commits gegenüber `upstream/dev` sind **keine** 24 Upstream-PRs. Viele davon sind
+Zwischenstände mit mehreren vermischten Themen. Für Upstream wird deshalb nicht die bestehende
+Historie weitergereicht, sondern jedes fachliche Paket frisch aus ausgewählten Hunks aufgebaut:
+
+1. unmittelbar vor der Bearbeitung von dem dann aktuellen `upstream/dev` abzweigen;
+2. nur die zum Paket gehörenden neutralen Änderungen übernehmen, niemals einen der gemischten
+   `mQorva edition`-Commits vollständig cherry-picken;
+3. Entwicklungszwischenstände zu einem sauberen Commit verdichten oder höchstens zwei Commits
+   behalten, wenn Infrastruktur und darauf aufbauendes Verhalten getrennt prüfbar sind;
+4. Issue, Tests und PR-Vorlage für das gesamte Problem-Paket vorbereiten;
+5. erst nach Freigabe pushen und den PR anlegen.
+
+Die Branches werden absichtlich **nicht auf Vorrat angelegt**. Ein vorbereiteter, aber noch nicht
+gesendeter Branch würde beim nächsten Upstream-Sync altern. Die folgende Tabelle ist daher die
+verbindliche Bauanweisung; der jeweilige Arbeitsbranch entsteht just-in-time in einem separaten
+Worktree. Die Namen erfüllen bereits die lokale Drei-Wort-Regel.
+
+### Zusätzlicher Upstream-Architektur-Gate
+
+Für kurzfristige PRs bleibt `upstream/dev` die verbindliche Basis. Bei App-Features reicht dieser
+Vergleich inzwischen aber nicht mehr: Der aktive Zweig `upstream/v2` steht auf `1c8e557eb4`, hat
+eine vollständig neue App-Dateistruktur und enthält bereits Änderungen, die auf `dev` noch fehlen.
+Die bisherigen App-Dateien für Global Sync, Prompt-Submit, Terminalzustand, Provider-Verbindung und
+Fehlerauswertung existieren dort nicht mehr unter denselben Pfaden.
+
+Besonders relevant:
+
+- Issue `#36942` fordert vertikale Sitzungsnavigation; PR `#38308` ist dafür gegen `dev` offen.
+- PR `#45210` hat experimentelle vertikale Sitzungstabs bereits nach `v2` gemergt.
+- Diese Vertical-Tabs-Arbeit ändert die Darstellung vorhandener Tabs. Unser Seitenleistenpaket
+  verändert die Tab-Mechanik ebenfalls nicht: Es liest den bestehenden Tab-Zustand, blendet dessen
+  horizontalen Strip im Seitenleistenmodus aus und ergänzt nur `unassigned` als additives
+  Draft-Merkmal für den Block „Chats“.
+- `v2` bietet Queue und Steer als echte Einstellung samt Queue-Panel und E2E-Tests; unser Paket #22
+  darf daher nicht mehr als neuer Upstream-Vertrag gesendet werden.
+- Markdown-Vorschau wurde mit Issue `#13705` und PR `#13704` bereits versucht, aber ohne Merge
+  geschlossen. Das ist ein wiederaufsetzbarer Featurepfad, kein unbekanntes neues Konzept.
+- Ein Sprung zu Nutzereingaben wurde in PR `#38484` versucht und nur wegen fehlender Compliance
+  geschlossen; auch die Sitzungsnavigation hat damit bekannte Upstream-Historie.
+
+### Einzelfixes: jeweils eigener Branch und eigener Fehlervertrag
+
+Mehrere Dateien dürfen in einem Fix enthalten sein, wenn sie gemeinsam genau einen reproduzierbaren
+Fehler beheben. Verschiedene Fehler werden nicht mehr unter Namen wie `session-error-flow`,
+`workspace-route-state` oder `plugin-startup-bounds` zusammengefasst.
+
+| Reihenfolge | Branch | Kandidat | Upstream-Urteil und Gate |
+|---:|---|---:|---|
+| 1 | `auth-json-safety` | #1 | gegen `dev` neu aufsetzen; vorhandene Concurrency-Regression; stärkster Pilot |
+| 2 | `async-session-idle` | #2 | eigenständiger Serverfehler; gezielten Fehlerpfad-Test ergänzen |
+| 3 | `filesystem-root-watch` | #3 | eigenständiger Corefehler; Windows- und POSIX-Root testen |
+| 4 | `dev-plugin-version` | #6 | eigenständiger Dev-Build-Fehler; nicht mit Timeouts koppeln |
+| 5 | `plugin-hook-timeout` | #7 | eigener Hänger in Plugin-Init/Config; Timeout und Logverhalten testen |
+| 6 | `bootstrap-init-timeout` | #8 | eigener Hänger in Instance-Services; bewusste Timeout-Semantik zuerst als Bug begründen |
+| 7 | `windows-zorder-reset` | #20 | eigenständiger Desktopfehler; manueller Nachweis unter Windows 10/11 |
+| 8 | `session-error-sync` | #12 | eigener App-Zustandsfehler; auf `dev` reproduzieren, danach prüfen, ob er in `v2` überhaupt noch besteht |
+| 9 | `directory-bootstrap-wait` | #13 | eigener Bootstrap-Race; alter App-Pfad fehlt in `v2`, daher nicht unverändert portieren |
+| 10 | `event-reconnect-backoff` | #14 | eigener Transportfehler; Reconnect-Test erforderlich; `v2` besitzt eine andere Transportstruktur |
+| 11 | `prompt-editor-recovery` | #15 | eigener Eingabeverlust; zuerst vorhandenen App-Parser auf `dev` wiederverwenden statt unnötig einen zweiten Cross-Package-Parser einzuführen |
+| 12 | `followup-session-directory` | #16 | V1-spezifischer Verzeichnisfehler; nur noch senden, wenn Upstream ihn auf `dev` weiterhin pflegen will |
+| 13 | `session-error-shapes` | #17 | eigener Kompatibilitätsfehler; konkrete tatsächlich auftretende Fehlerformen testen |
+| 14 | `terminal-route-state` | #23 | eigener Routen-/Zustandsfehler; wegen völlig neuer Workspace-Struktur in `v2` dort neu bewerten |
+
+### Zusammenhängende Features und größere Funktionsverträge
+
+| Arbeitstitel | Kandidaten | Upstream kennt bereits | Urteil |
+|---|---|---|---|
+| `provider-catalog-sync` | #11 | Providerkatalog, Connect/Disconnect und zwei Settings-Oberflächen auf `dev`; neue Providerarchitektur auf `v2` | ein zusammenhängender Funktionsvertrag, aber nicht vor Vergleich mit `v2` extrahieren |
+| `native-model-routing` | #5 | allgemeine Modellauflösung, aber nicht unsere native Gemini-/OpenRouter-Weiche | eigenständiges Core-Feature mit Design-Issue und Routingmatrix |
+| `build-no-minify` | #9 | minifizierten Build und Sourcemap-Schalter | eigenständige Buildoption; nicht mit Desktop-Debugport koppeln |
+| `desktop-debug-port` | #21 | festen Dev-Port `9222` | eigenständige Desktopoption mit Env-Smoke |
+| `markdown-file-preview` | #30 | geschlossene Vorgänger `#13705`/`#13704` | ein Feature; Vorgänger sauber referenzieren und erst auf der vom Upstream gewünschten App-Basis neu extrahieren |
+| `session-navigation-ui` | #18, #19, #25, #29 | ScrollView, Timeline und den geschlossenen Versuch `#38484`; keine Message-Rail auf `dev` oder `v2` | ein eigenständiges, layoutneutrales Navigationsfeature; nicht an die Sidebar koppeln |
+| `sidebar-workspace-ui` | #28 plus nur sidebar-spezifische Teile aus #31 | offenes Issue `#36942`, offenen PR `#38308` auf `dev` und gemergte Vertical-Tabs-Darstellung `#45210` auf `v2` | unser Feature bleibt eigenständig: Upstream hat keine gruppierte Workspace-Seitenleiste mit separaten Chats, Anheften, Suche und Entwurfsverschiebung. Keine Tab-Struktur übertragen oder ersetzen; die Sidebar wird an Upstreams bestehende Tab- und Shell-Verträge angehängt. Zu extrahieren sind nur der Layout-Einhängepunkt, das Ausblenden des horizontalen Strips, das additive `unassigned`-Draft-Merkmal und der neue Workspace-/Sidebar-Code |
+| `session-workspace-layout` | verbleibende layoutneutrale Teile aus #31 | neue Session-/Panel-/Terminal-Struktur in `v2` | nicht Teil des Sidebar-PRs; nach Übernahme von `v2` als eigenes Layout-Feature neu bewerten |
+| `workspace-readiness-ui` | #27 | mehrere neue Lade- und Skeleton-Zustände in `v2`, aber nicht unseren Fortschrittsvertrag | Vertrag und Darstellung hängen zusammen, Implementierung jedoch erst auf der neuen App-Architektur neu entwerfen |
+| `followup-queue-controls` | #22, #26 | auf `dev` absichtlich verborgen; in `v2` vollständig auswählbar und E2E-getestet | als neues Feature **entfällt**; nach `v2` nur noch einzigartige Queue-Aktionen vergleichen und gegebenenfalls als kleinen Folge-Fix vorschlagen |
+| `session-title-generation` | #4, #24 | bestehende Titelkonventionen; unsere beiden Richtungen widersprechen sich | kein Branch vor Architekturentscheidung |
+
+Damit sind `sidebar-workspace-ui`, `session-navigation-ui` und `session-workspace-layout` aus unserer
+Produktperspektive zwar Teile derselben Oberfläche, aus Upstream-Sicht aber **nicht ein PR-Paket**:
+Sitzungsnavigation funktioniert ohne Sidebar; unser eigenständiger Workspace-Vertrag verwendet
+Upstreams Tab-Zustand nur als Datenquelle und ersetzt ihn nicht; und die allgemeine
+Arbeitsflächenanordnung muss auf der neuen `v2`-Struktur aufbauen.
+
+Kandidat #10 (`complete-user-journey.test.ts`) wird nicht als eigener Test-PR verschickt. Der Test
+ist derzeit breit, verwendet noch unscharfe Typen und beweist keinen der offenen Fehlerpfade. Seine
+brauchbaren Teile werden nur dann in ein Paket übernommen, wenn sie genau dessen Regression
+absichern.
 
 ## Empfehlungen in Reihenfolge
 
@@ -32,19 +127,27 @@ Authentifizierung selbst. Gegen den aktuellen Upstream bleibt in `config.ts` dav
 2. **Tabs-Abweichungen akzeptieren und dokumentieren** — erledigt: Abschnitt „Sichtbare
    Abweichungen im Tab-Modus" in `plans/upstream-patches.md`. Alle vier Stellen sind
    Verbesserungen, die auch im Tab-Modus funktionieren; der Umschalter bleibt voll bedienbar.
-3. **Queue→Steer-Feature als Upstream-Kandidat #22 behandeln**: kein Fork-Eigensinn, sondern ein
-   reaktiviertes, verbessertes Upstream-Setting; Dokumentation steht (Abschnitt 13).
-4. **Ersten Upstream-PR als Pilot neu aufsetzen**: `fix(opencode): serialize and atomically write
+3. **Ersten Fix als Pilot neu aufsetzen**: `auth-json-safety` mit dem PR-Titel
+   `fix(opencode): serialize and atomically write
    auth.json` — klein, UI-frei, Concurrency-Test liegt bereits vor. Zuerst Duplikate und ein
    bestehendes Issue prüfen, andernfalls ein knappes Bug-Issue über die offizielle Vorlage anlegen.
    Danach einen neuen kurzen Zweig von aktuellem `upstream/dev` abschneiden; nie den geschlossenen
    Branch wiederverwenden und nie vom mQorva-`dev` abzweigen.
-5. **Danach Backend-Kandidaten 2–10 einzeln folgen lassen**, dann App-Cluster (#11 zuerst als
-   Infrastruktur-PR, dann Vertrag + UI-Stellen).
+4. **Danach die unabhängigen Core-/Server-/Desktop-Fixes einzeln behandeln**: #2, #3, #6, #7,
+   #8 und #20. Jeder bekommt eigenen Repro, Test, Issue und Branch.
+5. **Alte App-Fixes nicht blind auf `dev` paketieren**: #11–#17 und #23 zuerst gegen die neue
+   `v2`-Architektur reproduzieren. Wo der Fehler dort weiter existiert, neu in deren aktuellem
+   Vertrag implementieren; alte Dateien oder Hunks nicht portieren.
+6. **UI als bekannte Upstream-Themen weiterführen**: Die mQorva-Seitenleiste bleibt eine eigene,
+   umfangreichere Lösung, wird aber gegen `#36942`, `#38308` und den nach `v2` gemergten PR
+   `#45210` abgegrenzt. Markdown-Vorschau und Sitzungsnavigation knüpfen an ihre geschlossenen
+   Vorgänger an. Erst nach dieser Design-Abstimmung entstehen Featurebranches.
 
 ## Kategorien
 
-- **A — mQorva-eigen**: Editionsidentität, Shell, Buildmodell. Bleibt im Fork.
+- **A — mQorva-eigen**: Editionsidentität, Branding, Buildmodell und nur für den Fork nötige
+  Shell-Nähte. Bleibt im Fork. Ein produktneutral formulierter alternativer Arbeitsbereich kann
+  dagegen nach Design-Abstimmung ein D-/C-Kandidat sein.
 - **B — Integrationsnaht**: Fork-only Hook in gemeinsamer Datei (idealerweise mit Marker in
   `plans/upstream-patches.md` erfasst).
 - **C — Upstream-Kandidat**: produktneutral, kein Bezug auf Sidebar/Edition; als eigener PR gegen
@@ -66,7 +169,7 @@ Authentifizierung selbst. Gegen den aktuellen Upstream bleibt in `config.ts` dav
 | 7 | `fix(opencode): time out internal plugin init and config hooks` | `opencode/src/plugin/index.ts` | — |
 | 8 | `chore(server): log and bound instance service bootstrap` | `opencode/src/project/bootstrap.ts` | — (Timeout ändert Verhalten bei langsamem Init) |
 | 9 | `chore(opencode): add --no-minify flag to build script` | `opencode/script/build.ts` | — |
-| 10 | `test(server): add end-to-end user journey test` | `opencode/test/server/complete-user-journey.test.ts` | ist selbst Test |
+| 10 | Breiter End-to-End-Test als Material für andere Pakete, **kein eigener PR** | `opencode/test/server/complete-user-journey.test.ts` | nur passende Teile nachschärfen und dem konkret abgesicherten Paket beilegen; aktueller Test enthält noch `any` und deckt keinen offenen Fehlerpfad gezielt ab |
 
 ### App-Fixes
 
@@ -88,7 +191,7 @@ Authentifizierung selbst. Gegen den aktuellen Upstream bleibt in `config.ts` dav
 | 19 | Scrollbar-Stepper über dem Sitzungsbereich (C-Fragment aus `pages/session.tsx` + `message-timeline.tsx`: `thumbContainer`-Threading) | beide Dateien gezielt herauslösen | manuell |
 | 20 | `fix(desktop): clear stuck always-on-top after first show on windows` | `desktop/src/main/windows.ts` | Z-Order nicht in Bun-Tests abbildbar → manuell Win10/11; **einziger sauberer Desktop-PR ohne Vorarbeit** |
 | 21 | `feat(desktop): allow configuring dev remote-debugging-port` (Fragment aus `main/index.ts`, 9223-Default herausfaktorieren) | `desktop/src/main/index.ts` | Smoke auf Env-Übernahme |
-| 22 | `feat(app): restore selectable follow-up queue behavior with ctrl-enter inversion` — Upstream kennt `followup: "queue" \| "steer"`, zwingt `"queue"` aber an drei Stellen auf `"steer"`; der Fork lässt beide Werte zu, macht die Auswahl sichtbar und Strg+Enter zum Gegenteil der Vorgabe | `context/settings.tsx`, `components/settings-v2/general.tsx`, `prompt-input/submit.ts`, `session-ui/.../interaction.ts`, `i18n/en+de.ts` | `submit.test.ts` (Invert-Fall ergänzen); dokumentiert als Patch-Abschnitt 13 |
+| 22 | Queue/Steer-Auswahl und Ctrl+Enter-Inversion — auf `dev` ist Queue noch absichtlich unerreichbar; `v2` enthält inzwischen die echte Auswahl, Queue-Panel und E2E-Abdeckung | `context/settings.tsx`, `components/settings-v2/general.tsx`, `prompt-input/submit.ts`, `session-ui/.../interaction.ts`, `i18n/en+de.ts` | **kein neuer Featurebranch**; nach Übernahme von `v2` nur die dort fehlende Ctrl+Enter-Inversion oder einzelne Queue-Aktion als separaten Follow-up-Kandidaten prüfen |
 
 ### Seit der letzten Bestandsaufnahme hinzugekommen
 
@@ -98,7 +201,11 @@ Authentifizierung selbst. Gegen den aktuellen Upstream bleibt in `config.ts` dav
 | 24 | **D** — `feat(core): generate initial v2 session titles` | `packages/core/src/session/info.ts`, `packages/core/src/session/runner/llm.ts`, `packages/core/src/session/runner/model.ts`, `packages/core/test/session-runner.test.ts` | Architektur vorab mit Upstream klären; V1-Event-Projektion und allgemeine Modellauflösung vom eigentlichen Titeljob trennen |
 | 25 | **C mit Design-Review** — `feat(session-ui): show calendar-aware message timestamps` | `packages/session-ui/src/components/message-part.tsx`, `packages/session-ui/src/components/message-part.css` | fokussierte Tests für Tagesgrenzen und Locale ergänzen; UI-Änderung zuerst als Issue abstimmen |
 | 26 | **D, abhängig von #22** — pausierbare Follow-up-Queue | `packages/app/src/pages/session.tsx`, `packages/app/src/pages/session/composer/session-followup-dock.tsx`, `packages/app/src/i18n/en.ts`, `packages/app/src/i18n/de.ts` | erst nach Entscheidung zu #22; Queue-Logik, UI und Fork-Dock-Design sauber trennen und testen |
-| 27 | **D mit Design-Review** — Startoverlay mit echtem Bereitschaftsfortschritt | `packages/app/src/app.tsx`, `packages/app/src/components/app-startup-overlay.tsx`, `packages/app/src/components/app-startup-overlay.css`, `packages/app/src/pages/session.tsx`, `packages/app/src/i18n/en.ts`, `packages/app/src/i18n/de.ts` | Layout-unabhängigen Bereitschaftsvertrag aus Fork-Shell und Zielsession-Auflösung lösen; UI-Screenshots und Starttests erforderlich |
+| 27 | **D mit Design-Review** — Startoverlay mit echtem Bereitschaftsfortschritt und Workspace-Skeleton | `packages/app/src/app.tsx`, `packages/app/src/components/app-startup-overlay.tsx`, `packages/app/src/components/app-startup-overlay.css`, `packages/app/src/components/workspace-skeleton.tsx`, `packages/app/src/components/workspace-skeleton.css`, `packages/app/src/pages/layout-new.tsx`, ausgewählte Hunks aus `packages/app/src/pages/session.tsx`, `packages/app/src/i18n/en.ts`, `packages/app/src/i18n/de.ts` | als `workspace-readiness-ui`; layoutunabhängigen Bereitschaftsvertrag aus Fork-Shell und Zielsession-Auflösung lösen; UI-Screenshots und Start-/Reload-Tests erforderlich |
+| 28 | **D mit Design-Review** — der neu gebaute mQorva-Seitenleisten-Arbeitsbereich mit Projektgruppen, separaten Chats, Anheften, Suche und verschiebbaren Entwürfen | `packages/app/src/app.tsx`, `packages/app/src/context/settings.tsx`, `packages/app/src/context/layout.tsx`, `packages/app/src/components/settings-v2/general.tsx`, `packages/app/src/components/titlebar.tsx`, `packages/app/src/pages/layout-sidebar/*`, `packages/app/src/pages/new-session.tsx`, `packages/app/src/pages/new-session/new-session-view.tsx`, `packages/app/src/context/tabs.tsx` (nur additives `unassigned`), `packages/app/src/context/tab-migration.ts` (nur dieses Merkmal), `packages/app/src/i18n/en.ts`, `packages/app/src/i18n/de.ts` | bleibt ein eigenständiges mQorva-Feature und ist **nicht identisch** mit Upstreams vertikalen Tabs. Tab-Zustand, Auswahl, Navigation, Schließen und Sortierung bleiben Upstream-Verträge; die Sidebar liest sie nur und ersetzt im gewählten Layout ihre horizontale Darstellung |
+| 29 | **C mit Design-Review** — schnelle Navigation zwischen Nutzereingaben in langen Sitzungen | `packages/app/src/pages/session/timeline/message-rail.tsx`, `packages/app/src/pages/session/timeline/message-rail.css`, `packages/app/src/pages/session/timeline/message-rail-text.ts`, `packages/app/src/pages/session/timeline/message-rail-text.test.ts`, ausgewählte Hunks aus `message-timeline.tsx` | eigenständiges, layoutneutrales Feature `session-navigation-ui`, zusammen mit #18/#19 und #25; an den geschlossenen Versuch `#38484` anknüpfen; responsive Darstellung, Scroll-Synchronisation und Screenshots ergänzen |
+| 30 | **C/D mit Design-Review** — Markdown-Dateien wahlweise gerendert oder als Quelltext öffnen | `packages/session-ui/src/context/open-file.tsx`, `packages/session-ui/src/context/index.ts`, `packages/session-ui/src/components/markdown.tsx`, `packages/session-ui/src/components/markdown.css`, `packages/app/src/pages/session/markdown-preview.ts`, ausgewählte Hunks aus `file-tabs.tsx`, `session-side-panel.tsx` und `session.tsx` | als `markdown-file-preview`; Storage-Key neutralisieren; Dateilink-, Vorschau-, Fehler- und Persistenzfälle testen |
+| 31 | **D mit Design-Review** — zusammenhängende Arbeitsfläche für Datei-/Review-Panel, Terminal und Composer | ausgewählte Hunks aus `packages/app/src/pages/session.tsx`, `packages/app/src/pages/session/file-tabs.tsx`, `packages/app/src/pages/session/session-side-panel.tsx`, `packages/app/src/components/session/session-header.tsx`, `packages/app/src/components/prompt-input-v2.tsx`, `packages/session-ui/src/v2/components/prompt-input/index.tsx`, `packages/ui/src/components/dock-surface.css` | aufteilen: sidebar-spezifische Anordnung gehört zum Vertrag #28; layoutneutrale Arbeitsflächenverbesserungen bilden erst nach Vergleich mit dem neuen `v2`-Session-Screen das eigene Feature `session-workspace-layout` |
 
 ### Neue Integrationsnähte, keine direkten PR-Kandidaten
 
@@ -126,15 +233,15 @@ Authentifizierung selbst. Gegen den aktuellen Upstream bleibt in `config.ts` dav
 - `home-sessions-view.tsx` / `message-timeline.tsx` Titellokalisierung: erst nach Klärung des
   Titel-Themas (#4) und mit Upstream-i18n statt Fork-i18n denkbar.
 
-## Keine bewussten Divergenzen mehr
+## Queue-Abweichung wird durch `v2` überholt
 
-Ursprünglich galt die Rücknahme der queue→steer-Erzwingung als Fork-Eigenheit. Korrekt ist: Upstream
-hat das Setting `followup` samt Typ gebaut, die Queue-Auswahl aber unerreichbar gemacht (drei
-Umzwing-Stellen in `context/settings.tsx`). Der Fork hat diese Stellen entfernt, die Auswahl in den
-Einstellungen sichtbar gemacht und Strg+Enter als Umkehrer ergänzt — beides Verhalten, das das
-Original ebenfalls anbieten könnte. Einstufung daher als Upstream-Kandidat #22, nicht als Divergenz.
-Das zugehörige Dock-Redesign (`session-followup-dock.tsx`: Drag-Reorder, Löschen, Steer-Menü)
-bleibt davon getrennt betrachtet: Kern als Enhancement (#22-Beilage möglich), Design als mQorva.
+Auf `upstream/dev` existiert der Typ `followup: "queue" | "steer"`, aber drei Stellen erzwingen
+weiterhin `steer`. Der Fork hat die Auswahl reaktiviert, sichtbar gemacht und Ctrl+Enter als
+Umkehrer ergänzt. In `upstream/v2` ist Queue inzwischen selbst eine echte Einstellung mit eigenem
+Queue-Panel und E2E-Tests. Damit ist #22 kein neues Upstream-Feature mehr. Nach Übernahme der neuen
+App-Architektur wird nur noch semantisch verglichen, ob Ctrl+Enter-Inversion, Pausieren,
+Drag-Reorder, Löschen oder Steer-Menü dort fehlen. Solche Restunterschiede wären kleine
+Folgekandidaten und kein erneutes Gesamtpaket.
 
 ## Dokumentationslücken in `plans/upstream-patches.md`
 
@@ -157,11 +264,14 @@ Abweichungen sind produktneutrale Verbesserungen:
 
 ## Zählung und Pflegezustand
 
-Die Liste enthält jetzt 27 nummerierte Themen. Davon sind #1–#22 erneut bestätigte Alt-Kandidaten;
-#23 und #25 sind neue, grundsätzlich isolierbare Kandidaten, während #24, #26 und #27 vor einem PR
-noch getrennt beziehungsweise mit Upstream abgestimmt werden müssen. Die Kategorienzählung des
-ersten Audits wird nicht fortgeschrieben, weil neue Upstream-Übernahmen Dateien aus dem damaligen
-Fork-Diff entfernt haben und eine bloße Dateizählung dadurch irreführend wäre.
+Die Liste enthält 31 nummerierte Prüfthemen, aber ausdrücklich keine 31 geplanten PRs. Aus der
+Upstream-Prüfung ergeben sich zunächst sieben voneinander unabhängige Core-/Server-/Desktop-Fixes
+(#1, #2, #3, #6, #7, #8, #20). Weitere App-Fixes bleiben einzelne Fehlerverträge, werden aber wegen
+der ersetzten `v2`-Architektur erst dort neu reproduziert. Features werden nach vorhandenen
+Upstream-Verträgen gruppiert; #22 ist in `v2` im Kern bereits umgesetzt, #10 bleibt Testmaterial und
+das Titelthema #4/#24 bleibt ohne Branch. Die großen UI-Themen sind keine Kopie der Upstream-Arbeit,
+müssen ihre Überschneidungen mit `v2` aber vor der Extraktion ausdrücklich abgrenzen.
 
-Vor jedem konkreten PR gilt der aktuelle Diff `upstream/dev..dev` als Quelle der Wahrheit. Ein
-Eintrag in dieser Liste ist eine Prüfspur, keine Freigabe zum ungeprüften Übernehmen oder Senden.
+Vor jedem konkreten PR gilt der aktuelle Diff `upstream/dev..dev` als Quelle der Wahrheit. Für
+App-Änderungen kommt der Vergleich mit dem dann aktuellen `upstream/v2` als Architektur-Gate hinzu.
+Ein Eintrag in dieser Liste ist eine Prüfspur, keine Freigabe zum ungeprüften Übernehmen oder Senden.
