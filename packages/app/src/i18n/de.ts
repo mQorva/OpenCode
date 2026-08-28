@@ -224,7 +224,7 @@ export const dict = {
   "common.goForward": "vorwärts navigieren",
   "common.loading": "Wird geladen",
   "common.loading.ellipsis": "…",
-  "startup.loading": "OpenCode wird gestartet …",
+  "startup.loading": "Wird gestartet …",
   "common.cancel": "abbrechen",
   "common.clear": "leeren",
   "common.connect": "verbinden",

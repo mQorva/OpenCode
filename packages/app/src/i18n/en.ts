@@ -238,7 +238,7 @@ export const dict = {
   "common.goForward": "Navigate forward",
   "common.loading": "Loading",
   "common.loading.ellipsis": "...",
-  "startup.loading": "OpenCode is starting…",
+  "startup.loading": "Starting…",
   "common.cancel": "Cancel",
   "common.clear": "Clear",
   "common.open": "Open",
