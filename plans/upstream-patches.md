@@ -133,7 +133,9 @@ import SidebarLayout from "@/pages/layout-sidebar/shell"
 import { createHomeRoute } from "@/pages/layout-sidebar/home"
 ```
 
-**b)** In `NewAppLayout` das feste `<NewLayout>` durch die Weiche ersetzen:
+**b)** In `NewAppLayout` den aufgelösten Layoutmodus an den Inhalt weiterreichen und dort das feste
+`<NewLayout>` durch die Weiche ersetzen. Die getrennte Inhaltskomponente hält `useLayout()` innerhalb
+von `ServerScopedProviders` und kann zusätzlich den Startzustand der projektbezogenen Stores überwachen:
 
 ```tsx
 function NewAppLayout(props: ParentProps<{ serverScoped?: JSX.Element }>) {
@@ -141,12 +143,15 @@ function NewAppLayout(props: ParentProps<{ serverScoped?: JSX.Element }>) {
   return (
     <SelectedServerProviders>
       <ServerScopedProviders serverScoped={props.serverScoped}>
-        <Dynamic component={settings.general.layoutMode() === "sidebar" ? SidebarLayout : NewLayout}>
-          {props.children}
-        </Dynamic>
+        <NewAppLayoutContent layoutMode={settings.general.layoutMode()}>{props.children}</NewAppLayoutContent>
       </ServerScopedProviders>
     </SelectedServerProviders>
   )
+}
+
+function NewAppLayoutContent(props: ParentProps<{ layoutMode: "sidebar" | "tabs" }>) {
+  // ... gemeinsamer Startzustand der neuen Layouts
+  return <Dynamic component={props.layoutMode === "sidebar" ? SidebarLayout : NewLayout}>{props.children}</Dynamic>
 }
 ```
 
@@ -161,7 +166,7 @@ function NewAppLayout(props: ParentProps<{ serverScoped?: JSX.Element }>) {
 const SidebarAwareHome = createHomeRoute(() => <NewHome />)
 ```
 
-**Marker:** `layout-sidebar/shell` · `SidebarAwareHome` · `layoutMode() === "sidebar"`
+**Marker:** `layout-sidebar/shell` · `SidebarAwareHome` · `props.layoutMode === "sidebar" ? SidebarLayout : NewLayout`
 
 ---
 

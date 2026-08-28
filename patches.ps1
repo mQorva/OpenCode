@@ -43,7 +43,7 @@ $patches = @(
     @{ Id = "3b"; File = "packages/app/src/components/titlebar.tsx"; Marker = "props.sessionTabs !== false"; What = "Sitzungs-Tabs ausblendbar" }
     @{ Id = "3c"; File = "packages/app/src/components/windows-app-menu.tsx"; Marker = "desktop-app-menu-bar"; What = "verteiltes Windows-App-Menue" }
     @{ Id = "4a"; File = "packages/app/src/app.tsx"; Marker = "layout-sidebar/shell"; What = "Import des Seitenleisten-Layouts" }
-    @{ Id = "4b"; File = "packages/app/src/app.tsx"; Marker = 'layoutMode() === "sidebar"'; What = "Layout-Weiche in NewAppLayout" }
+    @{ Id = "4b"; File = "packages/app/src/app.tsx"; Marker = 'props.layoutMode === "sidebar" ? SidebarLayout : NewLayout'; What = "Layout-Weiche in NewAppLayout" }
     @{ Id = "4c"; File = "packages/app/src/app.tsx"; Marker = "SidebarAwareHome"; What = "Startseiten-Weiche" }
     @{ Id = "5";  File = "packages/app/src/context/layout.tsx"; Marker = "toggleReviewPanel"; What = "key-freier Panel-Zugang" }
     @{ Id = "6a"; File = "packages/app/src/i18n/en.ts"; Marker = "sidebarLayout.title"; What = "Beschriftungen (en)" }
