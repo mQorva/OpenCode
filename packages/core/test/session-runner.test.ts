@@ -62,6 +62,7 @@ import { testEffect } from "./lib/effect"
 const requests: LLMRequest[] = []
 let response: LLMEvent[] = []
 let responses: LLMEvent[][] | undefined
+let responseForRequest: ((request: LLMRequest) => LLMEvent[] | undefined) | undefined
 let responseStream: Stream.Stream<LLMEvent, LLMError> | undefined
 let streamGate: Deferred.Deferred<void> | undefined
 let streamStarted: Deferred.Deferred<void> | undefined
@@ -82,9 +83,10 @@ const client = Layer.succeed(
         responseStream = undefined
         return stream
       }
+      const selected = responseForRequest?.(request)
       const events = streamFailure
         ? Stream.fail(streamFailure)
-        : Stream.fromIterable(responses === undefined ? response : (responses.shift() ?? []))
+        : Stream.fromIterable(selected ?? (responses === undefined ? response : (responses.shift() ?? [])))
       if (!streamGate) return events
       return Stream.unwrap(
         (streamStarted ? Deferred.succeed(streamStarted, undefined) : Effect.void).pipe(
@@ -311,6 +313,7 @@ const insertSession = (id: SessionV2.ID) =>
 
 const setup = Effect.gen(function* () {
   const { db } = yield* Database.Service
+  requests.length = 0
   response = []
   systemBaseline = "Initial context"
   systemRemoved = false
@@ -320,6 +323,7 @@ const setup = Effect.gen(function* () {
   currentModel = model
   skillBaselines.clear()
   responses = undefined
+  responseForRequest = undefined
   streamFailure = undefined
   responseStream = undefined
   streamGate = undefined
@@ -555,6 +559,39 @@ const verifyPartialFlushOnInterruption = (kind: FragmentKind) =>
   })
 
 describe("SessionRunnerLLM", () => {
+  it.effect("generates and persists a title for the first user message", () =>
+    Effect.gen(function* () {
+      yield* setup
+      const session = yield* SessionV2.Service
+      const { db } = yield* Database.Service
+      const agents = yield* AgentV2.Service
+      yield* agents.transform((editor) =>
+        editor.update(AgentV2.ID.make("title"), (agent) => {
+          agent.system = "You are a title generator"
+          agent.mode = "primary"
+          agent.hidden = true
+        }),
+      )
+      yield* db
+        .update(SessionTable)
+        .set({ title: "New chat" })
+        .where(eq(SessionTable.id, sessionID))
+        .run()
+        .pipe(Effect.orDie)
+      responseForRequest = (request) =>
+        request.system.some((part) => part.text.includes("title generator"))
+          ? [LLMEvent.textDelta({ id: "title", text: "Automatic V2 titles" })]
+          : []
+
+      yield* session.prompt({ sessionID, prompt: Prompt.make({ text: "Restore automatic V2 titles" }), resume: false })
+      yield* session.resume(sessionID)
+
+      while ((yield* session.get(sessionID)).title === "New chat") yield* Effect.yieldNow
+      expect((yield* session.get(sessionID)).title).toBe("Automatic V2 titles")
+      expect(requests.some((request) => request.system.some((part) => part.text.includes("title generator")))).toBe(true)
+    }),
+  )
+
   it.effect("advertises and executes a globally attached application tool", () =>
     Effect.gen(function* () {
       yield* setup

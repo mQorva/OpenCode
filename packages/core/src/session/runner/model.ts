@@ -72,8 +72,13 @@ export type Error =
   | UnsupportedApiError
   | Integration.AuthorizationError
 
+export type ResolveOptions = {
+  readonly model?: ModelV2.Ref
+  readonly small?: boolean
+}
+
 export interface Interface {
-  readonly resolve: (session: SessionSchema.Info) => Effect.Effect<Model, Error>
+  readonly resolve: (session: SessionSchema.Info, options?: ResolveOptions) => Effect.Effect<Model, Error>
 }
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/v2/SessionRunnerModel") {}
@@ -223,28 +228,45 @@ export const locationLayer = Layer.effect(
     const catalog = yield* Catalog.Service
     const integrations = yield* Integration.Service
     return Service.of({
-      resolve: Effect.fn("SessionRunnerModel.resolve")(function* (session) {
+      resolve: Effect.fn("SessionRunnerModel.resolve")(function* (session, options) {
         // Location plugins populate and filter the catalog asynchronously during layer startup.
-        const defaultModel = session.model ? undefined : yield* catalog.model.default()
-        const selected = session.model
+        const requested = options?.model ?? session.model
+        const defaultModel = requested ? undefined : yield* catalog.model.default()
+        const fallback = requested
           ? (yield* catalog.model.available()).find(
-              (model) => model.providerID === session.model?.providerID && model.id === session.model.id,
+              (model) => model.providerID === requested.providerID && model.id === requested.id,
             )
           : defaultModel && supported(defaultModel)
             ? defaultModel
             : (yield* catalog.model.available()).find(supported)
-        if (!selected && session.model)
+        const selected =
+          options?.small && !options.model && fallback
+            ? ((yield* catalog.model.small(fallback.providerID)) ?? fallback)
+            : fallback
+        if (!selected && requested)
           return yield* new ModelUnavailableError({
-            providerID: session.model.providerID,
-            modelID: session.model.id,
+            providerID: requested.providerID,
+            modelID: requested.id,
           })
         if (!selected) return yield* new ModelNotSelectedError({ sessionID: session.id })
         const provider = yield* catalog.provider.get(selected.providerID)
         const connection = yield* integrations.connection.active(
           provider?.integrationID ?? Integration.ID.make(selected.providerID),
         )
+        const variant =
+          options?.model?.variant ??
+          (selected.providerID === session.model?.providerID && selected.id === session.model.id
+            ? session.model.variant
+            : undefined)
         return yield* resolve(
-          session,
+          {
+            ...session,
+            model: {
+              id: selected.id,
+              providerID: selected.providerID,
+              ...(variant === undefined ? {} : { variant }),
+            },
+          },
           selected,
           connection ? yield* integrations.connection.resolve(connection) : undefined,
         )

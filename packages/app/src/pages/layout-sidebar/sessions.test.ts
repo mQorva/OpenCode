@@ -120,8 +120,8 @@ describe("sessionTreeIDs", () => {
 })
 
 describe("manual order", () => {
-  const entry = (id: string): SidebarSession => ({
-    session: { id } as SidebarSession["session"],
+  const entry = (id: string, created = 0, updated = created): SidebarSession => ({
+    session: { id, time: { created, updated } } as SidebarSession["session"],
     server: "srv" as SidebarSession["server"],
     directory: "/work",
   })
@@ -133,10 +133,15 @@ describe("manual order", () => {
     expect(ordered.map((item) => item.session.id)).toEqual(["c", "b", "a"])
   })
 
-  test("returns the input untouched without a stored order", () => {
-    const sessions = [entry("a"), entry("b")]
-    expect(applyOrder(sessions, undefined)).toBe(sessions)
-    expect(applyOrder(sessions, [])).toBe(sessions)
+  test("sorts by creation time without letting activity change the order", () => {
+    const sessions = [entry("old", 100, 900), entry("new", 200, 300), entry("middle", 150, 800)]
+    expect(applyOrder(sessions, undefined).map((item) => item.session.id)).toEqual(["new", "middle", "old"])
+    expect(applyOrder(sessions, []).map((item) => item.session.id)).toEqual(["new", "middle", "old"])
+  })
+
+  test("puts newly created entries above the stored manual order", () => {
+    const sessions = [entry("a", 100, 900), entry("new", 300), entry("b", 200, 800)]
+    expect(applyOrder(sessions, [key("b"), key("a")]).map((item) => item.session.id)).toEqual(["new", "b", "a"])
   })
 
   test("reorder drops the moved key in front of the target", () => {

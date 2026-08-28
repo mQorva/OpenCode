@@ -29,6 +29,7 @@ import { SessionCompaction } from "../compaction"
 import { SessionEvent } from "../event"
 import { SessionHistory } from "../history"
 import { SessionInput } from "../input"
+import { SessionMessage } from "../message"
 import { SessionSchema } from "../schema"
 import { SessionStore } from "../store"
 import { type RunError, Service } from "./index"
@@ -39,6 +40,10 @@ import { MAX_STEPS_PROMPT } from "./max-steps"
 import { Snapshot } from "../../snapshot"
 import { makeLocationNode } from "../../effect/app-node"
 import { llmClient } from "../../effect/app-node-platform"
+import { SessionV1 } from "../../v1/session"
+import { SessionTable } from "../sql"
+import { legacyFromRow } from "../info"
+import { eq } from "drizzle-orm"
 
 /**
  * Runs one durable coding-agent Session until it settles.
@@ -80,7 +85,8 @@ import { llmClient } from "../../effect/app-node-platform"
  * - Post-run maintenance
  *   - [ ] Settle final status and expose durable output events to replayable consumers.
  *   - [ ] Coalesce streamed deltas and add covering projected-history indexes.
- *   - [ ] Update title, summaries, compaction state, and cleanup in bounded background work.
+ *   - [x] Generate the initial title in background work.
+ *   - [ ] Update summaries, compaction state, and cleanup in bounded background work.
  *
  * Use `llm.stream(request)` for each provider turn. Keep tool execution and continuation here.
  * Durable continuation recovery remains a separate future slice with an explicit retry policy.
@@ -106,6 +112,7 @@ const layer = Layer.effect(
     const config = yield* Config.Service
     const snapshots = yield* Snapshot.Service
     const db = (yield* Database.Service).db
+    const titleJobs = new Set<SessionSchema.ID>()
     const compaction = SessionCompaction.make({ events, llm, config: yield* config.entries() })
     const getSession = Effect.fn("SessionRunner.getSession")(function* (sessionID: SessionSchema.ID) {
       const session = yield* store.get(sessionID)
@@ -115,6 +122,66 @@ const layer = Layer.effect(
 
     const getContext = Effect.fn("SessionRunner.getContext")(function* (sessionID: SessionSchema.ID) {
       return yield* store.context(sessionID)
+    })
+    const generateTitle = Effect.fn("SessionRunner.generateTitle")(function* (input: {
+      session: SessionSchema.Info
+      context: SessionMessage.Message[]
+    }) {
+      if (input.session.parentID || input.session.title !== "New chat" || titleJobs.has(input.session.id)) return
+      const users = input.context.filter((message): message is SessionMessage.User => message.type === "user")
+      if (users.length !== 1) return
+      const agent = yield* agents.get(AgentV2.ID.make("title"))
+      if (!agent) return
+      titleJobs.add(input.session.id)
+      yield* Effect.gen(function* () {
+        const model = yield* models.resolve(input.session, { model: agent.model, small: agent.model === undefined })
+        const chunks: string[] = []
+        let failed = false
+        yield* llm
+          .stream(
+            LLM.request({
+              model,
+              http: { headers: { "x-session-affinity": input.session.id, "X-Session-Id": input.session.id } },
+              system: agent.system ? [SystemPart.make(agent.system)] : [],
+              messages: [Message.user("Generate a title for this conversation:\n"), ...toLLMMessages(users, model)],
+              tools: [],
+              toolChoice: "none",
+              generation: { maxTokens: 64 },
+            }),
+          )
+          .pipe(
+            Stream.runForEach((event) => {
+              if (LLMEvent.is.providerError(event)) failed = true
+              if (LLMEvent.is.textDelta(event)) chunks.push(event.text)
+              return Effect.void
+            }),
+          )
+        if (failed) return
+        const line = chunks
+          .join("")
+          .replace(/<think>[\s\S]*?<\/think>\s*/g, "")
+          .split("\n")
+          .map((item) => item.trim())
+          .find((item) => item.length > 0)
+        if (!line) return
+        const title = line.length > 100 ? line.slice(0, 97) + "..." : line
+        const row = yield* db
+          .select()
+          .from(SessionTable)
+          .where(eq(SessionTable.id, input.session.id))
+          .get()
+          .pipe(Effect.orDie)
+        if (!row || row.parent_id || row.title !== "New chat") return
+        yield* events.publish(SessionV1.Event.Updated, {
+          sessionID: input.session.id,
+          info: legacyFromRow({ ...row, title }),
+        })
+      }).pipe(
+        Effect.timeout("30 seconds"),
+        Effect.catchCause((cause) => Effect.logError("failed to generate title", { error: Cause.squash(cause) })),
+        Effect.ensuring(Effect.sync(() => titleJobs.delete(input.session.id))),
+        Effect.forkDetach,
+      )
     })
     const failInterruptedTools = Effect.fn("SessionRunner.failInterruptedTools")(function* (
       sessionID: SessionSchema.ID,
@@ -199,6 +266,7 @@ const layer = Layer.effect(
       const model = yield* models.resolve(session)
       const entries = yield* SessionHistory.entriesForRunner(db, session.id, system.baselineSeq)
       const context = entries.map((entry) => entry.message)
+      if (currentStep === 1) yield* generateTitle({ session, context })
       const isLastStep = agent.info?.steps !== undefined && currentStep >= agent.info.steps
       const toolMaterialization = isLastStep ? undefined : yield* tools.materialize(agent.info?.permissions)
       const promptCacheKey = /^ses_[0-9a-f]{64}$/.test(session.id) ? session.id.slice(4) : session.id
