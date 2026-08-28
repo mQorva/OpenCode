@@ -2,7 +2,26 @@
 
 Bestandsaufnahme aller Fork-Änderungen gegenüber `anomalyco/opencode`: Was ist eigen, was ist Naht,
 was kann zurück ans Original? Grundlage für künftige Upstream-PRs und für die Pflege von
-`plans/upstream-patches.md`. Erstellt nach dem Upstream-Sync auf `1cc53890dc`.
+`plans/upstream-patches.md`. Zuletzt vollständig gegen `upstream/dev` auf `755ebdb94e`
+(OpenCode 1.18.25) und den Fork-Stand `0df7986365` geprüft.
+
+## Stand der bisherigen Upstream-Versuche
+
+Die ersten drei Kandidaten wurden am 27. August 2026 jeweils als eigener, sauber von
+`upstream/dev` abgezweigter Ein-Commit-Branch gesendet. Die PRs wurden nicht fachlich abgelehnt,
+sondern automatisch geschlossen, weil ein vorheriges Issue und die vollständig ausgefüllte
+PR-Vorlage fehlten. Die alten Branches bleiben nur bis zur gesicherten Bereinigung erhalten und
+werden nicht unverändert wiederverwendet:
+
+| Kandidat | Alter PR | Zustand | Nächster Schritt |
+|---|---:|---|---|
+| #1 | `anomalyco/opencode#45557` | geschlossen, nicht gemergt | Duplikate prüfen, Issue anlegen, frisch von aktuellem `upstream/dev` extrahieren und erneut testen |
+| #2 | `anomalyco/opencode#45607` | geschlossen, nicht gemergt | fehlenden Fehlerpfad-Test ergänzen, danach Issue und neuer kurzer Branch |
+| #3 | `anomalyco/opencode#45609` | geschlossen, nicht gemergt | Root-Fall testen, danach Issue und neuer kurzer Branch |
+
+`v2-compat.ts` und die zwischenzeitlichen Azure-Anpassungen sind keine neuen Fork-Kandidaten:
+Upstream enthält inzwischen die V2-Konfigurationskompatibilität und die aktuelle Azure-
+Authentifizierung selbst. Gegen den aktuellen Upstream bleibt in `config.ts` davon nur Kandidat #6.
 
 ## Empfehlungen in Reihenfolge
 
@@ -15,9 +34,11 @@ was kann zurück ans Original? Grundlage für künftige Upstream-PRs und für di
    Verbesserungen, die auch im Tab-Modus funktionieren; der Umschalter bleibt voll bedienbar.
 3. **Queue→Steer-Feature als Upstream-Kandidat #22 behandeln**: kein Fork-Eigensinn, sondern ein
    reaktiviertes, verbessertes Upstream-Setting; Dokumentation steht (Abschnitt 13).
-4. **Ersten Upstream-PR als Pilot aufsetzen**: `fix(opencode): serialize and atomically write
-   auth.json` — klein, UI-frei, Concurrency-Test liegt bereits vor. Zweig von `upstream/dev`
-   abschneiden, nie vom mQorva-`dev`.
+4. **Ersten Upstream-PR als Pilot neu aufsetzen**: `fix(opencode): serialize and atomically write
+   auth.json` — klein, UI-frei, Concurrency-Test liegt bereits vor. Zuerst Duplikate und ein
+   bestehendes Issue prüfen, andernfalls ein knappes Bug-Issue über die offizielle Vorlage anlegen.
+   Danach einen neuen kurzen Zweig von aktuellem `upstream/dev` abschneiden; nie den geschlossenen
+   Branch wiederverwenden und nie vom mQorva-`dev` abzweigen.
 5. **Danach Backend-Kandidaten 2–10 einzeln folgen lassen**, dann App-Cluster (#11 zuerst als
    Infrastruktur-PR, dann Vertrag + UI-Stellen).
 
@@ -69,6 +90,24 @@ was kann zurück ans Original? Grundlage für künftige Upstream-PRs und für di
 | 21 | `feat(desktop): allow configuring dev remote-debugging-port` (Fragment aus `main/index.ts`, 9223-Default herausfaktorieren) | `desktop/src/main/index.ts` | Smoke auf Env-Übernahme |
 | 22 | `feat(app): restore selectable follow-up queue behavior with ctrl-enter inversion` — Upstream kennt `followup: "queue" \| "steer"`, zwingt `"queue"` aber an drei Stellen auf `"steer"`; der Fork lässt beide Werte zu, macht die Auswahl sichtbar und Strg+Enter zum Gegenteil der Vorgabe | `context/settings.tsx`, `components/settings-v2/general.tsx`, `prompt-input/submit.ts`, `session-ui/.../interaction.ts`, `i18n/en+de.ts` | `submit.test.ts` (Invert-Fall ergänzen); dokumentiert als Patch-Abschnitt 13 |
 
+### Seit der letzten Bestandsaufnahme hinzugekommen
+
+| # | Einstufung und Vorschlag | Dateien | Vorbedingung / Tests |
+|---|---|---|---|
+| 23 | **C** — `fix(app): preserve workspace terminals across session routes` | `packages/app/src/context/terminal.tsx`, `packages/app/src/context/terminal.test.ts` | vorhandene Registry-Tests plus `packages/app`-Typecheck; gegen reinen Upstream extrahieren |
+| 24 | **D** — `feat(core): generate initial v2 session titles` | `packages/core/src/session/info.ts`, `packages/core/src/session/runner/llm.ts`, `packages/core/src/session/runner/model.ts`, `packages/core/test/session-runner.test.ts` | Architektur vorab mit Upstream klären; V1-Event-Projektion und allgemeine Modellauflösung vom eigentlichen Titeljob trennen |
+| 25 | **C mit Design-Review** — `feat(session-ui): show calendar-aware message timestamps` | `packages/session-ui/src/components/message-part.tsx`, `packages/session-ui/src/components/message-part.css` | fokussierte Tests für Tagesgrenzen und Locale ergänzen; UI-Änderung zuerst als Issue abstimmen |
+| 26 | **D, abhängig von #22** — pausierbare Follow-up-Queue | `packages/app/src/pages/session.tsx`, `packages/app/src/pages/session/composer/session-followup-dock.tsx`, `packages/app/src/i18n/en.ts`, `packages/app/src/i18n/de.ts` | erst nach Entscheidung zu #22; Queue-Logik, UI und Fork-Dock-Design sauber trennen und testen |
+| 27 | **D mit Design-Review** — Startoverlay mit echtem Bereitschaftsfortschritt | `packages/app/src/app.tsx`, `packages/app/src/components/app-startup-overlay.tsx`, `packages/app/src/components/app-startup-overlay.css`, `packages/app/src/pages/session.tsx`, `packages/app/src/i18n/en.ts`, `packages/app/src/i18n/de.ts` | Layout-unabhängigen Bereitschaftsvertrag aus Fork-Shell und Zielsession-Auflösung lösen; UI-Screenshots und Starttests erforderlich |
+
+### Neue Integrationsnähte, keine direkten PR-Kandidaten
+
+- `packages/app/src/utils/server-protocol.ts`: V2-Healthcheck vor dem Legacy-Healthcheck ist für den
+  hybriden V1/V2-Fork erforderlich. Upstream braucht diese Protokollweiche in dieser Form nicht.
+- `packages/app/src/pages/session/timeline/message-rail-text.ts`: Die Textaufbereitung ist neutral,
+  wird derzeit aber ausschließlich vom mQorva-Message-Rail genutzt. Erst zusammen mit einem von
+  Upstream gewünschten Rail-/Preview-Konzept herauslösen.
+
 ## D — vor einem PR trennen
 
 - `utils/server-compat.ts`: produktneutraler Dispose-/OAuth-Teil (gehört zu #11) vom
@@ -116,10 +155,13 @@ Abweichungen sind produktneutrale Verbesserungen:
 3. `MessageRail` rendert ab Viewport ≥520×320 auch im Tabs-Modus.
 4. Composer-Breite (`max-w-200`) und Context-Usage-Slot gelten für beide Modi.
 
-## Zählung
+## Zählung und Pflegezustand
 
-App-Kern: A 2 · B 5 · C 8 · D 5 — App-Komponenten/Seiten: A 1 · B 13 · C 6 · D 9 —
-Session-UI/Core/Server/TUI: B 3 · C 11 · D 1 — Desktop: A 7 · B 6 · C 1 · D 3.
+Die Liste enthält jetzt 27 nummerierte Themen. Davon sind #1–#22 erneut bestätigte Alt-Kandidaten;
+#23 und #25 sind neue, grundsätzlich isolierbare Kandidaten, während #24, #26 und #27 vor einem PR
+noch getrennt beziehungsweise mit Upstream abgestimmt werden müssen. Die Kategorienzählung des
+ersten Audits wird nicht fortgeschrieben, weil neue Upstream-Übernahmen Dateien aus dem damaligen
+Fork-Diff entfernt haben und eine bloße Dateizählung dadurch irreführend wäre.
 
-Gesamt: rund 22 abgrenzbare Upstream-Kandidaten, davon 10 Backend (höchste PR-Chance, geringstes
-Konfliktrisiko). Kein einziger C-Kandidat referenziert `layoutMode`, Sidebar oder Edition.
+Vor jedem konkreten PR gilt der aktuelle Diff `upstream/dev..dev` als Quelle der Wahrheit. Ein
+Eintrag in dieser Liste ist eine Prüfspur, keine Freigabe zum ungeprüften Übernehmen oder Senden.

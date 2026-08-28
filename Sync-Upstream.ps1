@@ -7,11 +7,11 @@ Ermoeglicht gezieltes Updaten von OpenCode, separates Sichern auf dein GitHub od
 
 .PARAMETER Update
 Holt die neuesten Updates aus dem offiziellen OpenCode-Repository (upstream).
-Sichert vorab vorhandene ungesicherte lokale Anpassungen automatisch.
+Verweigert die Ausfuehrung bei ungesicherten lokalen Anpassungen.
 
 .PARAMETER Backup
 Sichert den lokalen Stand auf dein persoenliches GitHub-Repository (origin).
-Committet eventuell vorhandene ungesicherte Aenderungen automatisch.
+Pusht nur einen bereits sauber committeten Stand.
 
 .PARAMETER Status
 Zeigt den aktuellen Status und Unterschiede (ahead/behind) an, ohne Aenderungen durchzufuehren.
@@ -23,7 +23,7 @@ Ueberspringt nach einem Upstream-Update die paketbezogenen Typechecks. Die Marke
 Setzt oder aktualisiert die URL deines eigenen GitHub-Repositories (origin).
 
 .PARAMETER Message
-Optionale Commit-Nachricht fuer die automatische Sicherung.
+Veralteter Kompatibilitaetsparameter. Der Upstream-Sync erstellt keine Sammelcommits mehr.
 #>
 [CmdletBinding()]
 param(
@@ -109,15 +109,15 @@ try {
     if (-not $Update -and -not $Backup) {
         Write-Host ""
         Write-Host "Aktionen:" -ForegroundColor Yellow
-        Write-Host "  .\sync.ps1 -Update   --> Holt offizielle OpenCode-Updates (upstream -> lokal)"
-        Write-Host "  .\sync.ps1 -Backup   --> Sichert deinen Stand auf dein GitHub (lokal -> origin, committet automatisch)"
-        Write-Host "  .\sync.ps1 -Status   --> Zeigt aktuellen Stand an"
+        Write-Host "  .\Sync-Upstream.ps1 -Update   --> Holt offizielle OpenCode-Updates (upstream -> lokal)"
+        Write-Host "  .\Sync-Upstream.ps1 -Backup   --> Pusht den sauber committeten Stand zu origin"
+        Write-Host "  .\Sync-Upstream.ps1 -Status   --> Zeigt aktuellen Stand an"
 
         $hasOrigin = (git remote) -contains "origin"
         if (-not $hasOrigin) {
             Write-Host ""
             Write-Host "[HINWEIS] Es ist noch kein 'origin' (dein GitHub) hinterlegt." -ForegroundColor Yellow
-            Write-Host "  Setzen mit: .\sync.ps1 -OriginUrl 'https://github.com/DEIN_NAME/opencode.git'" -ForegroundColor Cyan
+            Write-Host "  Setzen mit: .\Sync-Upstream.ps1 -OriginUrl 'https://github.com/DEIN_NAME/opencode.git'" -ForegroundColor Cyan
         }
         return
     }
@@ -126,19 +126,7 @@ try {
     if ($Update) {
         Write-Host ""
         if ($workingTree) {
-            Write-Host "[UPDATE] Warnung: nicht committete Aenderungen erkannt." -ForegroundColor Yellow
-            Write-Host "  - Ein Update committet diese NUR lokal und pusht sie NICHT auf dein GitHub (origin)." -ForegroundColor Gray
-            Write-Host "  - Erst -Backup sichert deinen Stand dauerhaft auf GitHub (empfohlen vor einem Update)." -ForegroundColor Gray
-            $answer = Read-Host "[UPDATE] Trotzdem fortfahren und lokal committen? (j/n)"
-            if ($answer -ne "j" -and $answer -ne "J" -and $answer -ne "y" -and $answer -ne "Y") {
-                Write-Host "[UPDATE] Abgebrochen - führe zuerst aus: .\sync.ps1 -Backup" -ForegroundColor Red
-                return
-            }
-            git add -A
-            $commitMsg = if (-not [string]::IsNullOrWhiteSpace($Message)) { $Message } else { "feat: mQorva updates vor Upstream-Sync" }
-            git commit -m $commitMsg
-            Write-Host "[UPDATE] Lokale Aenderungen gesichert." -ForegroundColor Green
-            $workingTree = ""
+            throw "Das Arbeitsverzeichnis ist nicht sauber. Teile und committe die Aenderungen fachlich, bevor du Upstream mergst."
         }
 
         Write-Host "[UPDATE] Hole die neuesten Aenderungen aus dem offiziellen OpenCode-Repository ..." -ForegroundColor Magenta
@@ -201,11 +189,7 @@ try {
         }
 
         if ($workingTree) {
-            Write-Host "[BACKUP] Ungesicherte Aenderungen gefunden - committe alle lokalen Dateien ..." -ForegroundColor Yellow
-            git add -A
-            $commitMsg = if (-not [string]::IsNullOrWhiteSpace($Message)) { $Message } else { "feat: mQorva edition r$($mqorva.revision) updates" }
-            git commit -m $commitMsg
-            Write-Host "[BACKUP] Aenderungen erfolgreich lokal committet: '$commitMsg'" -ForegroundColor Green
+            throw "Das Arbeitsverzeichnis ist nicht sauber. -Backup pusht keine automatisch erzeugten Sammelcommits mehr."
         }
 
         Write-Host "[BACKUP] Sichere lokalen Stand auf dein GitHub-Repository (origin) ..." -ForegroundColor Magenta
