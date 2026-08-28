@@ -113,6 +113,8 @@ const layer = Layer.effect(
     const snapshots = yield* Snapshot.Service
     const db = (yield* Database.Service).db
     const titleJobs = new Set<SessionSchema.ID>()
+    const defaultTitle =
+      /^(New chat|Child chat)$|^(New session|Child session) - \d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/
     const compaction = SessionCompaction.make({ events, llm, config: yield* config.entries() })
     const getSession = Effect.fn("SessionRunner.getSession")(function* (sessionID: SessionSchema.ID) {
       const session = yield* store.get(sessionID)
@@ -127,7 +129,7 @@ const layer = Layer.effect(
       session: SessionSchema.Info
       context: SessionMessage.Message[]
     }) {
-      if (input.session.parentID || input.session.title !== "New chat" || titleJobs.has(input.session.id)) return
+      if (input.session.parentID || !defaultTitle.test(input.session.title) || titleJobs.has(input.session.id)) return
       const users = input.context.filter((message): message is SessionMessage.User => message.type === "user")
       if (users.length !== 1) return
       const agent = yield* agents.get(AgentV2.ID.make("title"))
@@ -146,7 +148,6 @@ const layer = Layer.effect(
               messages: [Message.user("Generate a title for this conversation:\n"), ...toLLMMessages(users, model)],
               tools: [],
               toolChoice: "none",
-              generation: { maxTokens: 64 },
             }),
           )
           .pipe(
@@ -171,13 +172,12 @@ const layer = Layer.effect(
           .where(eq(SessionTable.id, input.session.id))
           .get()
           .pipe(Effect.orDie)
-        if (!row || row.parent_id || row.title !== "New chat") return
+        if (!row || row.parent_id || !defaultTitle.test(row.title)) return
         yield* events.publish(SessionV1.Event.Updated, {
           sessionID: input.session.id,
           info: legacyFromRow({ ...row, title }),
         })
       }).pipe(
-        Effect.timeout("30 seconds"),
         Effect.catchCause((cause) => Effect.logError("failed to generate title", { error: Cause.squash(cause) })),
         Effect.ensuring(Effect.sync(() => titleJobs.delete(input.session.id))),
         Effect.forkDetach,

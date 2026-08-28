@@ -6,7 +6,6 @@ import { showToast } from "@/utils/toast"
 import { useServerSync } from "@/context/server-sync"
 import { useLanguage } from "@/context/language"
 import { usePermission } from "@/context/permission"
-import { useServerProtocol } from "@/context/server-sdk"
 import { useSDK } from "@/context/sdk"
 import { useSync } from "@/context/sync"
 import { sessionPermissionRequest, sessionQuestionRequest } from "./session-request-tree"
@@ -33,7 +32,6 @@ export function createSessionComposerController(options?: { closeMs?: number | (
   const serverSync = useServerSync()
   const language = useLanguage()
   const permission = usePermission()
-  const protocol = useServerProtocol()
 
   const questionRequest = createMemo((): QuestionRequest | undefined => {
     return sessionQuestionRequest(sync().data.session, sync().data.question, params.id)
@@ -79,7 +77,7 @@ export function createSessionComposerController(options?: { closeMs?: number | (
 
   const permissionPersistent = createMemo(() => {
     const perm = permissionRequest()
-    return protocol() === "v2" && !!perm?.always.length
+    return !!perm?.always.length
   })
 
   const decide = (response: "once" | "always" | "reject") => {

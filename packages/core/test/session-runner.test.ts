@@ -574,7 +574,7 @@ describe("SessionRunnerLLM", () => {
       )
       yield* db
         .update(SessionTable)
-        .set({ title: "New chat" })
+        .set({ title: "New session - 2026-08-28T09:00:00.000Z" })
         .where(eq(SessionTable.id, sessionID))
         .run()
         .pipe(Effect.orDie)
@@ -586,9 +586,13 @@ describe("SessionRunnerLLM", () => {
       yield* session.prompt({ sessionID, prompt: Prompt.make({ text: "Restore automatic V2 titles" }), resume: false })
       yield* session.resume(sessionID)
 
-      while ((yield* session.get(sessionID)).title === "New chat") yield* Effect.yieldNow
+      while ((yield* session.get(sessionID)).title.startsWith("New session - ")) yield* Effect.yieldNow
       expect((yield* session.get(sessionID)).title).toBe("Automatic V2 titles")
-      expect(requests.some((request) => request.system.some((part) => part.text.includes("title generator")))).toBe(true)
+      const titleRequest = requests.find((request) =>
+        request.system.some((part) => part.text.includes("title generator")),
+      )
+      expect(titleRequest).toBeDefined()
+      expect(titleRequest?.generation?.maxTokens).toBeUndefined()
     }),
   )
 
