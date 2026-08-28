@@ -751,8 +751,6 @@ export const dict = {
   "session.followupDock.summary.many": "{{count}} zprávy ve frontě",
   "session.followupDock.sendNow": "Poslat nyní",
   "session.followupDock.edit": "Upravit",
-  "session.followupDock.collapse": "Sbalit zprávy ve frontě",
-  "session.followupDock.expand": "Rozbalte zprávy ve frontě",
   "session.revertDock.summary.one": "{{count}} vrácená zpráva",
   "session.revertDock.summary.other": "{{count}} vrátilo zpět zprávy",
   "session.revertDock.summary.few": "{{count}} vrácené zprávy",

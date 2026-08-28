@@ -756,8 +756,6 @@ export const dict = {
   "session.followupDock.summary.other": "{{count}} قطار وچ لگے سنیہے",
   "session.followupDock.sendNow": "ہن بھیجو",
   "session.followupDock.edit": "ترمیم کرو",
-  "session.followupDock.collapse": "قطار والے سنیہے سمیٹو",
-  "session.followupDock.expand": "قطار وچ لگے سنیہے ودھاؤ",
   "session.revertDock.summary.one": "{{count}} رول بیک میسج",
   "session.revertDock.summary.other": "{{count}} رول بیک پیغامات",
   "session.revertDock.collapse": "واپس موڑے سنیہے سمیٹو",

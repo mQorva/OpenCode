@@ -760,8 +760,6 @@ export const dict: Record<string, string> = {
   "session.followupDock.summary.other": "{{count}} གྲལ་སྒྲིག་ཡོད་པའི་འཕྲིན་འཕྲིན།",
   "session.followupDock.sendNow": "ད་ལྟོ་གཏང་།",
   "session.followupDock.edit": "ཞུན༌དག",
-  "session.followupDock.collapse": "གྲལ་ཐིག་ནང་བཙུགས་ཡོད་པའི་འཕྲིན་དོན་ཚུ་མར་བསྡམས།",
-  "session.followupDock.expand": "གྲལ་ཐིག་ནང་ཡོད་པའི་འཕྲིན་དོན་ཚུ་རྒྱ་བསྐྱེད་འབད།",
   "session.revertDock.summary.one": "{{count}} ཕྱིར་ལོག་འཕྲིན་ཡིག།",
   "session.revertDock.summary.other": "{{count}} ཕྱིར་ལོག་འབད་ཡོད་པའི་འཕྲིན་ཡིག།",
   "session.revertDock.collapse": "ལོག་བཤུད་འབད་ཡོད་པའི་འཕྲིན་དོན་ཚུ་ མར་བསྡམས།",

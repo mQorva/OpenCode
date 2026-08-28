@@ -1,6 +1,6 @@
 import { For, Show } from "solid-js"
 import type { PermissionRequest } from "@opencode-ai/sdk/v2"
-import { Button } from "@opencode-ai/ui/button"
+import { ButtonV2 } from "@opencode-ai/ui/v2/button-v2"
 import { DockPrompt } from "@opencode-ai/session-ui/dock-prompt"
 import { Icon } from "@opencode-ai/ui/icon"
 import { useLanguage } from "@/context/language"
@@ -8,6 +8,7 @@ import { useLanguage } from "@/context/language"
 export function SessionPermissionDock(props: {
   request: PermissionRequest
   responding: boolean
+  persistent: boolean
   onDecide: (response: "once" | "always" | "reject") => void
 }) {
   const language = useLanguage()
@@ -34,20 +35,32 @@ export function SessionPermissionDock(props: {
         <>
           <div />
           <div data-slot="permission-footer-actions">
-            <Button variant="ghost" size="normal" onClick={() => props.onDecide("reject")} disabled={props.responding}>
-              {language.t("ui.permission.deny")}
-            </Button>
-            <Button
-              variant="secondary"
+            <ButtonV2
+              variant="ghost-muted"
               size="normal"
-              onClick={() => props.onDecide("always")}
+              onClick={() => props.onDecide("reject")}
               disabled={props.responding}
             >
-              {language.t("ui.permission.allowAlways")}
-            </Button>
-            <Button variant="primary" size="normal" onClick={() => props.onDecide("once")} disabled={props.responding}>
-              {language.t("ui.permission.allowOnce")}
-            </Button>
+              {language.t("session.permission.deny")}
+            </ButtonV2>
+            <Show when={props.persistent}>
+              <ButtonV2
+                variant="neutral"
+                size="normal"
+                onClick={() => props.onDecide("always")}
+                disabled={props.responding}
+              >
+                {language.t("session.permission.allowProject")}
+              </ButtonV2>
+            </Show>
+            <ButtonV2
+              variant="contrast"
+              size="normal"
+              onClick={() => props.onDecide("once")}
+              disabled={props.responding}
+            >
+              {language.t("session.permission.allowOnce")}
+            </ButtonV2>
           </div>
         </>
       }

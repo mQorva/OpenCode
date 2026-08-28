@@ -665,8 +665,6 @@ export const dict = {
   "session.followupDock.summary.other": "{{count}} messaggi in coda",
   "session.followupDock.sendNow": "Invia ora",
   "session.followupDock.edit": "Modifica",
-  "session.followupDock.collapse": "Comprimi i messaggi in coda",
-  "session.followupDock.expand": "Espandi i messaggi in coda",
   "session.revertDock.summary.one": "{{count}} messaggio annullato",
   "session.revertDock.summary.many": "{{count}} di messaggi annullati",
   "session.revertDock.summary.other": "{{count}} messaggi annullati",

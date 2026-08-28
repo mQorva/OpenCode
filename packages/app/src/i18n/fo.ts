@@ -747,8 +747,6 @@ export const dict = {
   "session.followupDock.summary.other": "{{count}} bíðirøð boð",
   "session.followupDock.sendNow": "Send nú",
   "session.followupDock.edit": "Rætta",
-  "session.followupDock.collapse": "Samla boð í bíðirøð",
-  "session.followupDock.expand": "Víðka boð í bíðirøð",
   "session.revertDock.summary.one": "{{count}} rullað afturboð",
   "session.revertDock.summary.other": "{{count}} rullað boð aftur",
   "session.revertDock.collapse": "Kollaps afturrullað boð",

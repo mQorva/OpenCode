@@ -792,8 +792,6 @@ export const dict = {
   "session.followupDock.summary.other": "Сообщений в очереди: {{count}}",
   "session.followupDock.sendNow": "Отправить сейчас",
   "session.followupDock.edit": "Редактировать",
-  "session.followupDock.collapse": "Свернуть сообщения в очереди",
-  "session.followupDock.expand": "Развернуть сообщения в очереди",
   "session.revertDock.summary.one": "{{count}} сообщение возвращено",
   "session.revertDock.summary.few": "{{count}} сообщения возвращены",
   "session.revertDock.summary.many": "{{count}} сообщений возвращено",

@@ -735,8 +735,6 @@ export const dict = {
   "session.followupDock.summary.other": "{{count}} رسائل في قائمة الانتظار",
   "session.followupDock.sendNow": "إرسال الآن",
   "session.followupDock.edit": "تحرير",
-  "session.followupDock.collapse": "طي الرسائل المنتظرة",
-  "session.followupDock.expand": "توسيع الرسائل المنتظرة",
   "session.revertDock.summary.one": "{{count}} رسالة تم التراجع عنها",
   "session.revertDock.summary.zero": "عدد الرسائل التي تم التراجع عنها: {{count}}",
   "session.revertDock.summary.two": "عدد الرسائل التي تم التراجع عنها: {{count}}",

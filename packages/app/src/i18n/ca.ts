@@ -755,8 +755,6 @@ export const dict = {
   "session.followupDock.summary.many": "{{count}} missatges a la cua",
   "session.followupDock.sendNow": "Envia ara",
   "session.followupDock.edit": "Edita",
-  "session.followupDock.collapse": "Replega els missatges a la cua",
-  "session.followupDock.expand": "Amplieu els missatges a la cua",
   "session.revertDock.summary.one": "{{count}} missatge revertit",
   "session.revertDock.summary.other": "{{count}} missatges revertits",
   "session.revertDock.summary.many": "{{count}} missatges revertits",

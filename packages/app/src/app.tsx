@@ -39,6 +39,7 @@ import {
 import { Dynamic } from "solid-js/web"
 import { makeEventListener } from "@solid-primitives/event-listener"
 import { CommandProvider, useCommand, type CommandOption } from "@/context/command"
+import { AppStartupOverlay } from "@/components/app-startup-overlay"
 import { CommentsProvider } from "@/context/comments"
 import { FileProvider } from "@/context/file"
 import { ServerSDKProvider } from "@/context/server-sdk"
@@ -46,7 +47,7 @@ import { ServerSyncProvider, useServerSync } from "@/context/server-sync"
 import { GlobalProvider, useGlobal } from "@/context/global"
 import { HighlightsProvider } from "@/context/highlights"
 import { LanguageProvider, type Locale, useLanguage } from "@/context/language"
-import { LayoutProvider } from "@/context/layout"
+import { LayoutProvider, useLayout } from "@/context/layout"
 import { ModelsProvider } from "@/context/models"
 import { NotificationProvider } from "@/context/notification"
 import { PermissionProvider } from "@/context/permission"
@@ -56,7 +57,7 @@ import { ServerConnection, ServerProvider, serverName, useServer } from "@/conte
 import { SettingsProvider, useSettings } from "@/context/settings"
 import { TabsProvider, useTabs, type DraftTab } from "@/context/tabs"
 import { SDKProvider, useSDK } from "@/context/sdk"
-import { TerminalProvider } from "@/context/terminal"
+import { TerminalProvider, TerminalRegistryProvider } from "@/context/terminal"
 import { WslServersProvider } from "@/wsl/context"
 import DirectoryLayout, { DirectoryDataProvider } from "@/pages/directory-layout"
 import LegacyLayout from "@/pages/layout"
@@ -376,11 +377,42 @@ function NewAppLayout(props: ParentProps<{ serverScoped?: JSX.Element }>) {
   return (
     <SelectedServerProviders>
       <ServerScopedProviders serverScoped={props.serverScoped}>
-        <Dynamic component={settings.general.layoutMode() === "sidebar" ? SidebarLayout : NewLayout}>
-          {props.children}
-        </Dynamic>
+        <NewAppLayoutContent layoutMode={settings.general.layoutMode()}>{props.children}</NewAppLayoutContent>
       </ServerScopedProviders>
     </SelectedServerProviders>
+  )
+}
+
+function NewAppLayoutContent(props: ParentProps<{ layoutMode: "sidebar" | "tabs" }>) {
+  const layout = useLayout()
+  const serverSync = useServerSync()
+  const tabs = useTabs()
+  const ready = createMemo(() => {
+    if (!serverSync().ready || !tabs.ready() || !layout.ready()) return false
+    const directories = [
+      ...new Set(
+        layout.projects
+          .list()
+          .flatMap((project) => [
+            project.worktree,
+            ...(project.expanded ? (project.sandboxes ?? []) : []),
+          ]),
+      ),
+    ]
+    const stores = directories.map((directory) => ({
+      directory,
+      store: serverSync().child(directory, { bootstrap: true })[0],
+    }))
+    return stores.every(({ directory, store }) => store.status !== "loading" && !serverSync().project.initializing(directory))
+  })
+
+  return (
+    <>
+      <Dynamic component={props.layoutMode === "sidebar" ? SidebarLayout : NewLayout}>{props.children}</Dynamic>
+      <Show when={!ready()}>
+        <AppStartupOverlay />
+      </Show>
+    </>
   )
 }
 
@@ -421,11 +453,13 @@ export function AppBaseProviders(
               }}
             >
               <QueryProvider>
-                <WslServersProvider>
-                  <DialogProvider>
-                    <FileComponentProvider component={File}>{props.children}</FileComponentProvider>
-                  </DialogProvider>
-                </WslServersProvider>
+                <TerminalRegistryProvider>
+                  <WslServersProvider>
+                    <DialogProvider>
+                      <FileComponentProvider component={File}>{props.children}</FileComponentProvider>
+                    </DialogProvider>
+                  </WslServersProvider>
+                </TerminalRegistryProvider>
               </QueryProvider>
             </ErrorBoundary>
           </UiI18nBridge>

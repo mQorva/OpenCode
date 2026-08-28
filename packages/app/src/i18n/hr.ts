@@ -756,8 +756,6 @@ export const dict = {
   "session.followupDock.summary.few": "{{count}} poruke u redu čekanja",
   "session.followupDock.sendNow": "Pošalji sada",
   "session.followupDock.edit": "Uredi",
-  "session.followupDock.collapse": "Sažmi poruke u redu čekanja",
-  "session.followupDock.expand": "Proširi poruke u čekanju",
   "session.revertDock.summary.one": "{{count}} vratio poruku",
   "session.revertDock.summary.other": "{{count}} je vratio poruke",
   "session.revertDock.summary.few": "{{count}} vraćene poruke",

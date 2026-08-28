@@ -43,6 +43,7 @@ import { showToast } from "@/utils/toast"
 import { base64Encode, checksum } from "@opencode-ai/core/util/encode"
 import { useLocation, useNavigate, useParams, useSearchParams } from "@solidjs/router"
 import { NewSessionView, SessionHeader } from "@/components/session"
+import { AppStartupOverlay } from "@/components/app-startup-overlay"
 import { ErrorPage } from "@/pages/error"
 import { CommentsProvider, useComments } from "@/context/comments"
 import { useCommand } from "@/context/command"
@@ -172,15 +173,26 @@ export function TargetSessionRouteContent() {
   const params = useParams<{ serverKey: string; id: string }>()
   const serverSync = useServerSync()
   const directory = createMemo(() => serverSync().session.lineage.peek(params.id)?.session.directory)
+  const ready = createMemo(() => {
+    const value = directory()
+    if (!value) return false
+    const store = serverSync().child(value, { bootstrap: true })[0]
+    return store.status !== "loading" && !serverSync().project.initializing(value)
+  })
   return (
-    // Settings must keep the target-server SDK, sync, and models context and remain registered
-    // when session content falls back to the route error boundary.
-    <TargetServerScopedProviders directory={directory} sessionID={() => params.id}>
-      <TargetSessionSettingsCommand />
-      <SessionRouteErrorBoundary sessionID={params.id} serverKey={requireServerKey(params.serverKey)} padded>
-        <ResolvedTargetSessionRoute />
-      </SessionRouteErrorBoundary>
-    </TargetServerScopedProviders>
+    <>
+      {/* Settings must keep the target-server SDK, sync, and models context and remain registered
+          when session content falls back to the route error boundary. */}
+      <TargetServerScopedProviders directory={directory} sessionID={() => params.id}>
+        <TargetSessionSettingsCommand />
+        <SessionRouteErrorBoundary sessionID={params.id} serverKey={requireServerKey(params.serverKey)} padded>
+          <ResolvedTargetSessionRoute />
+        </SessionRouteErrorBoundary>
+      </TargetServerScopedProviders>
+      <Show when={!ready()}>
+        <AppStartupOverlay />
+      </Show>
+    </>
   )
 }
 
@@ -2266,11 +2278,6 @@ export default function Page() {
                     onRemove: (id) => removeFollowup(params.id!, id),
                     onMove: (fromID, toID) => moveFollowup(params.id!, fromID, toID),
                     onItemPauseToggle: (id) => toggleFollowupPause(params.id!, id),
-                    onPauseToggle: () => {
-                      const id = params.id
-                      if (!id) return
-                      setFollowup("paused", id, followup.paused[id] ? undefined : true)
-                    },
                   }
                 : undefined,
             revert: () =>

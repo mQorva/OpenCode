@@ -753,8 +753,6 @@ export const dict = {
   "session.followupDock.summary.other": "{{count}} дараалалд орсон мессежүүд",
   "session.followupDock.sendNow": "Яг одоо илгээнэ үү",
   "session.followupDock.edit": "Засварлах",
-  "session.followupDock.collapse": "Дараалалд байгаа мессежүүдийг буулгах",
-  "session.followupDock.expand": "Дараалсан мессежүүдийг дэлгэх",
   "session.revertDock.summary.one": "{{count}} буцаасан мессеж",
   "session.revertDock.summary.other": "{{count}} буцаасан зурвасууд",
   "session.revertDock.collapse": "Буцаасан мессежүүдийг буулгах",

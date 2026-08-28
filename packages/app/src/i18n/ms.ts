@@ -745,8 +745,6 @@ export const dict = {
   "session.followupDock.summary.other": "{{count}} mesej dalam giliran",
   "session.followupDock.sendNow": "Hantar sekarang",
   "session.followupDock.edit": "Sunting",
-  "session.followupDock.collapse": "Runtuhkan mesej dalam giliran",
-  "session.followupDock.expand": "Kembangkan mesej dalam giliran",
   "session.revertDock.summary.one": "{{count}} mesej telah dipulangkan semula",
   "session.revertDock.summary.other": "{{count}} mesej telah dipulangkan semula",
   "session.revertDock.collapse": "Runtuhkan mesej dipulangkan semula",

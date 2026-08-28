@@ -751,8 +751,6 @@ export const dict = {
   "session.followupDock.summary.zero": "{{count}} rindā gaidošu ziņu",
   "session.followupDock.sendNow": "Sūtīt tagad",
   "session.followupDock.edit": "Rediģēt",
-  "session.followupDock.collapse": "Sakļaut rindā gaidošās ziņas",
-  "session.followupDock.expand": "Izvērst rindā gaidošās ziņas",
   "session.revertDock.summary.one": "{{count}} atsaukta ziņa",
   "session.revertDock.summary.other": "{{count}} atsauktas ziņas",
   "session.revertDock.summary.zero": "{{count}} atsauktu ziņu",

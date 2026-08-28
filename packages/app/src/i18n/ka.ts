@@ -747,8 +747,6 @@ export const dict = {
   "session.followupDock.summary.other": "{{count}} რიგში შემავალი შეტყობინებები",
   "session.followupDock.sendNow": "გაგზავნა ახლა",
   "session.followupDock.edit": "რედაქტირება",
-  "session.followupDock.collapse": "შეტყობინებების რიგში ჩაკეცვა",
-  "session.followupDock.expand": "შეტყობინებების რიგში გაფართოება",
   "session.revertDock.summary.one": "{{count}} შემობრუნებული შეტყობინება",
   "session.revertDock.summary.other": "{{count}} შემობრუნებული შეტყობინებები",
   "session.revertDock.collapse": "გაბრუნებული შეტყობინებების ჩაკეცვა",

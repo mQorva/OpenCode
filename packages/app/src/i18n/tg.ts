@@ -750,8 +750,6 @@ export const dict = {
   "session.followupDock.summary.other": "{{count}} паёмҳои навбатӣ",
   "session.followupDock.sendNow": "Ҳоло фиристед",
   "session.followupDock.edit": "Таҳрир",
-  "session.followupDock.collapse": "Паёмҳои навбатдорро қатъ кунед",
-  "session.followupDock.expand": "Паёмҳои навбатдорро васеъ кунед",
   "session.revertDock.summary.one": "{{count}} Паём баргашт",
   "session.revertDock.summary.other": "{{count}} паёмҳоро баргардонд",
   "session.revertDock.collapse": "Паёмҳои баргардонидашуда",

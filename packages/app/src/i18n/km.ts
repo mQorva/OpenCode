@@ -744,8 +744,6 @@ export const dict = {
   "session.followupDock.summary.other": "{{count}} សារដែលបានដាក់ជាជួរ",
   "session.followupDock.sendNow": "ផ្ញើឥឡូវនេះ",
   "session.followupDock.edit": "កែសម្រួល",
-  "session.followupDock.collapse": "បង្រួមសារដែលបានដាក់ជាជួរ",
-  "session.followupDock.expand": "ពង្រីកសារដែលបានដាក់ជាជួរ",
   "session.revertDock.summary.one": "{{count}} ត្រឡប់សារវិញ។",
   "session.revertDock.summary.other": "{{count}} ត្រឡប់សារវិញ។",
   "session.revertDock.collapse": "បង្រួមសារដែលបានវិលត្រឡប់មកវិញ",

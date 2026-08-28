@@ -1,0 +1,22 @@
+[data-component="app-startup-overlay"] [data-component="progress"] {
+  width: 100%;
+}
+
+[data-component="app-startup-overlay"] [data-slot="progress-track"] {
+  height: 4px;
+  border: 0;
+  background: var(--v2-background-bg-layer-02);
+}
+
+[data-component="app-startup-overlay"] [data-slot="progress-fill"] {
+  background: var(--v2-icon-icon-accent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-component="app-startup-overlay"] [data-indeterminate] [data-slot="progress-fill"] {
+    width: 100%;
+    animation: none;
+    opacity: 0.55;
+    transform: none;
+  }
+}

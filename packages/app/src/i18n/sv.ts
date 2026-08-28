@@ -752,8 +752,6 @@ export const dict = {
   "session.followupDock.summary.other": "{{count}} meddelanden i kö",
   "session.followupDock.sendNow": "Skicka nu",
   "session.followupDock.edit": "Redigera",
-  "session.followupDock.collapse": "Fäll ihop köade meddelanden",
-  "session.followupDock.expand": "Fäll ut köade meddelanden",
   "session.revertDock.summary.one": "{{count}} återställt meddelande",
   "session.revertDock.summary.other": "{{count}} återställda meddelanden",
   "session.revertDock.collapse": "Fäll ihop återställda meddelanden",

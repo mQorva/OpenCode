@@ -743,8 +743,6 @@ export const dict = {
   "session.followupDock.summary.other": "{{count}} järjekorras olevat sõnumit",
   "session.followupDock.sendNow": "Saada kohe",
   "session.followupDock.edit": "Muuda",
-  "session.followupDock.collapse": "Ahenda järjekorda pandud kirjad",
-  "session.followupDock.expand": "Laiendage järjekorras olevaid sõnumeid",
   "session.revertDock.summary.one": "{{count}} tagasikeeratud sõnum",
   "session.revertDock.summary.other": "{{count}} tagasipööratud sõnumit",
   "session.revertDock.collapse": "Ahenda tagasi keritud sõnumid",

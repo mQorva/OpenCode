@@ -749,8 +749,6 @@ export const dict = {
   "session.followupDock.summary.many": "{{count}} zaradenej správy",
   "session.followupDock.sendNow": "Odoslať teraz",
   "session.followupDock.edit": "Upraviť",
-  "session.followupDock.collapse": "Zbaliť zaradené správy",
-  "session.followupDock.expand": "Rozbaliť zaradené správy",
   "session.revertDock.summary.one": "{{count}} vrátená správa",
   "session.revertDock.summary.other": "{{count}} vrátených správ",
   "session.revertDock.summary.few": "{{count}} vrátené správy",

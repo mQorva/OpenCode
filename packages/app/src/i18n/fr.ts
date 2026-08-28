@@ -747,8 +747,6 @@ export const dict = {
   "session.followupDock.summary.other": "{{count}} messages en file d'attente",
   "session.followupDock.sendNow": "Envoyer maintenant",
   "session.followupDock.edit": "Modifier",
-  "session.followupDock.collapse": "Réduire les messages en file d'attente",
-  "session.followupDock.expand": "Développer les messages en file d'attente",
   "session.revertDock.summary.one": "{{count}} message annulé",
   "session.revertDock.summary.many": "{{count}} de messages annulés",
   "session.revertDock.summary.other": "{{count}} messages annulés",

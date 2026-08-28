@@ -754,8 +754,6 @@ export const dict = {
   "session.followupDock.summary.other": "{{count}} sorba állított üzenetek",
   "session.followupDock.sendNow": "Küldje el most",
   "session.followupDock.edit": "Szerkesztés",
-  "session.followupDock.collapse": "A sorba állított üzenetek összecsukása",
-  "session.followupDock.expand": "A sorban álló üzenetek kibontása",
   "session.revertDock.summary.one": "{{count}} visszavont üzenet",
   "session.revertDock.summary.other": "{{count}} visszavont üzenetek",
   "session.revertDock.collapse": "A visszagörgetett üzenetek összecsukása",

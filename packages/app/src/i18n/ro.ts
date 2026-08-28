@@ -751,8 +751,6 @@ export const dict = {
   "session.followupDock.summary.few": "{{count}} mesaje în coadă",
   "session.followupDock.sendNow": "Trimite acum",
   "session.followupDock.edit": "Editează",
-  "session.followupDock.collapse": "Restrânge mesajele în coadă",
-  "session.followupDock.expand": "Extinde mesajele în coadă",
   "session.revertDock.summary.one": "{{count}} mesaj anulat",
   "session.revertDock.summary.other": "{{count}} mesaje anulate",
   "session.revertDock.summary.few": "{{count}} mesaje anulate",

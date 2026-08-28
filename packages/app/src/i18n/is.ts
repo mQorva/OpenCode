@@ -750,8 +750,6 @@ export const dict = {
   "session.followupDock.summary.other": "{{count}} skilaboð í biðröð",
   "session.followupDock.sendNow": "Sendu núna",
   "session.followupDock.edit": "Breyta",
-  "session.followupDock.collapse": "Draga saman skilaboð í biðröð",
-  "session.followupDock.expand": "Stækkaðu skilaboð í biðröð",
   "session.revertDock.summary.one": "{{count}} afturkallað skilaboð",
   "session.revertDock.summary.other": "{{count}} afturkallað skilaboð",
   "session.revertDock.collapse": "Dragðu saman skilaboð sem eru afturkölluð",

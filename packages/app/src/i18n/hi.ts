@@ -757,8 +757,6 @@ export const dict = {
   "session.followupDock.summary.other": "कतार में {{count}} संदेश",
   "session.followupDock.sendNow": "अब भेजें",
   "session.followupDock.edit": "संपादित करें",
-  "session.followupDock.collapse": "कतार के संदेश संकुचित करें",
-  "session.followupDock.expand": "कतार के संदेश विस्तृत करें",
   "session.revertDock.summary.one": "{{count}} संदेश वापस लिया गया",
   "session.revertDock.summary.other": "{{count}} संदेश वापस लिए गए",
   "session.revertDock.collapse": "रोलबैक संदेशों को संक्षिप्त करें",

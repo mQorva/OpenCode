@@ -780,8 +780,6 @@ export const dict = {
   "session.followupDock.summary.other": "{{count}} 条排队消息",
   "session.followupDock.sendNow": "立即发送",
   "session.followupDock.edit": "编辑",
-  "session.followupDock.collapse": "折叠排队消息",
-  "session.followupDock.expand": "展开排队消息",
   "session.revertDock.summary.one": "{{count}} 条已回滚消息",
   "session.revertDock.summary.other": "{{count}} 条已回滚消息",
   "session.revertDock.collapse": "折叠已回滚消息",

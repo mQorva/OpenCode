@@ -751,8 +751,6 @@ export const dict = {
   "session.followupDock.summary.other": "{{count}} пораки во редица",
   "session.followupDock.sendNow": "Испрати сега",
   "session.followupDock.edit": "Уреди",
-  "session.followupDock.collapse": "Собери ги пораките во редица",
-  "session.followupDock.expand": "Проширете ги пораките во редица",
   "session.revertDock.summary.one": "{{count}} вратена порака",
   "session.revertDock.summary.other": "{{count}} вратени пораки",
   "session.revertDock.collapse": "Собери ги вратените пораки",

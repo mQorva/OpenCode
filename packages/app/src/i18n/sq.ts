@@ -750,8 +750,6 @@ export const dict = {
   "session.followupDock.summary.other": "{{count}} mesazhe në radhë",
   "session.followupDock.sendNow": "Dërgo tani",
   "session.followupDock.edit": "Redakto",
-  "session.followupDock.collapse": "Palos mesazhet në radhë",
-  "session.followupDock.expand": "Zgjero mesazhet në radhë",
   "session.revertDock.summary.one": "{{count}} u kthye në mesazh",
   "session.revertDock.summary.other": "{{count}} i ktheu mesazhet",
   "session.revertDock.collapse": "Palos mesazhet e kthyera",

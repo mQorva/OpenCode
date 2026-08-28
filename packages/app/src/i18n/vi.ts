@@ -757,8 +757,6 @@ export const dict = {
   "session.followupDock.summary.other": "{{count}} tin nhắn đang chờ",
   "session.followupDock.sendNow": "Gửi ngay bây giờ",
   "session.followupDock.edit": "Chỉnh sửa",
-  "session.followupDock.collapse": "Thu gọn tin nhắn đang chờ",
-  "session.followupDock.expand": "Mở rộng tin nhắn đang chờ",
   "session.revertDock.summary.one": "{{count}} tin nhắn đã hoàn tác",
   "session.revertDock.summary.other": "{{count}} tin nhắn đã hoàn tác",
   "session.revertDock.collapse": "Thu gọn tin nhắn đã hoàn tác",

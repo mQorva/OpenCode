@@ -8,7 +8,7 @@ import type {
 } from "@opencode-ai/sdk/v2/client"
 import { showToast } from "@/utils/toast"
 import { getFilename } from "@opencode-ai/core/util/path"
-import { type Accessor, batch, createMemo, getOwner, onCleanup, onMount, untrack } from "solid-js"
+import { type Accessor, batch, createMemo, createSignal, getOwner, onCleanup, onMount, untrack } from "solid-js"
 import { createStore, produce, reconcile } from "solid-js/store"
 import { useLanguage } from "@/context/language"
 import type { InitError } from "../pages/error"
@@ -209,6 +209,7 @@ export function createServerSyncContextInner(serverSDK: ServerSDK) {
 
   const sdkCache = new Map<string, OpencodeClient>()
   const booting = new Map<string, Promise<void>>()
+  const [bootingRevision, setBootingRevision] = createSignal(0)
   const sessionLoads = new Map<string, Promise<void>>()
   const sessionMeta = new Map<string, { limit: number }>()
 
@@ -512,8 +513,10 @@ export function createServerSyncContextInner(serverSDK: ServerSDK) {
     })
 
     booting.set(key, promise)
+    setBootingRevision((value) => value + 1)
     void promise.finally(() => {
       booting.delete(key)
+      setBootingRevision((value) => value + 1)
       children.unpin(key)
     })
     return promise
@@ -664,6 +667,10 @@ export function createServerSyncContextInner(serverSDK: ServerSDK) {
 
   const projectApi = {
     loadSessions,
+    initializing(directory: string) {
+      bootingRevision()
+      return booting.has(directoryKey(directory))
+    },
     meta(directory: string, patch: ProjectMeta) {
       children.projectMeta(directory, patch)
     },

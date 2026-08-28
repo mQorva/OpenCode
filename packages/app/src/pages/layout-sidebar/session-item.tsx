@@ -1,5 +1,5 @@
 import { createEffect, createSignal, Show, type Accessor } from "solid-js"
-import { createDraggable, createDroppable } from "@thisbeyond/solid-dnd"
+import { createDraggable, createDroppable, useDragDropContext } from "@thisbeyond/solid-dnd"
 import { IconButton, MenuV2, Spinner, Tooltip, useLanguage } from "./upstream"
 import { SidebarMarquee } from "./marquee"
 import type { SidebarSession } from "./sessions"
@@ -71,6 +71,7 @@ export function SessionItem(props: {
   onCopyTitle: () => void
   onCopyID: () => void
   onCopyProject: () => void
+  canDrop: (source: string, target: string) => boolean
 }) {
   const language = useLanguage()
   const title = () => {
@@ -81,6 +82,7 @@ export function SessionItem(props: {
   const dragID = () => props.dragID ?? `static:${props.entry.session.id}`
   const draggable = createDraggable(dragID())
   const droppable = createDroppable(dragID())
+  const dnd = useDragDropContext()
   const [editing, setEditing] = createSignal(false)
   const [value, setValue] = createSignal("")
   const [saving, setSaving] = createSignal(false)
@@ -109,6 +111,12 @@ export function SessionItem(props: {
     setSaving(false)
     if (renamed) setEditing(false)
   }
+  const dropActive = () => {
+    if (!props.dragID || !droppable.isActiveDroppable) return false
+    const source = dnd?.[0].active.draggable?.id
+    if (source === undefined || source === null) return false
+    return props.canDrop(String(source), props.dragID)
+  }
 
   return (
     <MenuV2.Context>
@@ -120,7 +128,7 @@ export function SessionItem(props: {
           draggable(el)
           droppable(el)
         }}
-        data-drop={props.dragID && droppable.isActiveDroppable ? "" : undefined}
+        data-drop={dropActive() ? "" : undefined}
         classList={{
           "opacity-50": !!props.dragID && draggable.isActiveDraggable,
           "group/session relative w-full min-w-0 h-8 flex items-center rounded-lg text-[13px] font-[440] leading-4 tracking-[-0.04px] transition-colors outline-none": true,

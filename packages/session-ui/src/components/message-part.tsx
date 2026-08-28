@@ -250,6 +250,50 @@ export type PartComponent = Component<MessagePartProps>
 
 export const PART_MAPPING: Record<string, PartComponent | undefined> = {}
 
+/** Intl objects are costly to build, so keep one set per locale. */
+const STAMP_FORMATS = new Map<
+  string,
+  { time: Intl.DateTimeFormat; date: Intl.DateTimeFormat; weekday: Intl.DateTimeFormat; rel: Intl.RelativeTimeFormat }
+>()
+
+const stampFormats = (locale: string) => {
+  const cached = STAMP_FORMATS.get(locale)
+  if (cached) return cached
+  const made = {
+    time: new Intl.DateTimeFormat(locale, { timeStyle: "short" }),
+    date: new Intl.DateTimeFormat(locale, { dateStyle: "medium" }),
+    weekday: new Intl.DateTimeFormat(locale, { weekday: "long" }),
+    rel: new Intl.RelativeTimeFormat(locale, { numeric: "auto" }),
+  }
+  STAMP_FORMATS.set(locale, made)
+  return made
+}
+
+/** Calendar days between two moments — "yesterday" is the previous date, not 24 hours ago. */
+const daysApart = (from: Date, to: Date) => {
+  const a = new Date(from.getFullYear(), from.getMonth(), from.getDate()).getTime()
+  const b = new Date(to.getFullYear(), to.getMonth(), to.getDate()).getTime()
+  return Math.round((b - a) / 86_400_000)
+}
+
+/**
+ * When a message was written, worded the way a reader thinks about it: a bare clock time only says
+ * something on the day itself, so further back the day gets named — yesterday, then the weekday,
+ * then the plain date once a weekday name would be ambiguous. Intl provides all of those per
+ * locale, so none of it needs translation keys. The clock time stays absolute rather than becoming
+ * "5 min ago", which would quietly go stale whenever nothing re-renders.
+ */
+export function messageStamp(locale: string, created: number | undefined) {
+  if (typeof created !== "number") return ""
+  const fmt = stampFormats(locale)
+  const time = fmt.time.format(created)
+  const days = daysApart(new Date(created), new Date())
+  if (days <= 0) return time
+  if (days === 1) return `${fmt.rel.format(-1, "day")}, ${time}`
+  if (days < 7) return `${fmt.weekday.format(created)}, ${time}`
+  return `${fmt.date.format(created)}, ${time}`
+}
+
 const TEXT_RENDER_PACE_MS = 24
 const TEXT_RENDER_IMMEDIATE = 512
 const TEXT_RENDER_SNAP = /[\s.,!?;:)\]]/
@@ -1219,21 +1263,9 @@ export function UserMessageDisplay(props: {
     const match = data.store.provider?.all?.get(providerID)
     return match?.models?.[modelID]?.name ?? modelID
   })
-  const timefmt = createMemo(() => new Intl.DateTimeFormat(i18n.locale(), { timeStyle: "short" }))
-
-  const stamp = createMemo(() => {
-    const created = props.message.time?.created
-    if (typeof created !== "number") return ""
-    return timefmt().format(created)
-  })
-
-  const metaHead = createMemo(() => {
-    const agent = props.message.agent
-    const items = [agent ? agent[0]?.toUpperCase() + agent.slice(1) : "", model()]
-    return items.filter((x) => !!x).join("\u00A0\u00B7\u00A0")
-  })
-
-  const metaTail = stamp
+  // Only the timestamp: agent and model describe how the message will be answered, not the message
+  // itself, and they already appear under the reply two lines down.
+  const metaTail = createMemo(() => messageStamp(i18n.locale(), props.message.time?.created))
 
   const openImagePreview = (url: string, alt?: string) => {
     dialog.show(() => <ImagePreview src={url} alt={alt} />)
@@ -1340,23 +1372,11 @@ export function UserMessageDisplay(props: {
       <Show when={props.useV2Actions}>{renderAttachments()}</Show>
       <Show when={text() || (props.useV2Actions && messageComments().length > 0)}>
         <div data-slot="user-message-copy-wrapper">
-          <Show when={metaHead() || metaTail()}>
+          <Show when={metaTail()}>
             <span data-slot="user-message-meta-wrap">
-              <Show when={metaHead()}>
-                <span data-slot="user-message-meta" class="text-12-regular text-text-weak cursor-default">
-                  {metaHead()}
-                </span>
-              </Show>
-              <Show when={metaHead() && metaTail()}>
-                <span data-slot="user-message-meta-sep" class="text-12-regular text-text-weak cursor-default">
-                  {"\u00A0\u00B7\u00A0"}
-                </span>
-              </Show>
-              <Show when={metaTail()}>
-                <span data-slot="user-message-meta-tail" class="text-12-regular text-text-weak cursor-default">
-                  {metaTail()}
-                </span>
-              </Show>
+              <span data-slot="user-message-meta-tail" class="text-12-regular text-text-weak cursor-default">
+                {metaTail()}
+              </span>
             </span>
           </Show>
           <Show when={props.actions?.revert}>
@@ -1713,10 +1733,14 @@ PART_MAPPING["text"] = function TextPartDisplay(props) {
     if (props.message.role !== "assistant") return ""
     const agent = (props.message as AssistantMessage).agent
     const items = [
-      agent ? agent[0]?.toUpperCase() + agent.slice(1) : "",
+      // Named as an agent rather than capitalised on its own: agent names are identifiers from the
+      // config, and a bare "Build" reads like a version rather than like who answered.
+      agent ? i18n.t("ui.tool.agent", { type: agent }) : "",
       model(),
       duration(),
       interrupted() ? i18n.t("ui.message.interrupted") : "",
+      // The timestamp closes both lines, so the same position always means the same thing.
+      messageStamp(i18n.locale(), props.message.time?.created),
     ]
     return items.filter((x) => !!x).join(" \u00B7 ")
   })

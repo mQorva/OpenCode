@@ -9,6 +9,8 @@ import { useLanguage } from "@/context/language"
 import { usePlatform } from "@/context/platform"
 import { useUpdaterAction } from "../updater-action"
 import { useSettings } from "@/context/settings"
+import { useServerProtocol } from "@/context/server-sdk"
+import { useServerSync } from "@/context/server-sync"
 import { ExternalLink } from "../external-link"
 import { SettingsListV2 } from "./parts/list"
 import { SettingsRowV2 } from "./parts/row"
@@ -283,9 +285,16 @@ export const SettingsGeneralV2: Component<{
   const platform = usePlatform()
   const dialog = useDialog()
   const settings = useSettings()
+  const protocol = useServerProtocol()
+  const serverSync = useServerSync()
   const mobile = createMediaQuery("(max-width: 767px)")
   const updater = useUpdaterAction()
   const permissionScope = createPermissionScopeController(() => props.sessionID)
+  const permissionProjectID = createMemo(() => {
+    const sessionID = props.sessionID
+    if (!sessionID) return
+    return serverSync().session.lineage.peek(sessionID)?.session.projectID
+  })
   const shell = createShellSettingsController()
   const appearance = createAppearanceSettingsController()
   const sounds = createSoundSettingsController()
@@ -369,6 +378,27 @@ export const SettingsGeneralV2: Component<{
         </Show>
 
         <PermissionScopeSetting controller={permissionScope} />
+
+        <Show when={protocol() === "v2" && permissionProjectID()}>
+          <SettingsRowV2
+            title={language.t("settings.permissions.saved.title")}
+            description={language.t("settings.permissions.saved.description")}
+          >
+            <ButtonV2
+              size="normal"
+              variant="neutral"
+              onClick={() => {
+                const projectID = permissionProjectID()
+                if (!projectID) return
+                void import("./dialog-saved-project-permissions").then((module) =>
+                  dialog.show(() => <module.DialogSavedProjectPermissions projectID={projectID} />),
+                )
+              }}
+            >
+              {language.t("settings.permissions.saved.manage")}
+            </ButtonV2>
+          </SettingsRowV2>
+        </Show>
 
         <ShellSetting controller={shell} />
 

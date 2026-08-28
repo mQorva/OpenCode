@@ -755,8 +755,6 @@ export const dict = {
   "session.followupDock.summary.other": "{{count}} berichten in de wachtrij",
   "session.followupDock.sendNow": "Verstuur nu",
   "session.followupDock.edit": "Bewerken",
-  "session.followupDock.collapse": "In de wachtrij geplaatste berichten samenvouwen",
-  "session.followupDock.expand": "Berichten in de wachtrij uitvouwen",
   "session.revertDock.summary.one": "{{count}} teruggedraaid bericht",
   "session.revertDock.summary.other": "{{count}} teruggedraaide berichten",
   "session.revertDock.collapse": "Teruggedraaide berichten samenvouwen",

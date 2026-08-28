@@ -734,8 +734,6 @@ export const dict = {
   "session.followupDock.summary.other": "{{count}}የተሰለፉ መልዕክቶች",
   "session.followupDock.sendNow": "አሁን ላክ",
   "session.followupDock.edit": "አርትዕ",
-  "session.followupDock.collapse": "የተሰለፉ መልዕክቶችን ሰብስብ",
-  "session.followupDock.expand": "የተሰለፉ መልዕክቶችን ዘርጋ",
   "session.revertDock.summary.one": "{{count}}የተመለሰ መልዕክት",
   "session.revertDock.summary.other": "{{count}}የተመለሱ መልዕክቶች",
   "session.revertDock.collapse": "የተመለሱ መልዕክቶችን ሰብስብ",

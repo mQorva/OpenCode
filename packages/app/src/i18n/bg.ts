@@ -753,8 +753,6 @@ export const dict = {
   "session.followupDock.summary.other": "{{count}} съобщения в опашка",
   "session.followupDock.sendNow": "Изпратете сега",
   "session.followupDock.edit": "Редактиране",
-  "session.followupDock.collapse": "Свиване на съобщенията в опашката",
-  "session.followupDock.expand": "Разгъване на съобщенията в опашката",
   "session.revertDock.summary.one": "{{count}} върнато съобщение",
   "session.revertDock.summary.other": "{{count}} отменени съобщения",
   "session.revertDock.collapse": "Свиване на върнатите съобщения",

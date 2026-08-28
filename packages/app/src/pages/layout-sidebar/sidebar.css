@@ -26,7 +26,16 @@
   background: var(--v2-border-border-muted, var(--border-weak-base));
 }
 
-/* Drop marker while reordering: the dragged row lands in front of this one. */
-[data-sidebar-row][data-drop] {
-  box-shadow: inset 0 1.5px 0 var(--border-active);
+/* The dragged session lands directly in front of the marked row. */
+[data-sidebar-row][data-drop]::before {
+  content: "";
+  position: absolute;
+  z-index: 20;
+  inset-block-start: -2px;
+  inset-inline: 6px;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--v2-border-border-focus);
+  box-shadow: 0 0 6px color-mix(in srgb, var(--v2-border-border-focus) 45%, transparent);
+  pointer-events: none;
 }

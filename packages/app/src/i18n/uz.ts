@@ -752,8 +752,6 @@ export const dict = {
   "session.followupDock.summary.other": "{{count}} navbatdagi xabarlar",
   "session.followupDock.sendNow": "Hozir yuboring",
   "session.followupDock.edit": "Tahrirlash",
-  "session.followupDock.collapse": "Navbatdagi xabarlarni yig'ish",
-  "session.followupDock.expand": "Navbatdagi xabarlarni yoyish",
   "session.revertDock.summary.one": "{{count}} xabarni orqaga qaytardi",
   "session.revertDock.summary.other": "{{count}} xabarlarni orqaga qaytardi",
   "session.revertDock.collapse": "Orqaga qaytarilgan xabarlarni yig'ish",

@@ -746,8 +746,6 @@ export const dict = {
   "session.followupDock.summary.other": "پیغام های در صف {{count}}",
   "session.followupDock.sendNow": "اکنون ارسال کنید",
   "session.followupDock.edit": "ویرایش کنید",
-  "session.followupDock.collapse": "کوچک کردن پیام‌های در صف",
-  "session.followupDock.expand": "پیام های در صف را بزرگ کنید",
   "session.revertDock.summary.one": "پیام {{count}} برگشت داده شد",
   "session.revertDock.summary.other": "{{count}} پیام‌های برگشتی",
   "session.revertDock.collapse": "کوچک کردن پیام‌های برگشتی",

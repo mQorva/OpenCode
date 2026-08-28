@@ -3,6 +3,7 @@ import { createStore, produce } from "solid-js/store"
 import {
   DragDropProvider,
   DragDropSensors,
+  DragOverlay,
   closestCenter,
   createDraggable,
   createDroppable,
@@ -12,6 +13,7 @@ import {
 import { SessionItem } from "./session-item"
 import { SidebarMarquee } from "./marquee"
 import "./sidebar.css"
+import { isNewChat } from "@/utils/session-title"
 import { ProjectStartDialog } from "./project-start-dialog"
 import {
   draftsForProject,
@@ -169,7 +171,6 @@ function DraftItem(props: { draft: DraftTab; active: boolean; onSelect: () => vo
 
 function ProjectGroup(props: {
   group: SidebarProject
-  active: boolean
   drafts: DraftTab[]
   collapsed: boolean
   sessionsExpanded: boolean
@@ -202,6 +203,7 @@ function ProjectGroup(props: {
   onArchive: (entry: SidebarSession) => void
   onDelete: (entry: SidebarSession) => void
   canArchive: boolean
+  canDrop: (source: string, target: string) => boolean
   /** Whether a dragged key is an unassigned draft — the only thing a project can take in. */
   isDraft: (key: string) => boolean
 }) {
@@ -241,18 +243,13 @@ function ProjectGroup(props: {
         <MenuV2.Context.Trigger
           as="div"
           data-sidebar-row=""
-          classList={{
-            "group/project relative h-9 flex items-center min-w-0 rounded-lg transition-colors": true,
-            "bg-v2-background-bg-layer-02 text-text-strong": props.active,
-            "hover:bg-v2-background-bg-layer-02/60 focus-within:bg-v2-background-bg-layer-02/60": !props.active,
-          }}
+          class="group/project relative h-9 flex items-center min-w-0 rounded-lg transition-colors hover:bg-v2-background-bg-layer-02/60 focus-within:bg-v2-background-bg-layer-02/60"
         >
           <button
             type="button"
             onClick={props.onToggleCollapsed}
             class="h-full min-w-0 flex-1 flex items-center gap-2 px-2 text-left outline-none"
             aria-expanded={!props.collapsed}
-            aria-current={props.active ? "page" : undefined}
           >
             <Show
               when={projectIcon()}
@@ -342,6 +339,7 @@ function ProjectGroup(props: {
                   onCopyTitle={() => props.onCopySessionTitle(entry)}
                   onCopyID={() => props.onCopySessionID(entry)}
                   onCopyProject={props.onCopySessionProject}
+                  canDrop={props.canDrop}
                 />
               )}
             </For>
@@ -498,33 +496,6 @@ export function Sidebar() {
     return applyOrder(needle() ? rest.filter(matches) : rest, order[CHATS_ORDER_KEY])
   })
 
-  const activeProjectWorktree = createMemo(() => {
-    const sessionID = activeSessionID()
-    if (sessionID) {
-      const current = activeSession()
-      if (current) {
-        const key = pathKey(current.directory)
-        const project = layout.projects
-          .list()
-          .find((item) => pathKey(item.worktree) === key || item.sandboxes?.some((sandbox) => pathKey(sandbox) === key))
-        if (project) return project.worktree
-      }
-      return groups().find((group) => group.sessions.some((entry) => entry.session.id === sessionID))?.project.worktree
-    }
-
-    const draftID = activeDraftID()
-    if (!draftID) return undefined
-    const draft = tabs.store.find((tab) => tab.type === "draft" && tab.draftID === draftID)
-    if (!draft || draft.type !== "draft" || draft.unassigned === true) return undefined
-    const directory = draft.worktree ?? draft.directory
-    const key = pathKey(directory)
-    return layout.projects
-      .list()
-      .find(
-        (project) =>
-          pathKey(project.worktree) === key || project.sandboxes?.some((sandbox) => pathKey(sandbox) === key),
-      )?.worktree
-  })
   const sidebarWidth = createMemo(() => layout.sidebar.width())
   const sidebarWidthMax = () =>
     typeof window === "undefined" ? 560 : Math.max(SIDEBAR_WIDTH_MIN, window.innerWidth * 0.4)
@@ -778,6 +749,24 @@ export function Sidebar() {
 
   const isDraftKey = (key: string) => tabs.store.some((item) => item.type === "draft" && item.draftID === key)
 
+  const canDropSession = (source: string, target: string) => {
+    if (source === target) return false
+    const block = blockOf(source)
+    return !!block && block === blockOf(target)
+  }
+
+  const dragLabel = (key: string) => {
+    const entry = [
+      ...chatSessions(),
+      ...split().pinned,
+      ...split().projects.flatMap((project) => project.sessions),
+    ].find((item) => sessionPinKey(item) === key)
+    if (!entry) return isDraftKey(key) ? language.t("sidebarLayout.draft") : undefined
+    const title = entry.session.title?.trim()
+    if (isNewChat(title)) return language.t("sidebarLayout.newChat")
+    return title || language.t("sidebarLayout.untitled")
+  }
+
   const onDragEnd: DragEventHandler = ({ draggable, droppable }) => {
     if (!draggable || !droppable) return
     const from = String(draggable.id)
@@ -946,6 +935,7 @@ export function Sidebar() {
                           onCopyTitle={() => copy(entry.session.title || language.t("sidebarLayout.untitled"))}
                           onCopyID={() => copy(entry.session.id)}
                           onCopyProject={() => copy(projectNameFor(entry))}
+                          canDrop={canDropSession}
                         />
                       )}
                     </For>
@@ -975,6 +965,7 @@ export function Sidebar() {
                           onCopyTitle={() => copy(entry.session.title || language.t("sidebarLayout.untitled"))}
                           onCopyID={() => copy(entry.session.id)}
                           onCopyProject={() => copy(projectNameFor(entry))}
+                          canDrop={canDropSession}
                         />
                       )}
                     </For>
@@ -998,7 +989,6 @@ export function Sidebar() {
                       <ProjectGroup
                         group={group}
                         isDraft={isDraftKey}
-                        active={group.project.worktree === activeProjectWorktree()}
                         drafts={needle() ? [] : draftsForProject([...tabs.store], group.project.worktree)}
                         collapsed={collapsed.includes(group.project.worktree)}
                         sessionsExpanded={expandedSessions().includes(group.project.worktree)}
@@ -1047,6 +1037,7 @@ export function Sidebar() {
                         onArchive={archiveSession}
                         onDelete={confirmDelete}
                         canArchive={protocol() === "v1"}
+                        canDrop={canDropSession}
                       />
                     )}
                   </For>
@@ -1055,6 +1046,25 @@ export function Sidebar() {
             </div>
           </ScrollView>
         </div>
+        <DragOverlay class="z-[10000] pointer-events-none">
+          {(active) => (
+            <Show when={active}>
+              {(draggable) => (
+                <Show when={dragLabel(String(draggable().id))}>
+                  {(label) => (
+                    <div
+                      class="h-8 flex items-center gap-2 rounded-lg border-[0.5px] border-v2-border-border-strong bg-v2-background-bg-layer-02 px-2 text-[13px] font-[440] leading-4 tracking-[-0.04px] text-v2-text-text-base shadow-[var(--shadow-lg-border-base)]"
+                      style={{ width: `${draggable().layout.width}px` }}
+                    >
+                      <Icon name="speech-bubble" size="small" class="shrink-0 text-v2-icon-icon-base" />
+                      <SidebarMarquee>{label()}</SidebarMarquee>
+                    </div>
+                  )}
+                </Show>
+              )}
+            </Show>
+          )}
+        </DragOverlay>
       </DragDropProvider>
 
       <div class="shrink-0 px-2 py-2 border-t border-border-weaker-base">

@@ -50,6 +50,7 @@ export function SessionComposerRegion(props: {
               <SessionPermissionDock
                 request={request}
                 responding={controller.state.permissionResponding()}
+                persistent={controller.state.permissionPersistent()}
                 onDecide={(response) => {
                   controller.onResponseSubmit()
                   controller.state.decide(response)
@@ -135,8 +136,6 @@ export function SessionComposerRegion(props: {
                 <SessionFollowupDock
                   items={controller.followup()!.items}
                   sending={controller.followup()!.sending}
-                  paused={controller.followup()!.paused}
-                  onPauseToggle={controller.followup()!.onPauseToggle}
                   onItemPauseToggle={controller.followup()!.onItemPauseToggle}
                   onSend={controller.followup()!.onSend}
                   onEdit={controller.followup()!.onEdit}

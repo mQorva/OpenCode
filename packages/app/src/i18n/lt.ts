@@ -758,8 +758,6 @@ export const dict = {
   "session.followupDock.summary.many": "{{count}} eilėje esančio pranešimo",
   "session.followupDock.sendNow": "Siųsti dabar",
   "session.followupDock.edit": "Redaguoti",
-  "session.followupDock.collapse": "Sutraukti eilėje esančius pranešimus",
-  "session.followupDock.expand": "Išplėskite eilėje esančius pranešimus",
   "session.revertDock.summary.one": "{{count}} atšauktas pranešimas",
   "session.revertDock.summary.other": "{{count}} atšaukti pranešimai",
   "session.revertDock.summary.few": "{{count}} atšaukti pranešimai",

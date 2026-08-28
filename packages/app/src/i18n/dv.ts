@@ -759,8 +759,6 @@ export const dict = {
   "session.followupDock.summary.other": "{{count}} ކިއު ކުރެވިފައިވާ މެސެޖުތައް",
   "session.followupDock.sendNow": "މިހާރު ފޮނުއްވާ",
   "session.followupDock.edit": "ބަދަލު ގެނައުން",
-  "session.followupDock.collapse": "ކިއު ޖަހާފައިވާ މެސެޖުތައް ކޮލަޕްސް ކޮށްލާށެވެ",
-  "session.followupDock.expand": "ކިއު ކުރެވިފައިވާ މެސެޖުތައް ފުޅާކުރުން",
   "session.revertDock.summary.one": "{{count}} ރޯލް ބެކް މެސެޖެއް",
   "session.revertDock.summary.other": "{{count}} ރޯލްބެކް މެސެޖުތައް",
   "session.revertDock.collapse": "ކޮލަޕްސް ރޯލް ބެކް މެސެޖުތަކެވެ",

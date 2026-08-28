@@ -11,14 +11,11 @@ export type SessionComposerFollowupDock = {
   /** `paused` on an entry holds that one back; the queue skips it and takes the next. */
   items: { id: string; text: string; paused?: boolean }[]
   sending?: string
-  /** Queue-wide, set when a run is aborted: while paused nothing is dispatched on its own. */
-  paused?: boolean
   onSend: (id: string) => void
   onEdit: (id: string) => void
   onRemove: (id: string) => void
   onMove: (fromID: string, toID: string) => void
   onItemPauseToggle: (id: string) => void
-  onPauseToggle: () => void
 }
 
 export type SessionComposerRevertDock = {

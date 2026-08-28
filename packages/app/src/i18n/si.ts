@@ -744,8 +744,6 @@ export const dict: Record<string, string> = {
   "session.followupDock.summary.other": "{{count}} පෝලිම්ගත පණිවිඩ",
   "session.followupDock.sendNow": "දැන් එවන්න",
   "session.followupDock.edit": "සංස්කරණය කරන්න",
-  "session.followupDock.collapse": "පෝලිම්ගත පණිවිඩ හකුළන්න",
-  "session.followupDock.expand": "පෝලිම් පණිවිඩ දිග හරින්න",
   "session.revertDock.summary.one": "{{count}} පෙරළන ලද පණිවිඩය",
   "session.revertDock.summary.other": "{{count}} පණිවිඩ ආපසු හරවන ලදී",
   "session.revertDock.collapse": "පෙරළන ලද පණිවිඩ හකුළන්න",
