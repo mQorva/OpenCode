@@ -173,11 +173,16 @@ export function TargetSessionRouteContent() {
   const params = useParams<{ serverKey: string; id: string }>()
   const serverSync = useServerSync()
   const directory = createMemo(() => serverSync().session.lineage.peek(params.id)?.session.directory)
-  const ready = createMemo(() => {
+  const startup = createMemo(() => {
     const value = directory()
-    if (!value) return false
+    if (!value) return { ready: false, progress: 10 }
     const store = serverSync().child(value, { bootstrap: true })[0]
-    return store.status !== "loading" && !serverSync().project.initializing(value)
+    const storeReady = store.status !== "loading"
+    const projectReady = !serverSync().project.initializing(value)
+    return {
+      ready: storeReady && projectReady,
+      progress: 25 + (storeReady ? 50 : 0) + (projectReady ? 25 : 0),
+    }
   })
   return (
     <>
@@ -189,8 +194,8 @@ export function TargetSessionRouteContent() {
           <ResolvedTargetSessionRoute />
         </SessionRouteErrorBoundary>
       </TargetServerScopedProviders>
-      <Show when={!ready()}>
-        <AppStartupOverlay />
+      <Show when={!startup().ready}>
+        <AppStartupOverlay progress={startup().progress} />
       </Show>
     </>
   )

@@ -4,7 +4,7 @@ import { WordmarkV2 } from "@opencode-ai/ui/v2/wordmark-v2"
 import { useLanguage } from "@/context/language"
 import "./app-startup-overlay.css"
 
-export function AppStartupOverlay() {
+export function AppStartupOverlay(props: { progress: number }) {
   const language = useLanguage()
 
   return (
@@ -23,7 +23,7 @@ export function AppStartupOverlay() {
             <p class="text-[13px] font-[440] leading-5 tracking-[-0.04px] text-v2-text-text-muted">
               {language.t("startup.loading")}
             </p>
-            <Progress aria-label={language.t("startup.loading")} />
+            <Progress value={props.progress} minValue={0} maxValue={100} aria-label={language.t("startup.loading")} />
           </div>
         </div>
       </div>

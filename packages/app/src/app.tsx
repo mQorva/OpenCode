@@ -387,8 +387,10 @@ function NewAppLayoutContent(props: ParentProps<{ layoutMode: "sidebar" | "tabs"
   const layout = useLayout()
   const serverSync = useServerSync()
   const tabs = useTabs()
-  const ready = createMemo(() => {
-    if (!serverSync().ready || !tabs.ready() || !layout.ready()) return false
+  const startup = createMemo(() => {
+    const serverReady = serverSync().ready
+    const tabsReady = tabs.ready()
+    const layoutReady = layout.ready()
     const directories = [
       ...new Set(
         layout.projects
@@ -403,14 +405,23 @@ function NewAppLayoutContent(props: ParentProps<{ layoutMode: "sidebar" | "tabs"
       directory,
       store: serverSync().child(directory, { bootstrap: true })[0],
     }))
-    return stores.every(({ directory, store }) => store.status !== "loading" && !serverSync().project.initializing(directory))
+    const loaded = stores.filter(
+      ({ directory, store }) => store.status !== "loading" && !serverSync().project.initializing(directory),
+    ).length
+    const directoryProgress = !layoutReady ? 0 : stores.length === 0 ? 40 : (loaded / stores.length) * 40
+    return {
+      ready: serverReady && tabsReady && layoutReady && loaded === stores.length,
+      progress: Math.round(
+        5 + (serverReady ? 25 : 0) + (tabsReady ? 15 : 0) + (layoutReady ? 15 : 0) + directoryProgress,
+      ),
+    }
   })
 
   return (
     <>
       <Dynamic component={props.layoutMode === "sidebar" ? SidebarLayout : NewLayout}>{props.children}</Dynamic>
-      <Show when={!ready()}>
-        <AppStartupOverlay />
+      <Show when={!startup().ready}>
+        <AppStartupOverlay progress={startup().progress} />
       </Show>
     </>
   )
