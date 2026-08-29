@@ -144,7 +144,7 @@ function DraftItem(props: { draft: DraftTab; active: boolean; onSelect: () => vo
       data-sidebar-row=""
       classList={{
         "group/draft relative w-full h-8 min-w-0 flex items-center rounded-lg pl-8 pr-1 text-[13px] font-[440] leading-4 tracking-[-0.04px] transition-colors": true,
-        "bg-v2-background-bg-layer-02 text-text-base": props.active,
+        "bg-v2-background-bg-layer-02 text-text-base hover:text-text-strong": props.active,
         "text-text-base hover:bg-v2-background-bg-layer-02/60 hover:text-text-strong": !props.active,
         "opacity-50": draggable.isActiveDraggable,
       }}
