@@ -1,6 +1,6 @@
 import { createEffect, createSignal, Show, type Accessor } from "solid-js"
 import { createDraggable, createDroppable, useDragDropContext } from "@thisbeyond/solid-dnd"
-import { IconButton, MenuV2, Spinner, Tooltip, useLanguage } from "./upstream"
+import { Icon, IconButton, MenuV2, Spinner, Tooltip, useLanguage } from "./upstream"
 import { SidebarMarquee } from "./marquee"
 import type { SidebarSession } from "./sessions"
 import { isNewChat } from "@/utils/session-title"
@@ -60,6 +60,7 @@ export function SessionItem(props: {
   active: boolean
   pinned: boolean
   unread: boolean
+  attention: Accessor<"permission" | "question" | undefined>
   working: Accessor<boolean>
   indent?: boolean
   onSelect: () => void
@@ -135,7 +136,7 @@ export function SessionItem(props: {
           "pl-2": !props.indent,
           "pl-8": props.indent,
           "pr-1": true,
-          "bg-v2-background-bg-layer-02 text-text-strong": props.active,
+          "bg-v2-background-bg-layer-02 text-text-base": props.active,
           "text-text-base hover:bg-v2-background-bg-layer-02/60 hover:text-text-strong focus-within:bg-v2-background-bg-layer-02/60":
             !props.active,
         }}
@@ -206,32 +207,52 @@ export function SessionItem(props: {
             </Show>
           </div>
 
-          {/* A running session must stay recognisable while the pointer is on the row. */}
-          <Show
-            when={props.working()}
-            fallback={
-              <span class="shrink-0 flex items-center group-hover/session:hidden group-focus-within/session:hidden">
-                <Show
-                  when={props.unread}
-                  fallback={
-                    <Show when={props.pinned}>
-                      <span class="px-1 text-icon-weak" aria-hidden="true">
-                        <PinIcon filled />
-                      </span>
-                    </Show>
-                  }
+          <Show when={props.attention()}>
+            {(attention) => (
+              <Tooltip
+                value={language.t(
+                  attention() === "permission" ? "notification.permission.title" : "notification.question.title",
+                )}
+                placement="top"
+              >
+                <span
+                  class="shrink-0 px-1 flex items-center text-icon-warning-base"
+                  aria-label={language.t(
+                    attention() === "permission" ? "notification.permission.title" : "notification.question.title",
+                  )}
                 >
-                  <span
-                    class="mx-1 size-1.5 rounded-full bg-v2-icon-icon-accent"
-                    aria-label={language.t("sidebarLayout.unread")}
-                  />
-                </Show>
+                  <Icon name={attention() === "permission" ? "checklist" : "bubble-5"} size="small" />
+                </span>
+              </Tooltip>
+            )}
+          </Show>
+          <Show when={!props.attention()}>
+            <Show
+              when={props.working()}
+              fallback={
+                <span class="shrink-0 flex items-center group-hover/session:hidden group-focus-within/session:hidden">
+                  <Show
+                    when={props.unread}
+                    fallback={
+                      <Show when={props.pinned}>
+                        <span class="px-1 text-icon-weak" aria-hidden="true">
+                          <PinIcon filled />
+                        </span>
+                      </Show>
+                    }
+                  >
+                    <span
+                      class="mx-1 size-1.5 rounded-full bg-v2-icon-icon-accent"
+                      aria-label={language.t("sidebarLayout.unread")}
+                    />
+                  </Show>
+                </span>
+              }
+            >
+              <span class="shrink-0 px-1 group-hover/session:hidden group-focus-within/session:hidden">
+                <Spinner class="size-3.5" />
               </span>
-            }
-          >
-            <span class="shrink-0 px-1 group-hover/session:hidden group-focus-within/session:hidden">
-              <Spinner class="size-3.5" />
-            </span>
+            </Show>
           </Show>
         </Show>
       </MenuV2.Context.Trigger>

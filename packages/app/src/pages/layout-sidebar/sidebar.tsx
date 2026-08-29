@@ -14,6 +14,7 @@ import { SessionItem } from "./session-item"
 import { SidebarMarquee } from "./marquee"
 import "./sidebar.css"
 import { isNewChat } from "@/utils/session-title"
+import { sessionPermissionRequest, sessionQuestionRequest } from "@/pages/session/composer/session-request-tree"
 import { ProjectStartDialog } from "./project-start-dialog"
 import {
   draftsForProject,
@@ -63,6 +64,7 @@ import {
   useLanguage,
   useLayout,
   useNotification,
+  usePermission,
   usePlatform,
   useServer,
   useServerSDK,
@@ -142,7 +144,7 @@ function DraftItem(props: { draft: DraftTab; active: boolean; onSelect: () => vo
       data-sidebar-row=""
       classList={{
         "group/draft relative w-full h-8 min-w-0 flex items-center rounded-lg pl-8 pr-1 text-[13px] font-[440] leading-4 tracking-[-0.04px] transition-colors": true,
-        "bg-v2-background-bg-layer-02 text-text-strong": props.active,
+        "bg-v2-background-bg-layer-02 text-text-base": props.active,
         "text-text-base hover:bg-v2-background-bg-layer-02/60 hover:text-text-strong": !props.active,
         "opacity-50": draggable.isActiveDraggable,
       }}
@@ -187,6 +189,7 @@ function ProjectGroup(props: {
   onMarkUnread: (entry: SidebarSession) => void
   onTogglePin: (entry: SidebarSession) => void
   sessionWorking: (entry: SidebarSession) => boolean
+  sessionAttention: (entry: SidebarSession) => "permission" | "question" | undefined
   onNewChat: () => void
   onEditProject: () => void
   onCopyProjectName: () => void
@@ -194,7 +197,6 @@ function ProjectGroup(props: {
   onRevealProject?: () => void
   workspacesEnabled: boolean
   onToggleWorkspaces?: () => void
-  unseenCount: number
   onClearNotifications?: () => void
   onCloseProject: () => void
   onCopySessionTitle: (entry: SidebarSession) => void
@@ -259,14 +261,9 @@ function ProjectGroup(props: {
             >
               {(source) => <img src={source()} alt="" class="size-4 shrink-0 rounded-[4px] object-cover" />}
             </Show>
-            <SidebarMarquee class="text-[13px] font-[530] leading-4 tracking-[-0.04px] text-text-strong">
+            <SidebarMarquee class="text-[13px] font-[530] leading-4 tracking-[-0.04px] text-text-base">
               {displayName(props.group.project)}
             </SidebarMarquee>
-            <Show when={props.unseenCount > 0}>
-              <span class="min-w-5 rounded-full bg-v2-background-bg-strong px-1.5 text-center text-[11px] font-[530] leading-4 tracking-[0.05px] text-v2-text-text-muted">
-                {props.unseenCount}
-              </span>
-            </Show>
           </button>
           <div class="shrink-0 items-center pr-1 hidden group-hover/project:flex group-focus-within/project:flex">
             <Tooltip value={language.t("command.session.new")} placement="top">
@@ -329,6 +326,7 @@ function ProjectGroup(props: {
                   active={entry.session.id === props.activeSessionID}
                   pinned={props.isPinned(entry)}
                   unread={props.isUnread(entry)}
+                  attention={() => props.sessionAttention(entry)}
                   working={() => props.sessionWorking(entry)}
                   onSelect={() => props.onSelect(entry)}
                   onRename={(title) => props.onRename(entry, title)}
@@ -367,6 +365,7 @@ export function Sidebar() {
   const global = useGlobal()
   const platform = usePlatform()
   const notification = useNotification()
+  const permission = usePermission()
   const serverSDK = useServerSDK()
   const serverSync = useServerSync()
   const tabs = useTabs()
@@ -511,6 +510,20 @@ export function Sidebar() {
   const isPinned = (entry: SidebarSession) => pinned.includes(sessionPinKey(entry))
   const isUnread = (entry: SidebarSession) => unread.includes(sessionPinKey(entry))
   const sessionWorking = (entry: SidebarSession) => serverSync().session.data.session_working(entry.session.id)
+  const sessionAttention = (entry: SidebarSession) => {
+    const directory = entry.session.directory
+    const [store] = serverSync().child(directory, { bootstrap: false })
+    const request = sessionPermissionRequest(
+      store.session,
+      serverSync().session.data.permission,
+      entry.session.id,
+      (item) => !permission.autoResponds(item, directory),
+    )
+    if (request) return "permission" as const
+    if (sessionQuestionRequest(store.session, serverSync().session.data.question, entry.session.id)) {
+      return "question" as const
+    }
+  }
   const markUnread = (entry: SidebarSession) => {
     const key = sessionPinKey(entry)
     if (!unread.includes(key)) setUnread((items) => [...items, key])
@@ -925,6 +938,7 @@ export function Sidebar() {
                           active={entry.session.id === activeSessionID()}
                           pinned={isPinned(entry)}
                           unread={isUnread(entry)}
+                          attention={() => sessionAttention(entry)}
                           working={() => sessionWorking(entry)}
                           onSelect={() => select(entry)}
                           onRename={(title) => renameSession(entry, title)}
@@ -955,6 +969,7 @@ export function Sidebar() {
                           active={entry.session.id === activeSessionID()}
                           pinned
                           unread={isUnread(entry)}
+                          attention={() => sessionAttention(entry)}
                           working={() => sessionWorking(entry)}
                           onSelect={() => select(entry)}
                           onRename={(title) => renameSession(entry, title)}
@@ -997,6 +1012,7 @@ export function Sidebar() {
                         isPinned={isPinned}
                         isUnread={isUnread}
                         sessionWorking={sessionWorking}
+                        sessionAttention={sessionAttention}
                         onToggleCollapsed={() =>
                           setCollapsed((items) =>
                             items.includes(group.project.worktree)
@@ -1022,7 +1038,6 @@ export function Sidebar() {
                             ? () => layout.sidebar.toggleWorkspaces(group.project.worktree)
                             : undefined
                         }
-                        unseenCount={projectUnseenCount(group.project)}
                         onClearNotifications={
                           projectUnseenCount(group.project) > 0
                             ? () => clearProjectNotifications(group.project)

@@ -3,8 +3,9 @@
 Bestandsaufnahme aller Fork-Änderungen gegenüber `anomalyco/opencode`: Was ist eigen, was ist Naht,
 was kann zurück ans Original? Grundlage für künftige Upstream-PRs und für die Pflege von
 `plans/upstream-patches.md`. Zuletzt vollständig gegen `upstream/dev` auf `1be9fd55a9`
-(OpenCode 1.18.25) und den Fork-Stand `1b06f6f95f` geprüft. Seit `755ebdb94e` kam upstream nur
-die Hy4-Vorschau-Dokumentation hinzu; sie berührt keine Kandidaten- oder Fork-Quelldatei.
+(OpenCode 1.18.25) und den Fork-Stand `9405502779` geprüft. Seit `755ebdb94e` kam upstream nur
+die Hy4-Vorschau-Dokumentation hinzu; sie berührt keine Kandidaten- oder Fork-Quelldatei. Die
+Fork-Korrekturen bis `9405502779` schärfen #24 nach und ergänzen die Kandidaten #32 und #33.
 Für App-Features wurde zusätzlich der aktive Architekturzweig `upstream/v2` auf `1c8e557eb4`
 geprüft, weil dort bereits Funktionen und Dateistrukturen liegen, die `dev` noch nicht enthält.
 
@@ -45,6 +46,29 @@ gesendeter Branch würde beim nächsten Upstream-Sync altern. Die folgende Tabel
 verbindliche Bauanweisung; der jeweilige Arbeitsbranch entsteht just-in-time in einem separaten
 Worktree. Die Namen erfüllen bereits die lokale Drei-Wort-Regel.
 
+### Korrekturen vor dem Upstream-Versand nachziehen
+
+Ein Branchpaket ist kein einmaliger Export eines alten Fork-Commits. Vor jedem Issue-/Push-Gate wird
+es gegen den aktuellen Fork erneut abgeglichen:
+
+1. aktuellen `upstream/dev`-Stand abrufen und den Paketbranch beziehungsweise dessen Worktree
+   identifizieren;
+2. den aktuellen Paketvertrag aus dieser Datei mit `git diff upstream/dev..dev` vergleichen;
+3. neue Korrekturen aus `dev` nur hunkweise übernehmen und erneut auf mQorva-, V1/V2-, Branding-
+   oder andere Fremdanteile prüfen;
+4. einen noch nicht gepushten Paketbranch auf dem aktuellen `upstream/dev` sauber neu aufbauen oder
+   seine lokalen Commits amendieren/squashen;
+5. bei einem bereits offenen PR Korrekturen als normale Folgecommits auf denselben Branch pushen;
+   veröffentlichte Commits nur nach ausdrücklicher Freigabe mit `--force-with-lease` umschreiben;
+6. Diff, Paket-Typechecks, fokussierte Tests und bei UI-Paketen die visuelle Abnahme vollständig
+   wiederholen;
+7. hier Upstream-Basis, Fork-Quellstand, Branch-HEAD, Prüfungen und Status aktualisieren, bevor der
+   Veröffentlichungshelfer laufen darf.
+
+Aktuell gibt es noch keine Paketbranches. Die jüngsten Korrekturen liegen auf `dev`/`origin/dev` in
+`9405502779` und werden deshalb beim späteren just-in-time Aufbau automatisch aus dem aktuellen
+Verhaltensdiff berücksichtigt; es muss jetzt kein bestehender Branch nachgezogen werden.
+
 ### Zusätzlicher Upstream-Architektur-Gate
 
 Für kurzfristige PRs bleibt `upstream/dev` die verbindliche Basis. Bei App-Features reicht dieser
@@ -76,7 +100,7 @@ Fehler beheben. Verschiedene Fehler werden nicht mehr unter Namen wie `session-e
 
 | Reihenfolge | Branch | Kandidat | Upstream-Urteil und Gate |
 |---:|---|---:|---|
-| 1 | `auth-json-safety` | #1 | gegen `dev` neu aufsetzen; vorhandene Concurrency-Regression; stärkster Pilot |
+| 1 | `auth-json-safety-pilot` | #1 | Issue #46020 (Bug-Report-Template korrekt); PR #45949 (Vorlage komplett): gegen `upstream/dev` `df35e842f5`; nicht gemergt; altes #45948 geschlossen (non-compliant); Duplikate #45561/#30396 geprüft; Typecheck/Test in Umgebung blockiert; Concurrency-Regression noch zu bestätigen |
 | 2 | `async-session-idle` | #2 | eigenständiger Serverfehler; gezielten Fehlerpfad-Test ergänzen |
 | 3 | `filesystem-root-watch` | #3 | eigenständiger Corefehler; Windows- und POSIX-Root testen |
 | 4 | `dev-plugin-version` | #6 | eigenständiger Dev-Build-Fehler; nicht mit Timeouts koppeln |
@@ -90,6 +114,8 @@ Fehler beheben. Verschiedene Fehler werden nicht mehr unter Namen wie `session-e
 | 12 | `followup-session-directory` | #16 | V1-spezifischer Verzeichnisfehler; nur noch senden, wenn Upstream ihn auf `dev` weiterhin pflegen will |
 | 13 | `session-error-shapes` | #17 | eigener Kompatibilitätsfehler; konkrete tatsächlich auftretende Fehlerformen testen |
 | 14 | `terminal-route-state` | #23 | eigener Routen-/Zustandsfehler; wegen völlig neuer Workspace-Struktur in `v2` dort neu bewerten |
+| 15 | `persistent-permission-choice` | #33 | eigener Berechtigungsfehler: `always` darf nicht zusätzlich vom Transportprotokoll abhängen; Request-Verträge beider Protokolle testen und gegen `v2` neu reproduzieren |
+| 16 | `permission-dock-layout` | #32 | eigenständiger visueller Dock-Fix über `session-ui` und App; Story, App-Typecheck und Vorher-/Nachher-Aufnahme erforderlich |
 
 ### Zusammenhängende Features und größere Funktionsverträge
 
@@ -198,7 +224,7 @@ absichern.
 | # | Einstufung und Vorschlag | Dateien | Vorbedingung / Tests |
 |---|---|---|---|
 | 23 | **C** — `fix(app): preserve workspace terminals across session routes` | `packages/app/src/context/terminal.tsx`, `packages/app/src/context/terminal.test.ts` | vorhandene Registry-Tests plus `packages/app`-Typecheck; gegen reinen Upstream extrahieren |
-| 24 | **D** — `feat(core): generate initial v2 session titles` | `packages/core/src/session/info.ts`, `packages/core/src/session/runner/llm.ts`, `packages/core/src/session/runner/model.ts`, `packages/core/test/session-runner.test.ts` | Architektur vorab mit Upstream klären; V1-Event-Projektion und allgemeine Modellauflösung vom eigentlichen Titeljob trennen |
+| 24 | **D** — `feat(core): generate initial v2 session titles` | `packages/core/src/session/info.ts`, `packages/core/src/session/runner/llm.ts`, `packages/core/src/session/runner/model.ts`, `packages/core/test/session-runner.test.ts` | Architektur vorab mit Upstream klären; V1-Event-Projektion und allgemeine Modellauflösung vom eigentlichen Titeljob trennen. Stand `9405502779`: erkennt zusätzlich Upstreams datierte Standardtitel, respektiert die Agent-/Provider-Tokenkonfiguration statt `maxTokens: 64` zu erzwingen und besitzt keinen lokalen 30-Sekunden-Timeout mehr |
 | 25 | **C mit Design-Review** — `feat(session-ui): show calendar-aware message timestamps` | `packages/session-ui/src/components/message-part.tsx`, `packages/session-ui/src/components/message-part.css` | fokussierte Tests für Tagesgrenzen und Locale ergänzen; UI-Änderung zuerst als Issue abstimmen |
 | 26 | **D, abhängig von #22** — pausierbare Follow-up-Queue | `packages/app/src/pages/session.tsx`, `packages/app/src/pages/session/composer/session-followup-dock.tsx`, `packages/app/src/i18n/en.ts`, `packages/app/src/i18n/de.ts` | erst nach Entscheidung zu #22; Queue-Logik, UI und Fork-Dock-Design sauber trennen und testen |
 | 27 | **D mit Design-Review** — Startoverlay mit echtem Bereitschaftsfortschritt und Workspace-Skeleton | `packages/app/src/app.tsx`, `packages/app/src/components/app-startup-overlay.tsx`, `packages/app/src/components/app-startup-overlay.css`, `packages/app/src/components/workspace-skeleton.tsx`, `packages/app/src/components/workspace-skeleton.css`, `packages/app/src/pages/layout-new.tsx`, ausgewählte Hunks aus `packages/app/src/pages/session.tsx`, `packages/app/src/i18n/en.ts`, `packages/app/src/i18n/de.ts` | als `workspace-readiness-ui`; layoutunabhängigen Bereitschaftsvertrag aus Fork-Shell und Zielsession-Auflösung lösen; UI-Screenshots und Start-/Reload-Tests erforderlich |
@@ -206,6 +232,8 @@ absichern.
 | 29 | **C mit Design-Review** — schnelle Navigation zwischen Nutzereingaben in langen Sitzungen | `packages/app/src/pages/session/timeline/message-rail.tsx`, `packages/app/src/pages/session/timeline/message-rail.css`, `packages/app/src/pages/session/timeline/message-rail-text.ts`, `packages/app/src/pages/session/timeline/message-rail-text.test.ts`, ausgewählte Hunks aus `message-timeline.tsx` | eigenständiges, layoutneutrales Feature `session-navigation-ui`, zusammen mit #18/#19 und #25; an den geschlossenen Versuch `#38484` anknüpfen; responsive Darstellung, Scroll-Synchronisation und Screenshots ergänzen |
 | 30 | **C/D mit Design-Review** — Markdown-Dateien wahlweise gerendert oder als Quelltext öffnen | `packages/session-ui/src/context/open-file.tsx`, `packages/session-ui/src/context/index.ts`, `packages/session-ui/src/components/markdown.tsx`, `packages/session-ui/src/components/markdown.css`, `packages/app/src/pages/session/markdown-preview.ts`, ausgewählte Hunks aus `file-tabs.tsx`, `session-side-panel.tsx` und `session.tsx` | als `markdown-file-preview`; Storage-Key neutralisieren; Dateilink-, Vorschau-, Fehler- und Persistenzfälle testen |
 | 31 | **D mit Design-Review** — zusammenhängende Arbeitsfläche für Datei-/Review-Panel, Terminal und Composer | ausgewählte Hunks aus `packages/app/src/pages/session.tsx`, `packages/app/src/pages/session/file-tabs.tsx`, `packages/app/src/pages/session/session-side-panel.tsx`, `packages/app/src/components/session/session-header.tsx`, `packages/app/src/components/prompt-input-v2.tsx`, `packages/session-ui/src/v2/components/prompt-input/index.tsx`, `packages/ui/src/components/dock-surface.css` | aufteilen: sidebar-spezifische Anordnung gehört zum Vertrag #28; layoutneutrale Arbeitsflächenverbesserungen bilden erst nach Vergleich mit dem neuen `v2`-Session-Screen das eigene Feature `session-workspace-layout` |
+| 32 | **C mit UI-Nachweis** — Permission-Aktionen optional innerhalb der gemeinsamen Prompt-Shell halten | `packages/session-ui/src/components/dock-prompt.tsx`, `packages/session-ui/src/components/dock-prompt.stories.tsx`, `packages/app/src/pages/session/composer/session-permission-dock.tsx`, zugehörige Permission-Regeln in `packages/session-ui/src/components/message-part.css` | eigenständiger Fix `permission-dock-layout`; das additive `footerInside` bleibt opt-in und darf Question-Docks nicht verändern; Story, schmale Breite, Umbruch und Fokuswege visuell prüfen |
+| 33 | **C nach Vertragsprüfung** — dauerhafte Permission-Antwort anbieten, sobald die Anfrage `always`-Muster liefert | `packages/app/src/pages/session/composer/session-composer-state.ts` | eigenständiger Fix `persistent-permission-choice`; nicht an `protocol() === "v2"` koppeln, aber zuerst bestätigen, dass der V1-Request die `always`-Semantik tatsächlich unterstützt; beide Protokollpfade testen |
 
 ### Neue Integrationsnähte, keine direkten PR-Kandidaten
 
@@ -264,13 +292,15 @@ Abweichungen sind produktneutrale Verbesserungen:
 
 ## Zählung und Pflegezustand
 
-Die Liste enthält 31 nummerierte Prüfthemen, aber ausdrücklich keine 31 geplanten PRs. Aus der
+Die Liste enthält 33 nummerierte Prüfthemen, aber ausdrücklich keine 33 geplanten PRs. Aus der
 Upstream-Prüfung ergeben sich zunächst sieben voneinander unabhängige Core-/Server-/Desktop-Fixes
 (#1, #2, #3, #6, #7, #8, #20). Weitere App-Fixes bleiben einzelne Fehlerverträge, werden aber wegen
 der ersetzten `v2`-Architektur erst dort neu reproduziert. Features werden nach vorhandenen
 Upstream-Verträgen gruppiert; #22 ist in `v2` im Kern bereits umgesetzt, #10 bleibt Testmaterial und
-das Titelthema #4/#24 bleibt ohne Branch. Die großen UI-Themen sind keine Kopie der Upstream-Arbeit,
-müssen ihre Überschneidungen mit `v2` aber vor der Extraktion ausdrücklich abgrenzen.
+das Titelthema #4/#24 bleibt ohne Branch. Die Korrekturen #32 und #33 bleiben zwei getrennte
+Permission-Verträge, obwohl sie im Fork gemeinsam committed wurden. Die großen UI-Themen sind keine
+Kopie der Upstream-Arbeit, müssen ihre Überschneidungen mit `v2` aber vor der Extraktion ausdrücklich
+abgrenzen.
 
 Vor jedem konkreten PR gilt der aktuelle Diff `upstream/dev..dev` als Quelle der Wahrheit. Für
 App-Änderungen kommt der Vergleich mit dem dann aktuellen `upstream/v2` als Architektur-Gate hinzu.
