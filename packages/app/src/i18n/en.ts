@@ -712,7 +712,6 @@ export const dict = {
   "session.messages.jumpToLatest": "Jump to latest",
 
   "session.context.addToContext": "Add {{selection}} to context",
-  "session.todo.title": "Todos",
   "session.todo.collapse": "Collapse",
   "session.todo.expand": "Expand",
   "session.todo.progress": "{{done}} of {{total}} todos completed",
@@ -721,9 +720,6 @@ export const dict = {
   "session.question.restore": "Restore question",
   "session.question.pending.one": "{{count}} pending question",
   "session.question.pending.other": "{{count}} pending questions",
-  "session.followupDock.summary.one": "{{count}} queued message",
-  "session.followupDock.summary.other": "{{count}} queued messages",
-  "session.followupDock.sendNow": "Send now",
   "session.followupDock.edit": "Edit",
   "session.followupDock.steer": "Steer",
   "session.followupDock.drag": "Drag to reorder",

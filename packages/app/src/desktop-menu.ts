@@ -1,5 +1,3 @@
-import type { DesktopNativeKey } from "./i18n/desktop-native"
-
 export type DesktopMenuPlatform = "macos" | "windows"
 
 export type DesktopMenuAction =
@@ -46,7 +44,7 @@ export type DesktopMenuRole =
 
 export type DesktopMenuItem = {
   type: "item"
-  labelKey?: DesktopNativeKey
+  labelKey?: string
   command?: string
   action?: DesktopMenuAction
   role?: DesktopMenuRole
@@ -55,6 +53,8 @@ export type DesktopMenuItem = {
   enabled?: "updater"
   platforms?: DesktopMenuPlatform[]
 }
+
+export type DesktopMenuLabelKey = string
 
 export type DesktopMenuSeparator = {
   type: "separator"
@@ -65,7 +65,7 @@ export type DesktopMenuEntry = DesktopMenuItem | DesktopMenuSeparator
 
 export type DesktopMenu = {
   id: string
-  labelKey: DesktopNativeKey
+  labelKey: string
   role?: DesktopMenuRole
   items?: DesktopMenuEntry[]
   platforms?: DesktopMenuPlatform[]
@@ -108,9 +108,9 @@ export const DESKTOP_MENU: DesktopMenu[] = [
       },
       {
         type: "item",
-        labelKey: "desktop.menu.openProject",
-        command: "project.open",
-        accelerator: { macos: "Cmd+O" },
+        labelKey: "sidebarLayout.addProject",
+        command: "project.add",
+        accelerator: { macos: "Cmd+O", windows: "Ctrl+O" },
       },
       {
         type: "item",

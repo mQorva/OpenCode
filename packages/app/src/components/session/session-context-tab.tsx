@@ -5,7 +5,7 @@ import { checksum } from "@opencode-ai/core/util/encode"
 import { findLast } from "@opencode-ai/core/util/array"
 import { same } from "@/utils/same"
 import { Icon } from "@opencode-ai/ui/icon"
-import { Button } from "@opencode-ai/ui/button"
+import { ButtonV2 } from "@opencode-ai/ui/v2/button-v2"
 import { Accordion } from "@opencode-ai/ui/accordion"
 import { StickyAccordionHeader } from "@opencode-ai/ui/sticky-accordion-header"
 import { File } from "@opencode-ai/session-ui/file"
@@ -359,15 +359,14 @@ export function SessionContextTab() {
         <div class="flex flex-col gap-2">
           <div class="flex items-center justify-between">
             <div class="text-12-regular text-text-weak">{language.t("context.rawMessages.title")}</div>
-            <Button
+            <ButtonV2
               size="small"
-              variant="ghost"
-              class="gap-1.5 px-2 text-text-weak hover:text-text-base"
+              variant="ghost-muted"
+              icon="download"
               onClick={exportSession}
             >
-              <Icon name="download" size="small" />
-              <span>{language.t("context.export.session")}</span>
-            </Button>
+              {language.t("context.export.session")}
+            </ButtonV2>
           </div>
           <Accordion multiple>
             <For each={messages()}>

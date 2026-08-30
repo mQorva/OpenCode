@@ -10,6 +10,7 @@
   align-items: stretch;
   padding: 2px;
   min-width: 160px;
+  max-width: min(420px, calc(100vw - 16px));
   z-index: 60;
   pointer-events: auto;
 
@@ -39,7 +40,7 @@
   --menu-v2-accent: var(--v2-text-text-accent);
   --menu-v2-badge-bg: var(--v2-background-bg-layer-02);
   --menu-v2-badge-border: var(--v2-border-border-base);
-  --menu-v2-hover: var(--v2-overlay-simple-overlay-hover);
+  --menu-v2-hover: color-mix(in srgb, var(--v2-background-bg-layer-02) 60%, transparent);
 
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -75,6 +76,9 @@
     line-height: 100%;
     letter-spacing: -0.04px;
     color: var(--menu-v2-fg);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   [data-slot="menu-v2-item-shortcut"] {

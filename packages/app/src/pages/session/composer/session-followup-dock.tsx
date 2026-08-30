@@ -2,7 +2,6 @@ import { createSignal, For, Show } from "solid-js"
 import { IconButtonV2 } from "@opencode-ai/ui/v2/icon-button-v2"
 import { DockTray } from "@opencode-ai/ui/dock-surface"
 import { Icon } from "@opencode-ai/ui/icon"
-import { IconButton } from "@opencode-ai/ui/icon-button"
 import { Tooltip } from "@opencode-ai/ui/tooltip"
 import { useLanguage } from "@/context/language"
 
@@ -94,13 +93,12 @@ export function SessionFollowupDock(props: {
               }}
               onDrop={() => dropOn(item.id)}
             >
-              <IconButton
+              <IconButtonV2
                 type="button"
-                draggable
-                icon="grip-vertical"
-                iconSize="small"
-                variant="ghost"
-                class="shrink-0 cursor-grab text-text-weaker hover:text-text-strong"
+                size="small"
+                variant="ghost-muted"
+                icon={<Icon name="grip-vertical" size="small" />}
+                class="shrink-0 cursor-grab"
                 aria-label={language.t("session.followupDock.drag")}
                 onDragStart={(event) => startDrag(event, item.id)}
                 onDragEnd={() => setDragging(undefined)}

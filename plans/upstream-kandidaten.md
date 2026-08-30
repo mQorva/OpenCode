@@ -2,10 +2,10 @@
 
 Bestandsaufnahme aller Fork-Änderungen gegenüber `anomalyco/opencode`: Was ist eigen, was ist Naht,
 was kann zurück ans Original? Grundlage für künftige Upstream-PRs und für die Pflege von
-`plans/upstream-patches.md`. Zuletzt vollständig gegen `upstream/dev` auf `1be9fd55a9`
-(OpenCode 1.18.25) und den Fork-Stand `9405502779` geprüft. Seit `755ebdb94e` kam upstream nur
-die Hy4-Vorschau-Dokumentation hinzu; sie berührt keine Kandidaten- oder Fork-Quelldatei. Die
-Fork-Korrekturen bis `9405502779` schärfen #24 nach und ergänzen die Kandidaten #32 und #33.
+`plans/upstream-patches.md`. Zuletzt vollständig gegen `upstream/dev` auf `dc4449df0d`
+und den Fork-Stand `b152378fed` geprüft. Seit `1be9fd55a9` wuchs `upstream/dev` um die in
+`#46125` referenzierten Server-Commits (relevant für Kandidat #2) und ein paar
+`chore:`-/Versionssyncs; keine neue Fork-Korrektur erzwingt einen neuen Upstream-Kandidaten.
 Für App-Features wurde zusätzlich der aktive Architekturzweig `upstream/v2` auf `1c8e557eb4`
 geprüft, weil dort bereits Funktionen und Dateistrukturen liegen, die `dev` noch nicht enthält.
 
@@ -20,7 +20,7 @@ lokale Archiv-Tags entfernt und werden nicht unverändert wiederverwendet:
 | Kandidat | Alter PR | Zustand | Nächster Schritt |
 |---|---:|---|---|
 | #1 | `anomalyco/opencode#45557` | geschlossen, nicht gemergt; Branch entfernt, Tag `archive/upstream-pr-45557` | Duplikate prüfen, Issue anlegen, frisch von aktuellem `upstream/dev` extrahieren und erneut testen |
-| #2 | `anomalyco/opencode#45607` | geschlossen, nicht gemergt; Branch entfernt, Tag `archive/upstream-pr-45607` | fehlenden Fehlerpfad-Test ergänzen, danach Issue und neuer kurzer Branch |
+| #2 | `anomalyco/opencode#45607` (alt) / `anomalyco/opencode#46125` (neu) | alt: geschlossen, nicht gemergt; Branch entfernt, Tag `archive/upstream-pr-45607`. neu: PR offen gegen `upstream/dev` `dc4449df0d`, Branch `async-session-idle` HEAD `48d064de56`, Issue #45610, +1/-0 in `session.ts`, `bun typecheck` in dieser Umgebung blockiert (tsgo fehlt) | auf Bot-/Reviewer-Feedback warten, Merge-Status beobachten |
 | #3 | `anomalyco/opencode#45609` | geschlossen, nicht gemergt; Branch entfernt, Tag `archive/upstream-pr-45609` | Root-Fall testen, danach Issue und neuer kurzer Branch |
 
 `v2-compat.ts` und die zwischenzeitlichen Azure-Anpassungen sind keine neuen Fork-Kandidaten:
@@ -65,9 +65,11 @@ es gegen den aktuellen Fork erneut abgeglichen:
 7. hier Upstream-Basis, Fork-Quellstand, Branch-HEAD, Prüfungen und Status aktualisieren, bevor der
    Veröffentlichungshelfer laufen darf.
 
-Aktuell gibt es noch keine Paketbranches. Die jüngsten Korrekturen liegen auf `dev`/`origin/dev` in
-`9405502779` und werden deshalb beim späteren just-in-time Aufbau automatisch aus dem aktuellen
-Verhaltensdiff berücksichtigt; es muss jetzt kein bestehender Branch nachgezogen werden.
+Stand: `async-session-idle` (Kandidat #2) ist als PR #46125 offen, basiert auf `upstream/dev`
+`dc4449df0d`, HEAD `48d064de56`. Vor jedem Update dieses PRs Diff, Hunks und Status gegen den
+aktuellen Fork-Stand `b152378fed` erneut prüfen. Die übrigen Kandidaten haben noch keine
+Paketbranches; ihre Korrekturen liegen weiter auf `dev`/`origin/dev` und werden beim späteren
+just-in-time-Aufbau automatisch aus dem aktuellen Verhaltensdiff übernommen.
 
 ### Zusätzlicher Upstream-Architektur-Gate
 
@@ -92,30 +94,42 @@ Besonders relevant:
 - Ein Sprung zu Nutzereingaben wurde in PR `#38484` versucht und nur wegen fehlender Compliance
   geschlossen; auch die Sitzungsnavigation hat damit bekannte Upstream-Historie.
 
-### Einzelfixes: jeweils eigener Branch und eigener Fehlervertrag
+### Abarbeitungsliste: PR-Pakete in Reihenfolge
 
-Mehrere Dateien dürfen in einem Fix enthalten sein, wenn sie gemeinsam genau einen reproduzierbaren
-Fehler beheben. Verschiedene Fehler werden nicht mehr unter Namen wie `session-error-flow`,
-`workspace-route-state` oder `plugin-startup-bounds` zusammengefasst.
+Die Core-/Server-/Desktop-Korrekturen werden gebündelt, wenn sie dasselbe Modul oder denselben
+Reviewer-Pfad teilen. v2-abhängige Pakete (`sidebar-workspace-ui`, `session-navigation-ui`,
+`provider-catalog-sync`, `workspace-readiness-ui`, `session-workspace-layout`,
+`markdown-file-preview`, `native-model-routing`, `followup-queue-controls`) bleiben hier außen
+vor und werden erst nach dem v2-Architektur-Gate angegangen. Permission-Verträge `#32` und
+`#33` sind im Fork gemeinsam committed, gehören aber laut Inventar-Logik in zwei getrennte PRs.
 
-| Reihenfolge | Branch | Kandidat | Upstream-Urteil und Gate |
-|---:|---|---:|---|
-| 1 | `auth-json-safety-pilot` | #1 | Issue #46020 (Bug-Report-Template korrekt); PR #45949 (Vorlage komplett): gegen `upstream/dev` `df35e842f5`; nicht gemergt; altes #45948 geschlossen (non-compliant); Duplikate #45561/#30396 geprüft; Typecheck/Test in Umgebung blockiert; Concurrency-Regression noch zu bestätigen |
-| 2 | `async-session-idle` | #2 | eigenständiger Serverfehler; gezielten Fehlerpfad-Test ergänzen |
-| 3 | `filesystem-root-watch` | #3 | eigenständiger Corefehler; Windows- und POSIX-Root testen |
-| 4 | `dev-plugin-version` | #6 | eigenständiger Dev-Build-Fehler; nicht mit Timeouts koppeln |
-| 5 | `plugin-hook-timeout` | #7 | eigener Hänger in Plugin-Init/Config; Timeout und Logverhalten testen |
-| 6 | `bootstrap-init-timeout` | #8 | eigener Hänger in Instance-Services; bewusste Timeout-Semantik zuerst als Bug begründen |
-| 7 | `windows-zorder-reset` | #20 | eigenständiger Desktopfehler; manueller Nachweis unter Windows 10/11 |
-| 8 | `session-error-sync` | #12 | eigener App-Zustandsfehler; auf `dev` reproduzieren, danach prüfen, ob er in `v2` überhaupt noch besteht |
-| 9 | `directory-bootstrap-wait` | #13 | eigener Bootstrap-Race; alter App-Pfad fehlt in `v2`, daher nicht unverändert portieren |
-| 10 | `event-reconnect-backoff` | #14 | eigener Transportfehler; Reconnect-Test erforderlich; `v2` besitzt eine andere Transportstruktur |
-| 11 | `prompt-editor-recovery` | #15 | eigener Eingabeverlust; zuerst vorhandenen App-Parser auf `dev` wiederverwenden statt unnötig einen zweiten Cross-Package-Parser einzuführen |
-| 12 | `followup-session-directory` | #16 | V1-spezifischer Verzeichnisfehler; nur noch senden, wenn Upstream ihn auf `dev` weiterhin pflegen will |
-| 13 | `session-error-shapes` | #17 | eigener Kompatibilitätsfehler; konkrete tatsächlich auftretende Fehlerformen testen |
-| 14 | `terminal-route-state` | #23 | eigener Routen-/Zustandsfehler; wegen völlig neuer Workspace-Struktur in `v2` dort neu bewerten |
-| 15 | `persistent-permission-choice` | #33 | eigener Berechtigungsfehler: `always` darf nicht zusätzlich vom Transportprotokoll abhängen; Request-Verträge beider Protokolle testen und gegen `v2` neu reproduzieren |
-| 16 | `permission-dock-layout` | #32 | eigenständiger visueller Dock-Fix über `session-ui` und App; Story, App-Typecheck und Vorher-/Nachher-Aufnahme erforderlich |
+| Reihenfolge | PR-Paket (Branch) | Kandidaten | Status | Inhalt / Voraussetzung |
+|---:|---|---|---|---|
+| 0 | `auth-json-safety-pilot` | #1 | PR #46023 offen gegen `upstream/dev` `dc4449df0d`, HEAD `f9753245e7`, Issue #46020; +34/-12 in `auth/index.ts`; `tsgo --noEmit` exit 0; am 29.08. von `df35e842f5` rebased | auf Maintainer-Feedback warten |
+| 1 | `async-session-idle` | #2 | PR #46125 offen gegen `upstream/dev` `dc4449df0d`, HEAD `48d064de56`, Issue #45610; `tsgo --noEmit` exit 0 | auf Maintainer-Feedback warten |
+| 2 | `init-safety` (Bündel) | #6 + #7 | PR #46162 offen gegen `upstream/dev` `dc4449df0d`, Branch-HEADs `85a2b3bdb2` (#6) und `edd743a009` (#7); Issues #42002 und #46161; +4/-1 in `config.ts` und +11/-5 in `plugin/index.ts`; `tsgo --noEmit` exit 0. **Konkurrenz:** PR #42003 fixt dasselbe Issue #42002 über `InstallationChannel === "latest"` (statt `InstallationVersion.startsWith("0.0.0-dev")`) und berührt `config.ts` + `tui.ts`. Maintainer entscheidet, welche Heuristik gemergt wird; PR #46162 wird nicht zurückgezogen, sondern läuft parallel | auf Maintainer-Entscheidung warten |
+| 3 | `filesystem-root-watch` | #3 | PR #46148 offen gegen `upstream/dev` `dc4449df0d`, HEAD `8db031423c`, Issue #45611; +7/-2 in `watcher.ts`; `tsgo --noEmit` exit 0 | auf Maintainer-Feedback warten |
+| 4 | `bootstrap-init-timeout` | #8 | PR #46167 offen gegen `upstream/dev` `dc4449df0d`, HEAD `a95369d965`, Issue #46166; +16/-2 in `bootstrap.ts`; `tsgo --noEmit` exit 0 | auf Maintainer-Feedback warten |
+| 5 | `windows-zorder-reset` | #20 | nicht begonnen | Desktop; manueller Win10/11-Nachweis |
+| 6 | `build-and-dev-flags` (Bündel) | #9 + #21 | PR #46196 offen gegen `upstream/dev` `dc4449df0d`, HEADs `a748a93544` (#9) und `9fda3f7da1` (#21); Issues #46194 und #46195; +2/-1 in `build.ts` und +4/-1 in `index.ts`; `tsgo --noEmit` exit 0 in beiden Paketen | auf Maintainer-Feedback warten |
+| 7 | `permission-dock-layout` | #32 | nicht begonnen | UI-Fix; Story, App-Typecheck, Vorher/Nachher |
+| 8 | `persistent-permission-choice` | #33 | nicht begonnen | Permission-Fix; V1-Request-`always`-Vertrag prüfen |
+| v2-1 | `sidebar-workspace-ui` | #28 + Sidebar-Teile aus #31 | blockiert | gegen `v2` re-evaluieren |
+| v2-2 | `session-navigation-ui` | #18, #19, #25, #29 | blockiert | gegen `v2` re-evaluieren |
+| v2-3 | `session-workspace-layout` | layoutneutrale Teile aus #31 | blockiert | nach `v2` Übernahme |
+| v2-4 | `workspace-readiness-ui` | #27 | blockiert | nach `v2` Übernahme |
+| v2-5 | `provider-catalog-sync` | #11 | blockiert | gegen `v2` |
+| v2-6 | `markdown-file-preview` | #30 | blockiert | Design-Issue, gegen `v2` |
+| v2-7 | `native-model-routing` | #5 | blockiert | Design-Issue, Routingmatrix |
+| app-v1 | App-Fixes #12, #13, #14, #15, #16, #17, #23 | diverse | blockiert | alter App-Pfad fehlt in `v2`; erst nach v2-Übernahme neu reproduzieren |
+| entfällt | `followup-queue-controls` | #22, #26 | entfällt | in `v2` bereits umgesetzt |
+| ohne | `session-title-generation` | #4, #24 | ohne Branch | Architekturentscheidung offen |
+
+Damit sind 9 PR-Pakete (1 laufend, 8 neu) der „Non-v2"-Strecke definiert. PR 0 (Pilot) und
+PR 1 (async-session-idle) laufen schon. Die Pakete 2–8 bauen jeweils auf dem aktuellen
+`upstream/dev`-Stand auf (just-in-time), mit eigenem Issue und vollständiger PR-Vorlage.
+Bündel-Pakete (2, 6) erhalten eine intentionale Commit-Serie, sodass jeder Korrekturteil
+einzeln prüfbar bleibt.
 
 ### Zusammenhängende Features und größere Funktionsverträge
 
@@ -146,25 +160,26 @@ absichern.
 
 ## Empfehlungen in Reihenfolge
 
+Die konkrete Reihenfolge und Bündelung der PR-Pakete steht in der
+**Abarbeitungsliste: PR-Pakete in Reihenfolge** weiter oben. Diese Sektion hier hält nur
+die querschnittlichen Pflichten, die unabhängig vom konkreten Paket gelten:
+
 1. **Patch-Dokument nachziehen — erledigt**: `message-timeline.tsx`, Follow-up-/Queue-Bündel,
-   `tabs.tsx`/`tab-migration.ts` und Session-UI-Nähte sind jetzt als Abschnitte 13–17 in
+   `tabs.tsx`/`tab-migration.ts` und Session-UI-Nähte sind als Abschnitte 13–17 in
    `plans/upstream-patches.md` mit Markern 14a–18a in `patches.ps1` erfasst; alle 48 Marker
    grün. Übrig bleibt nur die negative Prüfung Icon-Discovery (Abschnitt 18, von Hand).
 2. **Tabs-Abweichungen akzeptieren und dokumentieren** — erledigt: Abschnitt „Sichtbare
-   Abweichungen im Tab-Modus" in `plans/upstream-patches.md`. Alle vier Stellen sind
-   Verbesserungen, die auch im Tab-Modus funktionieren; der Umschalter bleibt voll bedienbar.
-3. **Ersten Fix als Pilot neu aufsetzen**: `auth-json-safety` mit dem PR-Titel
-   `fix(opencode): serialize and atomically write
-   auth.json` — klein, UI-frei, Concurrency-Test liegt bereits vor. Zuerst Duplikate und ein
-   bestehendes Issue prüfen, andernfalls ein knappes Bug-Issue über die offizielle Vorlage anlegen.
-   Danach einen neuen kurzen Zweig von aktuellem `upstream/dev` abschneiden; nie den geschlossenen
-   Branch wiederverwenden und nie vom mQorva-`dev` abzweigen.
-4. **Danach die unabhängigen Core-/Server-/Desktop-Fixes einzeln behandeln**: #2, #3, #6, #7,
-   #8 und #20. Jeder bekommt eigenen Repro, Test, Issue und Branch.
-5. **Alte App-Fixes nicht blind auf `dev` paketieren**: #11–#17 und #23 zuerst gegen die neue
-   `v2`-Architektur reproduzieren. Wo der Fehler dort weiter existiert, neu in deren aktuellem
-   Vertrag implementieren; alte Dateien oder Hunks nicht portieren.
-6. **UI als bekannte Upstream-Themen weiterführen**: Die mQorva-Seitenleiste bleibt eine eigene,
+   Abweichungen im Tab-Modus" unten. Alle vier Stellen sind Verbesserungen, die auch im
+   Tab-Modus funktionieren; der Umschalter bleibt voll bedienbar.
+3. **Nicht-v2-Pakete zuerst**: Pakete 0–8 der Abarbeitungsliste (Auth, Async-Idle, Init-Safety,
+   Filesystem-Root, Bootstrap-Timeout, Windows-Z-Order, Build-Flags, Permission-Dock,
+   Permission-Choice) sind unabhängig vom `v2`-Architektur-Gate und werden in dieser
+   Reihenfolge abgearbeitet. Bündel (`init-safety`, `build-and-dev-flags`) erhalten je
+   eine intentionale Commit-Serie, damit die Mitglieder einzeln prüfbar bleiben.
+4. **v2-Pakete nach Architektur-Gate**: v2-1 bis v2-7 sowie `app-v1` erst nach Übernahme
+   beziehungsweise Re-Evaluation gegen den aktuellen `upstream/v2`-Stand. Bis dahin
+   **keine Paketbranches auf Vorrat** anlegen.
+5. **UI als bekannte Upstream-Themen weiterführen**: Die mQorva-Seitenleiste bleibt eine eigene,
    umfangreichere Lösung, wird aber gegen `#36942`, `#38308` und den nach `v2` gemergten PR
    `#45210` abgegrenzt. Markdown-Vorschau und Sitzungsnavigation knüpfen an ihre geschlossenen
    Vorgänger an. Erst nach dieser Design-Abstimmung entstehen Featurebranches.
@@ -292,15 +307,22 @@ Abweichungen sind produktneutrale Verbesserungen:
 
 ## Zählung und Pflegezustand
 
-Die Liste enthält 33 nummerierte Prüfthemen, aber ausdrücklich keine 33 geplanten PRs. Aus der
-Upstream-Prüfung ergeben sich zunächst sieben voneinander unabhängige Core-/Server-/Desktop-Fixes
-(#1, #2, #3, #6, #7, #8, #20). Weitere App-Fixes bleiben einzelne Fehlerverträge, werden aber wegen
-der ersetzten `v2`-Architektur erst dort neu reproduziert. Features werden nach vorhandenen
-Upstream-Verträgen gruppiert; #22 ist in `v2` im Kern bereits umgesetzt, #10 bleibt Testmaterial und
-das Titelthema #4/#24 bleibt ohne Branch. Die Korrekturen #32 und #33 bleiben zwei getrennte
-Permission-Verträge, obwohl sie im Fork gemeinsam committed wurden. Die großen UI-Themen sind keine
-Kopie der Upstream-Arbeit, müssen ihre Überschneidungen mit `v2` aber vor der Extraktion ausdrücklich
-abgrenzen.
+Die Liste enthält 33 nummerierte Prüfthemen, aber keine 33 PRs. Die **Abarbeitungsliste:
+PR-Pakete in Reihenfolge** weiter oben bündelt die unabhängigen Core-/Server-/Desktop-/
+Permission-Korrekturen zu 9 PR-Paketen (Pakete 0–8: 1 laufend, 8 neu). Hinzu kommen die
+v2-abhängigen Pakete (v2-1 bis v2-7), die App-Fixes (`app-v1`) und die entfallenen Themen
+(`followup-queue-controls`, `session-title-generation`). PR #46125 ist offen
+(Branch `async-session-idle`, HEAD `48d064de56`, Basis `upstream/dev` `dc4449df0d`); PR #46023
+ist der laufende Pilot (`auth-json-safety-pilot`, Basis `upstream/dev` `dc4449df0d`, HEAD `f9753245e7`); PR #46148
+ist offen (Branch `filesystem-root-watch`, HEAD `8db031423c`, Basis `upstream/dev` `dc4449df0d`);
+PR #46162 ist offen (Branch `init-safety`, Bündel #6+#7, HEADs `85a2b3bdb2` und `edd743a009`,
+Basis `upstream/dev` `dc4449df0d`); PR #46167 ist offen (Branch `bootstrap-init-timeout`,
+HEAD `a95369d965`, Basis `upstream/dev` `dc4449df0d`); PR #46196 ist offen (Branch
+`build-and-dev-flags`, Bündel #9+#21, HEADs `a748a93544` und `9fda3f7da1`,
+Basis `upstream/dev` `dc4449df0d`).
+Die Korrekturen #32 und #33 bleiben zwei getrennte Permission-Verträge, obwohl sie im Fork
+gemeinsam committed wurden. Die großen UI-Themen sind keine Kopie der Upstream-Arbeit, müssen
+ihre Überschneidungen mit `v2` aber vor der Extraktion ausdrücklich abgrenzen.
 
 Vor jedem konkreten PR gilt der aktuelle Diff `upstream/dev..dev` als Quelle der Wahrheit. Für
 App-Änderungen kommt der Vergleich mit dem dann aktuellen `upstream/v2` als Architektur-Gate hinzu.

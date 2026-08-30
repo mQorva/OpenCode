@@ -1,6 +1,7 @@
 import { For, Show, createEffect, createMemo } from "solid-js"
 import { createStore } from "solid-js/store"
 import { Button } from "@opencode-ai/ui/button"
+import { ComposerCard } from "@opencode-ai/ui/composer-card"
 import { DockTray } from "@opencode-ai/ui/dock-surface"
 import { IconButton } from "@opencode-ai/ui/icon-button"
 import { ButtonV2 } from "@opencode-ai/ui/v2/button-v2"
@@ -102,10 +103,7 @@ export function SessionRevertDock(props: {
         </DockTray>
       }
     >
-      <div
-        data-component="session-revert-dock"
-        class="w-full overflow-hidden rounded-xl border-[0.5px] border-v2-border-border-base bg-v2-background-bg-layer-02"
-      >
+      <ComposerCard data-component="session-revert-dock" shape="card">
         <div
           class="flex h-[42px] items-center gap-2 pl-4 pr-2"
           role="button"
@@ -178,7 +176,7 @@ export function SessionRevertDock(props: {
           </div>
           <div class="h-[18px]" aria-hidden="true" />
         </Show>
-      </div>
+      </ComposerCard>
     </Show>
   )
 }

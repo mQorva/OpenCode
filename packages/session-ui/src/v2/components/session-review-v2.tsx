@@ -1,4 +1,3 @@
-import { IconButton } from "@opencode-ai/ui/icon-button"
 import { useI18n } from "@opencode-ai/ui/context/i18n"
 import { SegmentedControlItemV2, SegmentedControlV2 } from "@opencode-ai/ui/v2/segmented-control-v2"
 import { TextInputV2 } from "@opencode-ai/ui/v2/text-input-v2"
@@ -229,9 +228,9 @@ export function SessionReviewV2(props: SessionReviewV2Props) {
             </>
           }
         >
-          <IconButton
-            icon="arrow-left"
-            variant="ghost"
+          <IconButtonV2
+            icon={<Icon name="arrow-left" size="small" />}
+            variant="ghost-muted"
             size="small"
             class="session-review-v2-file-nav-button"
             disabled={!prev()}
@@ -249,9 +248,9 @@ export function SessionReviewV2(props: SessionReviewV2Props) {
             </>
           }
         >
-          <IconButton
-            icon="arrow-right"
-            variant="ghost"
+          <IconButtonV2
+            icon={<Icon name="arrow-right" size="small" />}
+            variant="ghost-muted"
             size="small"
             class="session-review-v2-file-nav-button"
             disabled={!next()}

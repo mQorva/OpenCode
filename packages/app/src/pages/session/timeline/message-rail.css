@@ -90,6 +90,10 @@
   --mark-scale: calc(var(--mark-rest-scale) + (1 - var(--mark-rest-scale)) * var(--mark-falloff));
 }
 
+/* The resting colour and opacity apply to every mark. The mark directly under the pointer
+   (`data-near="true"`) breaks out to the bright colour and full opacity; all neighbours stay
+   on the resting ramp regardless of how close they are on the y-axis, so the rail reads as
+   "one mark highlighted" instead of "a smear of white around the cursor". */
 [data-slot="session-message-rail-mark"]::before {
   content: "";
   display: block;
@@ -99,15 +103,8 @@
      turn into ellipses whose squash changes throughout the animation, which is what makes the
      line look like it is wavering rather than growing. */
   height: 2px;
-  /* Colour travels with the growth, not just opacity: a mark near the pointer moves up the text
-     ramp as it grows, which is what makes the rail read as one gradient with a peak rather than as
-     dim marks plus one bright outlier. */
-  background: color-mix(
-    in oklab,
-    var(--v2-text-text-base) calc(var(--mark-falloff) * 100%),
-    var(--v2-text-text-faint)
-  );
-  opacity: calc(0.4 + 0.6 * var(--mark-falloff));
+  background: var(--v2-text-text-faint);
+  opacity: 0.4;
   /* Scale rather than width: growth stays on the compositor instead of laying out the whole
      rail on every frame. */
   transform: scaleX(var(--mark-scale));
@@ -120,24 +117,19 @@
     background-color 160ms ease-out;
 }
 
-/* The active mark carries its weight through colour, not through a taller line: changing the
-   height would make the row it sits in a different size from its neighbours. It sits above the
-   resting marks but below the one under the pointer, and rises to full when it is that one. */
-[data-slot="session-message-rail-mark"][data-active="true"]::before {
+/* The mark under the pointer lifts to the bright colour. The growth scale still comes from
+   `--mark-falloff` so the eased animation remains smooth. */
+[data-slot="session-message-rail-mark"][data-near="true"]::before {
   background: var(--v2-text-text-base);
-  opacity: calc(0.6 + 0.4 * var(--mark-falloff));
+  opacity: 1;
 }
 
-/* While the pointer is in the rail, the active mark steps back so "where I am" stops competing
-   with "where I am pointing". The one under the pointer is exempt. */
-[data-slot="session-message-rail"][data-pointing="true"]
-  [data-slot="session-message-rail-mark"][data-active="true"]:not([data-near="true"])::before {
-  background: color-mix(
-    in oklab,
-    var(--v2-text-text-base) calc(var(--mark-falloff) * 100%),
-    var(--v2-text-text-faint)
-  );
-  opacity: calc(0.4 + 0.6 * var(--mark-falloff));
+/* The active mark carries its weight through colour, not through a taller line: changing the
+   height would make the row it sits in a different size from its neighbours. While the pointer
+   is elsewhere, it sits on the bright resting colour so "where I am" is always visible. */
+[data-slot="session-message-rail-mark"][data-active="true"]::before {
+  background: var(--v2-text-text-base);
+  opacity: 0.6;
 }
 
 /* Dragging along the rail: the mark under the finger has to track it, not trail behind. */

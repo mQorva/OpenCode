@@ -31,7 +31,6 @@ type Dictionary = i18n.Flatten<RawDictionary>
 type PluralKey =
   | UiI18nPluralKey
   | "session.question.pending"
-  | "session.followupDock.summary"
   | "session.revertDock.summary"
 type Source = { dict: Record<string, string> }
 

@@ -21,6 +21,7 @@ import { TooltipKeybind } from "@opencode-ai/ui/tooltip"
 import { ResizeHandle } from "@opencode-ai/ui/resize-handle"
 import { Mark } from "@opencode-ai/ui/logo"
 import { IconButtonV2 } from "@opencode-ai/ui/v2/icon-button-v2"
+import { Icon as IconV2 } from "@opencode-ai/ui/v2/icon"
 import { KeybindV2 } from "@opencode-ai/ui/v2/keybind-v2"
 import { TooltipV2 } from "@opencode-ai/ui/v2/tooltip-v2"
 import type { SnapshotFileDiff, VcsFileDiff } from "@opencode-ai/sdk/v2"
@@ -602,9 +603,10 @@ export function SessionSidePanel(props: {
                                     placement="bottom"
                                     gutter={10}
                                   >
-                                    <IconButton
-                                      icon="close-small"
-                                      variant="ghost"
+                                    <IconButtonV2
+                                      size="small"
+                                      variant="ghost-muted"
+                                      icon={<IconV2 name="close-small" size="small" />}
                                       class="h-5 w-5"
                                       onClick={() => tabs().close("context")}
                                       aria-label={language.t("common.closeTab")}
@@ -649,9 +651,10 @@ export function SessionSidePanel(props: {
                                         placement="bottom"
                                         gutter={10}
                                       >
-                                        <IconButton
-                                          icon="close-small"
-                                          variant="ghost"
+                                        <IconButtonV2
+                                          size="small"
+                                          variant="ghost-muted"
+                                          icon={<IconV2 name="close-small" size="small" />}
                                           class="h-5 w-5"
                                           onClick={() => tabs().close(SESSION_OPEN_FILE_TAB)}
                                           aria-label={language.t("common.closeTab")}

@@ -113,8 +113,16 @@
 
   body[data-new-layout] .desktop-app-menu [data-slot="dropdown-menu-item"]:where(:hover, [data-highlighted]),
   body[data-new-layout] .desktop-app-menu [data-slot="dropdown-menu-sub-trigger"]:where(:hover, [data-highlighted]) {
-    background: var(--v2-overlay-simple-overlay-hover);
+    background: color-mix(in srgb, var(--v2-background-bg-layer-02) 60%, transparent);
     color: var(--v2-text-text-base);
+  }
+
+  body[data-new-layout] .desktop-app-menu [data-slot="dropdown-menu-item-label"],
+  body[data-new-layout] .desktop-app-menu [data-slot="dropdown-menu-sub-trigger-label"] {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
   }
 
   body[data-new-layout] .desktop-app-menu [data-slot="dropdown-menu-group-label"] {

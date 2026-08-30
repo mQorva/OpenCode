@@ -1,7 +1,9 @@
 import { For, Show, createEffect, createMemo, onCleanup, onMount, type Component } from "solid-js"
 import { createStore } from "solid-js/store"
 import { useMutation } from "@tanstack/solid-query"
-import { Button } from "@opencode-ai/ui/button"
+import { ButtonV2 } from "@opencode-ai/ui/v2/button-v2"
+import { Icon as IconV2 } from "@opencode-ai/ui/v2/icon"
+import { IconButtonV2 } from "@opencode-ai/ui/v2/icon-button-v2"
 import { DockPrompt } from "@opencode-ai/session-ui/dock-prompt"
 import { Icon } from "@opencode-ai/ui/icon"
 import { useSpring } from "@opencode-ai/ui/motion-spring"
@@ -478,42 +480,39 @@ export const SessionQuestionDock: Component<{ request: QuestionRequest; onSubmit
                   </For>
                 </div>
               </Show>
-              <button
+              <IconButtonV2
                 type="button"
-                data-component="icon-button"
-                data-icon="chevron-down"
-                data-size="normal"
-                data-variant="ghost"
+                size="normal"
+                variant="ghost-muted"
+                icon={<IconV2 name="chevron-down" size="small" />}
                 disabled={sending()}
                 style={{ transform: `rotate(${hidden() * 180}deg)` }}
                 onClick={store.minimized ? restore : minimize}
                 aria-label={language.t(store.minimized ? "session.question.restore" : "session.question.minimize")}
-              >
-                <Icon name="chevron-down" size="small" />
-              </button>
+              />
             </div>
           </>
         }
         footer={
           <>
-            <Button variant="ghost" size="large" disabled={sending()} onClick={reject} aria-keyshortcuts="Escape">
+            <ButtonV2 variant="ghost-muted" size="large" disabled={sending()} onClick={reject} aria-keyshortcuts="Escape">
               {language.t("ui.common.dismiss")}
-            </Button>
+            </ButtonV2>
             <div data-slot="question-footer-actions">
               <Show when={store.tab > 0}>
-                <Button variant="secondary" size="large" disabled={sending()} onClick={back}>
+                <ButtonV2 variant="neutral" size="large" disabled={sending()} onClick={back}>
                   {language.t("ui.common.back")}
-                </Button>
+                </ButtonV2>
               </Show>
-              <Button
-                variant={last() ? "primary" : "secondary"}
+              <ButtonV2
+                variant={last() ? "contrast" : "neutral"}
                 size="large"
                 disabled={sending()}
                 onClick={next}
                 aria-keyshortcuts="Meta+Enter Control+Enter"
               >
                 {last() ? language.t("ui.common.submit") : language.t("ui.common.next")}
-              </Button>
+              </ButtonV2>
             </div>
           </>
         }

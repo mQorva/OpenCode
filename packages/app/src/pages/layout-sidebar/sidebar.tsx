@@ -46,6 +46,7 @@ import {
   DialogV2,
   Icon,
   IconButton,
+  IconV2,
   MenuV2,
   IconButtonV2,
   Persist,
@@ -71,6 +72,7 @@ import {
   useServerSync,
   useSettingsDialog,
   useTabs,
+  useCommand,
   type DraftTab,
   type LocalProject,
 } from "./upstream"
@@ -158,11 +160,11 @@ function DraftItem(props: { draft: DraftTab; active: boolean; onSelect: () => vo
         <SidebarMarquee>{language.t("sidebarLayout.draft")}</SidebarMarquee>
       </button>
       <Tooltip value={language.t("common.close")} placement="top">
-        <IconButton
-          icon="close-small"
-          iconSize="small"
-          variant="ghost"
-          class="!size-7 shrink-0 rounded-md text-icon-base opacity-0 group-hover/draft:opacity-100 group-focus-within/draft:opacity-100"
+        <IconButtonV2
+          size="small"
+          variant="ghost-muted"
+          icon={<IconV2 name="close-small" size="small" />}
+          class="!size-7 shrink-0 rounded-md opacity-0 group-hover/draft:opacity-100 group-focus-within/draft:opacity-100"
           onClick={props.onClose}
           aria-label={language.t("common.close")}
         />
@@ -267,11 +269,11 @@ function ProjectGroup(props: {
           </button>
           <div class="shrink-0 items-center pr-1 hidden group-hover/project:flex group-focus-within/project:flex">
             <Tooltip value={language.t("command.session.new")} placement="top">
-              <IconButton
-                icon="speech-bubble"
-                iconSize="small"
-                variant="ghost"
-                class="!size-7 shrink-0 rounded-md text-icon-base"
+              <IconButtonV2
+                size="small"
+                variant="ghost-muted"
+                icon={<IconV2 name="speech-bubble" size="small" />}
+                class="!size-7 shrink-0 rounded-md"
                 onClick={props.onNewChat}
                 aria-label={language.t("command.session.new")}
               />
@@ -374,6 +376,7 @@ export function Sidebar() {
   const pickDirectory = useDirectoryPicker()
   const showSettings = useSettingsDialog()
   const showServers = useSettingsDialog("servers")
+  const command = useCommand()
 
   const [pinned, setPinned] = persisted(Persist.window("sidebar-layout.pinned"), createStore<string[]>([]))
   const [unread, setUnread] = persisted(Persist.window("sidebar-layout.unread"), createStore<string[]>([]))
@@ -701,6 +704,16 @@ export function Sidebar() {
     ))
   }
 
+  command.register("sidebar-project-add", () => [
+    {
+      id: "project.add",
+      title: language.t("sidebarLayout.addProject"),
+      category: language.t("command.category.project"),
+      keybind: "mod+o",
+      onSelect: addProject,
+    },
+  ])
+
   const editProject = (project: LocalProject) => {
     const conn = server.current
     if (!conn) return
@@ -869,11 +882,11 @@ export function Sidebar() {
             class="w-full rounded-md bg-v2-background-bg-layer-02 py-1.5 ps-2 pe-7 text-[13px] font-[440] leading-4 tracking-[-0.04px] text-text-strong outline-none"
           />
           <Show when={filter()}>
-            <IconButton
-              icon="close-small"
-              iconSize="small"
-              variant="ghost"
-              class="!size-6 absolute end-5 top-1/2 -translate-y-1/2 rounded-md text-icon-base"
+            <IconButtonV2
+              size="small"
+              variant="ghost-muted"
+              icon={<IconV2 name="close-small" size="small" />}
+              class="!size-6 absolute end-5 top-1/2 -translate-y-1/2 rounded-md"
               onClick={() => setFilter("")}
               aria-label={language.t("common.clear")}
             />
@@ -991,9 +1004,10 @@ export function Sidebar() {
                   <div class="flex items-center gap-1 px-2 py-1 text-[11px] font-[530] leading-4 tracking-[0.05px] text-text-weak">
                     <span class="flex-1">{language.t("sidebarLayout.projects")}</span>
                     <Tooltip placement="top" value={language.t("sidebarLayout.addProject")}>
-                      <IconButton
-                        icon="plus"
-                        variant="ghost"
+                      <IconButtonV2
+                        size="small"
+                        variant="ghost-muted"
+                        icon={<IconV2 name="plus" size="small" />}
                         onClick={addProject}
                         aria-label={language.t("sidebarLayout.addProject")}
                       />

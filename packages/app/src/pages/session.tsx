@@ -1297,11 +1297,11 @@ export default function Page() {
           {language.t("session.review.noVcs.createGit.description")}
         </div>
       </div>
-      <Button size="large" disabled={gitMutation.isPending} onClick={initGit}>
+      <ButtonV2 size="large" variant="contrast" disabled={gitMutation.isPending} onClick={initGit}>
         {gitMutation.isPending
           ? language.t("session.review.noVcs.createGit.actionLoading")
           : language.t("session.review.noVcs.createGit.action")}
-      </Button>
+      </ButtonV2>
     </div>
   )
 

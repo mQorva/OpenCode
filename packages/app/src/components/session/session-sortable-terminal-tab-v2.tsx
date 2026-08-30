@@ -2,10 +2,11 @@ import type { JSX } from "solid-js"
 import { Show, createEffect, onCleanup } from "solid-js"
 import { createStore } from "solid-js/store"
 import { useSortable } from "@dnd-kit/solid/sortable"
-import { IconButton } from "@opencode-ai/ui/icon-button"
 import { Tabs } from "@opencode-ai/ui/tabs"
 import { DropdownMenu } from "@opencode-ai/ui/dropdown-menu"
 import { Icon } from "@opencode-ai/ui/icon"
+import { Icon as IconV2 } from "@opencode-ai/ui/v2/icon"
+import { IconButtonV2 } from "@opencode-ai/ui/v2/icon-button-v2"
 import { MenuV2 } from "@opencode-ai/ui/v2/menu-v2"
 import { isDefaultTitle as isDefaultTerminalTitle } from "@/context/terminal-title"
 import { useTerminal, type LocalPTY } from "@/context/terminal"
@@ -152,9 +153,10 @@ export function SortableTerminalTabV2(props: {
                 button: "border-0 outline-none focus:outline-none focus-visible:outline-none !shadow-none !ring-0",
               }}
               closeButton={
-                <IconButton
-                  icon="close"
-                  variant="ghost"
+                <IconButtonV2
+                  size="small"
+                  variant="ghost-muted"
+                  icon={<IconV2 name="close" size="small" />}
                   onClick={(e) => {
                     e.stopPropagation()
                     close()
@@ -226,9 +228,10 @@ export function SortableTerminalTabV2(props: {
                 focus()
               }}
               closeButton={
-                <IconButton
-                  icon="close-small"
-                  variant="ghost"
+                <IconButtonV2
+                  size="small"
+                  variant="ghost-muted"
+                  icon={<IconV2 name="close-small" size="small" />}
                   class="h-5 w-5"
                   onClick={(e) => {
                     e.stopPropagation()
