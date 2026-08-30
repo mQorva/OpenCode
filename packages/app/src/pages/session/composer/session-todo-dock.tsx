@@ -336,7 +336,7 @@ function TodoList(props: { todos: Todo[] }) {
       <div
         class="pointer-events-none absolute top-0 left-0 right-0 h-4 transition-opacity duration-150"
         style={{
-          background: "linear-gradient(to bottom, var(--background-base), transparent)",
+          background: "linear-gradient(to bottom, var(--v2-background-bg-layer-02), transparent)",
           opacity: store.stuck ? 1 : 0,
         }}
       />

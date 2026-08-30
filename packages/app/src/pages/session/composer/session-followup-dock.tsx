@@ -1,6 +1,6 @@
 import { createSignal, For, Show } from "solid-js"
 import { IconButtonV2 } from "@opencode-ai/ui/v2/icon-button-v2"
-import { DockTray } from "@opencode-ai/ui/dock-surface"
+import { ComposerCard } from "@opencode-ai/ui/composer-card"
 import { Icon } from "@opencode-ai/ui/icon"
 import { Tooltip } from "@opencode-ai/ui/tooltip"
 import { useLanguage } from "@/context/language"
@@ -49,141 +49,172 @@ export function SessionFollowupDock(props: {
   onSend: (id: string) => void
   onEdit: (id: string) => void
   onRemove: (id: string) => void
-  onMove: (fromID: string, toID: string) => void
+  onMove: (fromID: string, toID: string, position: "before" | "after") => void
   onItemPauseToggle: (id: string) => void
 }) {
   const language = useLanguage()
   const [dragging, setDragging] = createSignal<string>()
+  const [dropTarget, setDropTarget] = createSignal<{ id: string; position: "before" | "after" } | undefined>()
 
   const startDrag = (event: DragEvent, id: string) => {
     setDragging(id)
     if (event.dataTransfer) event.dataTransfer.effectAllowed = "move"
   }
+  const endDrag = () => {
+    setDragging(undefined)
+    setDropTarget(undefined)
+  }
+  const computePosition = (event: DragEvent, target: HTMLElement): "before" | "after" => {
+    const box = target.getBoundingClientRect()
+    return event.clientY < box.top + box.height / 2 ? "before" : "after"
+  }
+  const onItemDragOver = (event: DragEvent & { currentTarget: HTMLDivElement }, id: string) => {
+    event.preventDefault()
+    if (event.dataTransfer) event.dataTransfer.dropEffect = "move"
+    setDropTarget({ id, position: computePosition(event, event.currentTarget) })
+  }
   const dropOn = (id: string) => {
     const from = dragging()
-    if (!from) return
-    props.onMove(from, id)
-    setDragging(undefined)
+    const target = dropTarget()
+    if (!from || !target || from === id) return
+    props.onMove(from, target.id, target.position)
+    endDrag()
   }
 
   return (
-    // Sits behind the composer like a sheet: inset on both sides, no border of its own, and a step
-    // lighter than the input. The overlap then reads as depth rather than as two cards colliding.
-    <DockTray
-      data-component="session-followup-dock"
-      class="mx-2.5 border-0 bg-v2-background-bg-layer-02"
-      style={{
-        "margin-bottom": "-0.875rem",
-        "border-bottom-left-radius": 0,
-        "border-bottom-right-radius": 0,
-      }}
-    >
+    <ComposerCard data-component="session-followup-dock" shape="tray">
       <div class="px-2 pt-2 pb-6 flex flex-col gap-0.5 max-h-42 overflow-y-auto no-scrollbar">
         <For each={props.items}>
-          {(item) => (
-            <div
-              data-component="session-followup-item"
-              classList={{
-                "flex items-center gap-1.5 min-w-0 rounded-lg px-1 py-1.5": true,
-                "bg-v2-overlay-simple-overlay-hover": dragging() === item.id,
-              }}
-              onDragOver={(event) => {
-                event.preventDefault()
-                if (event.dataTransfer) event.dataTransfer.dropEffect = "move"
-              }}
-              onDrop={() => dropOn(item.id)}
-            >
-              <IconButtonV2
-                type="button"
-                size="small"
-                variant="ghost-muted"
-                icon={<Icon name="grip-vertical" size="small" />}
-                class="shrink-0 cursor-grab"
-                aria-label={language.t("session.followupDock.drag")}
-                onDragStart={(event) => startDrag(event, item.id)}
-                onDragEnd={() => setDragging(undefined)}
-                onPointerDown={(event) => event.stopPropagation()}
-              />
-              <span
+          {(item, index) => (
+            <>
+              <Show when={dropTarget()?.id === item.id && dropTarget()?.position === "before"}>
+                <DropIndicator />
+              </Show>
+              <div
+                data-component="session-followup-item"
+                draggable={true}
                 classList={{
-                  "min-w-0 flex-1 truncate text-13-regular cursor-default select-none": true,
-                  "text-text-base": !item.paused,
-                  // A held-back entry stays readable but stops looking like it is next in line.
-                  "text-text-weak line-through decoration-text-weaker": !!item.paused,
+                  "flex items-center gap-1.5 min-w-0 rounded-lg px-1 py-1.5 cursor-grab active:cursor-grabbing": true,
+                  "bg-v2-overlay-simple-overlay-hover": dragging() === item.id,
+                  "opacity-60": dragging() !== undefined && dragging() !== item.id,
                 }}
+                onDragStart={(event) => startDrag(event, item.id)}
+                onDragEnd={endDrag}
+                onDragOver={(event) => onItemDragOver(event, item.id)}
+                onDrop={() => dropOn(item.id)}
               >
-                {item.text}
-              </span>
-              <div class="shrink-0 flex items-center gap-1.5">
-                <Tooltip value={language.t("session.followupDock.steer")} placement="top">
-                  <IconButtonV2
-                    type="button"
-                    size="small"
-                    variant="ghost-muted"
-                    class="shrink-0 text-v2-icon-icon-muted"
-                    disabled={!!props.sending}
-                    aria-label={language.t("session.followupDock.steer")}
-                    onClick={() => props.onSend(item.id)}
-                  >
-                    <Icon name="arrow-up" size="small" />
-                  </IconButtonV2>
-                </Tooltip>
-                <Tooltip value={language.t("session.followupDock.edit")} placement="top">
-                  <IconButtonV2
-                    type="button"
-                    size="small"
-                    variant="ghost-muted"
-                    class="shrink-0 text-v2-icon-icon-muted"
-                    aria-label={language.t("session.followupDock.edit")}
-                    onClick={() => props.onEdit(item.id)}
-                  >
-                    <Icon name="pencil-line" size="small" />
-                  </IconButtonV2>
-                </Tooltip>
-                <Tooltip
-                  value={
-                    item.paused
-                      ? language.t("session.followupDock.item.resume")
-                      : language.t("session.followupDock.item.pause")
-                  }
-                  placement="top"
+                <div
+                  data-component="session-followup-drag-handle"
+                  draggable={false}
+                  aria-hidden="true"
+                  class="flex shrink-0 items-center justify-center text-v2-icon-icon-muted"
                 >
-                  <IconButtonV2
-                    type="button"
-                    size="small"
-                    variant="ghost-muted"
-                    class="shrink-0 text-v2-icon-icon-muted"
-                    state={item.paused ? "pressed" : undefined}
-                    aria-pressed={item.paused ? "true" : "false"}
-                    aria-label={
+                  <Icon name="grip-vertical" size="small" />
+                </div>
+                <span
+                  classList={{
+                    "min-w-0 flex-1 truncate text-13-regular cursor-default select-none": true,
+                    "text-text-base": !item.paused,
+                    // A held-back entry stays readable but stops looking like it is next in line.
+                    "text-text-weak line-through decoration-text-weaker": !!item.paused,
+                  }}
+                >
+                  {item.text}
+                </span>
+                <div class="shrink-0 flex items-center gap-1.5">
+                  <Tooltip value={language.t("session.followupDock.steer")} placement="top">
+                    <IconButtonV2
+                      type="button"
+                      size="small"
+                      variant="ghost-muted"
+                      class="shrink-0 text-v2-icon-icon-muted"
+                      disabled={!!props.sending}
+                      draggable={false}
+                      aria-label={language.t("session.followupDock.steer")}
+                      onClick={() => props.onSend(item.id)}
+                    >
+                      <Icon name="arrow-up" size="small" />
+                    </IconButtonV2>
+                  </Tooltip>
+                  <Tooltip value={language.t("session.followupDock.edit")} placement="top">
+                    <IconButtonV2
+                      type="button"
+                      size="small"
+                      variant="ghost-muted"
+                      class="shrink-0 text-v2-icon-icon-muted"
+                      draggable={false}
+                      aria-label={language.t("session.followupDock.edit")}
+                      onClick={() => props.onEdit(item.id)}
+                    >
+                      <Icon name="pencil-line" size="small" />
+                    </IconButtonV2>
+                  </Tooltip>
+                  <Tooltip
+                    value={
                       item.paused
                         ? language.t("session.followupDock.item.resume")
                         : language.t("session.followupDock.item.pause")
                     }
-                    onClick={() => props.onItemPauseToggle(item.id)}
+                    placement="top"
                   >
-                    <Show when={item.paused} fallback={<PauseIcon />}>
-                      <ResumeIcon />
-                    </Show>
-                  </IconButtonV2>
-                </Tooltip>
-                <Tooltip value={language.t("common.delete")} placement="top">
-                  <IconButtonV2
-                    type="button"
-                    size="small"
-                    variant="ghost-muted"
-                    class="shrink-0 text-v2-icon-icon-muted"
-                    aria-label={language.t("common.delete")}
-                    onClick={() => props.onRemove(item.id)}
-                  >
-                    <TrashIcon />
-                  </IconButtonV2>
-                </Tooltip>
+                    <IconButtonV2
+                      type="button"
+                      size="small"
+                      variant="ghost-muted"
+                      class="shrink-0 text-v2-icon-icon-muted"
+                      state={item.paused ? "pressed" : undefined}
+                      draggable={false}
+                      aria-pressed={item.paused ? "true" : "false"}
+                      aria-label={
+                        item.paused
+                          ? language.t("session.followupDock.item.resume")
+                          : language.t("session.followupDock.item.pause")
+                      }
+                      onClick={() => props.onItemPauseToggle(item.id)}
+                    >
+                      <Show when={item.paused} fallback={<PauseIcon />}>
+                        <ResumeIcon />
+                      </Show>
+                    </IconButtonV2>
+                  </Tooltip>
+                  <Tooltip value={language.t("common.delete")} placement="top">
+                    <IconButtonV2
+                      type="button"
+                      size="small"
+                      variant="ghost-muted"
+                      class="shrink-0 text-v2-icon-icon-muted"
+                      draggable={false}
+                      aria-label={language.t("common.delete")}
+                      onClick={() => props.onRemove(item.id)}
+                    >
+                      <TrashIcon />
+                    </IconButtonV2>
+                  </Tooltip>
+                </div>
               </div>
-            </div>
+              <Show
+                when={
+                  index() === props.items.length - 1 &&
+                  dropTarget()?.id === item.id &&
+                  dropTarget()?.position === "after"
+                }
+              >
+                <DropIndicator />
+              </Show>
+            </>
           )}
         </For>
       </div>
-    </DockTray>
+    </ComposerCard>
+  )
+}
+
+function DropIndicator() {
+  return (
+    <div
+      data-component="session-followup-drop-indicator"
+      aria-hidden="true"
+      class="h-0.5 -my-0.5 mx-1 rounded-full bg-v2-text-text-base"
+    />
   )
 }

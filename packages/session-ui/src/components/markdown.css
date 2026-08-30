@@ -173,8 +173,8 @@
   }
 
   .shiki {
-    background: var(--color-background-stronger);
-    color: var(--text-base);
+    background: var(--v2-background-bg-layer-02);
+    color: var(--v2-text-text-base);
     font-size: 13px;
     padding: 12px;
     border-radius: 6px;

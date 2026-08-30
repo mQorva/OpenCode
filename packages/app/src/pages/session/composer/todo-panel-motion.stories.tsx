@@ -26,9 +26,11 @@ This playground renders the real session composer region from app code.
 
 ### Includes
 - \`SessionTodoDock\` (real)
+- \`SessionFollowupDock\` (real, without a header)
 - \`PromptInput\` (real)
 
-No visual reimplementation layer is used for the dock/input stack.`,
+Use the dock and queue controls to verify the todo-only, queue-only, and combined stack. No visual reimplementation
+layer is used for the dock/input stack.`,
       },
     },
   },
@@ -156,6 +158,7 @@ export const Playground = {
     const prompt = usePrompt()
     const [cfg, setCfg] = createStore({
       open: true,
+      queue: true,
       collapsed: false,
       step: 1,
       dockOpenDuration: 0.3,
@@ -237,6 +240,20 @@ export const Playground = {
     }
 
     const dockOpen = () => open()
+    const followup = () =>
+      cfg.queue
+        ? {
+            items: [
+              { id: "queued-1", text: "Check the combined composer spacing" },
+              { id: "queued-2", text: "Run the focused verification", paused: true },
+            ],
+            onItemPauseToggle: () => {},
+            onSend: () => {},
+            onEdit: () => {},
+            onRemove: () => {},
+            onMove: () => {},
+          }
+        : undefined
 
     const toggleDock = () => {
       if (dockOpen()) {
@@ -293,7 +310,7 @@ export const Playground = {
                       ready: () => true,
                       centered: () => false,
                       todo: { collapsed, onToggle: () => setCollapsed(!collapsed()) },
-                      followup: () => undefined,
+                      followup,
                       revert: () => undefined,
                       onResponseSubmit: pin,
                       openParent: () => {},
@@ -322,6 +339,9 @@ export const Playground = {
           </button>
           <button onClick={toggleDrawer} style={btn(dockOpen() && collapsed())}>
             {dockOpen() && collapsed() ? "Expand todo dock" : "Collapse todo dock"}
+          </button>
+          <button onClick={() => setCfg("queue", !cfg.queue)} style={btn(cfg.queue)}>
+            {cfg.queue ? "Hide queue" : "Show queue"}
           </button>
           <button onClick={cycle} style={btn(step() > 0)}>
             Cycle progress ({step()}/3 done)

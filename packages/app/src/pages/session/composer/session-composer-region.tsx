@@ -133,15 +133,17 @@ export function SessionComposerRegion(props: {
               }}
             >
               <Show when={controller.followup()?.items.length}>
-                <SessionFollowupDock
-                  items={controller.followup()!.items}
-                  sending={controller.followup()!.sending}
-                  onItemPauseToggle={controller.followup()!.onItemPauseToggle}
-                  onSend={controller.followup()!.onSend}
-                  onEdit={controller.followup()!.onEdit}
-                  onRemove={controller.followup()!.onRemove}
-                  onMove={controller.followup()!.onMove}
-                />
+                <div data-slot="session-followup-stack" style={{ "margin-bottom": "-0.875rem" }}>
+                  <SessionFollowupDock
+                    items={controller.followup()!.items}
+                    sending={controller.followup()!.sending}
+                    onItemPauseToggle={controller.followup()!.onItemPauseToggle}
+                    onSend={controller.followup()!.onSend}
+                    onEdit={controller.followup()!.onEdit}
+                    onRemove={controller.followup()!.onRemove}
+                    onMove={controller.followup()!.onMove}
+                  />
+                </div>
               </Show>
               <Show
                 when={controller.child()}

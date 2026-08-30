@@ -1,15 +1,3 @@
-/* Guide line in the indent of a project's sessions: without it the list reads as
-   arbitrary padding rather than as a group. */
-[data-slot="sidebar-project-children"]::before {
-  content: "";
-  position: absolute;
-  inset-block: 2px;
-  inset-inline-start: 16px;
-  width: 1px;
-  background: var(--border-weaker-base);
-  pointer-events: none;
-}
-
 [data-slot="sidebar-list-fade"] {
   position: absolute;
   inset-inline: 0;
@@ -26,7 +14,7 @@
   background: var(--v2-border-border-muted, var(--border-weak-base));
 }
 
-/* The dragged session lands directly in front of the marked row. */
+/* The shared accent line marks exactly where a dragged session or project will land. */
 [data-sidebar-row][data-drop]::before {
   content: "";
   position: absolute;
@@ -36,6 +24,10 @@
   height: 2px;
   border-radius: 999px;
   background: var(--v2-border-border-focus);
-  box-shadow: 0 0 6px color-mix(in srgb, var(--v2-border-border-focus) 45%, transparent);
   pointer-events: none;
+}
+
+[data-sidebar-row][data-drop="after"]::before {
+  inset-block-start: auto;
+  inset-block-end: -2px;
 }

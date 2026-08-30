@@ -836,7 +836,7 @@ export function SessionSidePanel(props: {
                       </Tabs.Trigger>
                     </Tabs.List>
                     <Show when={fileTreeTab() === "changes"}>
-                      <Tabs.Content value="changes" class="bg-background-stronger px-3 py-0">
+                      <Tabs.Content value="changes" class="bg-v2-background-bg-layer-01 px-3 py-0">
                         <Switch>
                           <Match when={props.hasReview() || !props.diffsReady()}>
                             <Show
@@ -863,7 +863,7 @@ export function SessionSidePanel(props: {
                       </Tabs.Content>
                     </Show>
                     <Show when={fileTreeTab() === "all"}>
-                      <Tabs.Content value="all" class="bg-background-stronger px-3 py-0">
+                      <Tabs.Content value="all" class="bg-v2-background-bg-layer-01 px-3 py-0">
                         <Switch>
                           <Match when={nofiles()}>{empty(language.t("session.files.empty"))}</Match>
                           <Match when={true}>

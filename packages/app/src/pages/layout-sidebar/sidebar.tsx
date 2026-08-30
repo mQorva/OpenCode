@@ -123,11 +123,10 @@ function PinnedBlock(props: ParentProps) {
 
   return (
     <div
-      // @ts-expect-error -- solid-dnd directive
       use:droppable={droppable}
       classList={{
         "flex flex-col gap-0.5 rounded-md": true,
-        "outline outline-1 outline-border-active": droppable.isActiveDroppable,
+        "bg-v2-background-bg-layer-02/20": droppable.isActiveDroppable,
       }}
     >
       {props.children}
@@ -141,7 +140,6 @@ function DraftItem(props: { draft: DraftTab; active: boolean; onSelect: () => vo
 
   return (
     <div
-      // @ts-expect-error -- solid-dnd directive
       use:draggable={draggable}
       data-sidebar-row=""
       classList={{
@@ -210,17 +208,33 @@ function ProjectGroup(props: {
   canDrop: (source: string, target: string) => boolean
   /** Whether a dragged key is an unassigned draft — the only thing a project can take in. */
   isDraft: (key: string) => boolean
+  /** All project worktrees, used to recognise project-on-project drags. */
+  projectWorktrees: () => Set<string>
 }) {
   const language = useLanguage()
   const droppable = createDroppable(props.group.project.worktree)
+  const draggable = createDraggable(props.group.project.worktree)
   const dnd = useDragDropContext()
   // A started session is bound to the directory it runs in and cannot change project, so only a
-  // draft may land here. Without this the group lit up for every drag and promised a move that
-  // never happened.
-  const acceptsDrop = () => {
+  // draft may land here. Projects also accept other projects, so the user can reorder the list.
+  // Without this the group lit up for every drag and promised a move that never happened.
+  const activeDragKey = () => {
     const active = dnd?.[0].active.draggable?.id
-    if (active === undefined || active === null) return false
-    return props.isDraft(String(active))
+    if (active === undefined || active === null) return
+    return String(active)
+  }
+  const draftDropActive = () => {
+    const key = activeDragKey()
+    return !!key && droppable.isActiveDroppable && props.isDraft(key)
+  }
+  const projectDropPosition = () => {
+    const key = activeDragKey()
+    if (!key || key === props.group.project.worktree || !droppable.isActiveDroppable) return
+    const projects = [...props.projectWorktrees()]
+    const source = projects.indexOf(key)
+    const target = projects.indexOf(props.group.project.worktree)
+    if (source === -1 || target === -1) return
+    return source < target ? "after" : "before"
   }
   // Projects carry a colour and an optional icon, both editable in the project dialog.
   // Show them here so a long list stays scannable instead of eleven identical folders.
@@ -236,38 +250,48 @@ function ProjectGroup(props: {
 
   return (
     <div
-      // @ts-expect-error -- solid-dnd directive
       use:droppable={droppable}
       classList={{
         "flex flex-col gap-0.5 rounded-md": true,
-        "outline outline-1 outline-border-active": droppable.isActiveDroppable && acceptsDrop(),
+        "bg-v2-background-bg-layer-02/20": draftDropActive(),
+        "opacity-40": draggable.isActiveDraggable,
       }}
     >
       <MenuV2.Context>
         <MenuV2.Context.Trigger
           as="div"
-          data-sidebar-row=""
           class="group/project relative h-9 flex items-center min-w-0 rounded-lg transition-colors hover:bg-v2-background-bg-layer-02/60 focus-within:bg-v2-background-bg-layer-02/60"
         >
-          <button
-            type="button"
-            onClick={props.onToggleCollapsed}
-            class="h-full min-w-0 flex-1 flex items-center gap-2 px-2 text-left outline-none"
-            aria-expanded={!props.collapsed}
+          <div
+            use:draggable={draggable}
+            data-sidebar-row=""
+            data-drop={projectDropPosition()}
+            class="h-full min-w-0 flex-1 flex items-center gap-2 px-2 text-left outline-none cursor-grab active:cursor-grabbing"
           >
-            <Show
-              when={projectIcon()}
-              fallback={
-                <Icon name="folder" size="small" class="text-icon-base shrink-0" style={{ color: projectColor() }} />
-              }
+            <button
+              type="button"
+              onClick={props.onToggleCollapsed}
+              class="h-full min-w-0 flex-1 flex items-center gap-2 text-left outline-none"
+              aria-expanded={!props.collapsed}
             >
-              {(source) => <img src={source()} alt="" class="size-4 shrink-0 rounded-[4px] object-cover" />}
-            </Show>
-            <SidebarMarquee class="text-[13px] font-[530] leading-4 tracking-[-0.04px] text-text-base">
-              {displayName(props.group.project)}
-            </SidebarMarquee>
-          </button>
-          <div class="shrink-0 items-center pr-1 hidden group-hover/project:flex group-focus-within/project:flex">
+              <Show
+                when={projectIcon()}
+                fallback={
+                  <Icon name="folder" size="small" class="text-icon-base shrink-0" style={{ color: projectColor() }} />
+                }
+              >
+                {(source) => <img src={source()} alt="" class="size-4 shrink-0 rounded-[4px] object-cover" />}
+              </Show>
+              <SidebarMarquee class="text-[13px] font-[530] leading-4 tracking-[-0.04px] text-text-base">
+                {displayName(props.group.project)}
+              </SidebarMarquee>
+            </button>
+          </div>
+          <div
+            draggable={false}
+            onPointerDown={(event) => event.stopPropagation()}
+            class="shrink-0 items-center pr-1 hidden group-hover/project:flex group-focus-within/project:flex"
+          >
             <Tooltip value={language.t("command.session.new")} placement="top">
               <IconButtonV2
                 size="small"
@@ -782,6 +806,10 @@ export function Sidebar() {
   }
 
   const dragLabel = (key: string) => {
+    if (projectWorktrees().has(key)) {
+      const project = layout.projects.list().find((item) => item.worktree === key)
+      if (project) return displayName(project)
+    }
     const entry = [
       ...chatSessions(),
       ...split().pinned,
@@ -798,6 +826,15 @@ export function Sidebar() {
     const from = String(draggable.id)
     const to = String(droppable.id)
     if (from === to) return
+
+    // Project reordering: drag a project header onto another project header to move it there.
+    if (projectWorktrees().has(from) && projectWorktrees().has(to)) {
+      const projects = layout.projects.list()
+      const toIndex = projects.findIndex((p) => p.worktree === to)
+      if (toIndex === -1) return
+      layout.projects.move(from, toIndex)
+      return
+    }
 
     // A draft has no working directory yet, so it is the only entry that can change project.
     const tab = tabs.store.find((item) => item.type === "draft" && item.draftID === from)
@@ -1067,6 +1104,7 @@ export function Sidebar() {
                         onDelete={confirmDelete}
                         canArchive={protocol() === "v1"}
                         canDrop={canDropSession}
+                        projectWorktrees={projectWorktrees}
                       />
                     )}
                   </For>
@@ -1082,10 +1120,14 @@ export function Sidebar() {
                 <Show when={dragLabel(String(draggable().id))}>
                   {(label) => (
                     <div
-                      class="h-8 flex items-center gap-2 rounded-lg border-[0.5px] border-v2-border-border-strong bg-v2-background-bg-layer-02 px-2 text-[13px] font-[440] leading-4 tracking-[-0.04px] text-v2-text-text-base shadow-[var(--shadow-lg-border-base)]"
+                      class="h-8 flex items-center gap-2 rounded-lg bg-v2-background-bg-layer-02/70 px-2 text-[13px] font-[440] leading-4 tracking-[-0.04px] text-v2-text-text-muted opacity-75"
                       style={{ width: `${draggable().layout.width}px` }}
                     >
-                      <Icon name="speech-bubble" size="small" class="shrink-0 text-v2-icon-icon-base" />
+                      <Icon
+                        name={projectWorktrees().has(String(draggable().id)) ? "folder" : "speech-bubble"}
+                        size="small"
+                        class="shrink-0 text-v2-icon-icon-muted"
+                      />
                       <SidebarMarquee>{label()}</SidebarMarquee>
                     </div>
                   )}

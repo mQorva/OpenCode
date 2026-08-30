@@ -20,7 +20,7 @@ export function ProjectStartDialog(props: {
       <div class="flex w-[440px] max-w-full flex-col gap-2 px-6 pb-6">
         <button
           type="button"
-          class="flex min-h-16 items-center gap-3 rounded-lg border border-border-weaker-base bg-v2-background-bg-base px-4 py-3 text-left hover:bg-v2-background-bg-hover"
+          class="flex min-h-16 items-center gap-3 rounded-lg border border-border-weaker-base bg-v2-background-bg-base px-4 py-3 text-left hover:bg-v2-overlay-simple-overlay-hover"
           onClick={props.onChooseFolder}
         >
           <span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-v2-background-bg-strong">
@@ -38,7 +38,7 @@ export function ProjectStartDialog(props: {
 
         <button
           type="button"
-          class="flex min-h-16 items-center gap-3 rounded-lg border border-border-weaker-base bg-v2-background-bg-base px-4 py-3 text-left hover:bg-v2-background-bg-hover"
+          class="flex min-h-16 items-center gap-3 rounded-lg border border-border-weaker-base bg-v2-background-bg-base px-4 py-3 text-left hover:bg-v2-overlay-simple-overlay-hover"
           onClick={props.onManageServers}
         >
           <span class="flex size-9 shrink-0 items-center justify-center rounded-lg bg-v2-background-bg-strong">
@@ -63,7 +63,7 @@ export function ProjectStartDialog(props: {
               {(project) => (
                 <button
                   type="button"
-                  class="flex h-11 w-full items-center gap-3 border-b border-border-weaker-base px-3 text-left last:border-b-0 hover:bg-v2-background-bg-hover"
+                  class="flex h-11 w-full items-center gap-3 border-b border-border-weaker-base px-3 text-left last:border-b-0 hover:bg-v2-overlay-simple-overlay-hover"
                   onClick={() => props.onReopen(project)}
                 >
                   <Icon name="folder" size="small" class="shrink-0 text-v2-icon-icon-muted" />

@@ -19,6 +19,7 @@ export function ComposerCard(props: ComposerCardProps) {
       classList={{
         "w-full overflow-hidden bg-v2-background-bg-layer-02": true,
         "rounded-xl border-[0.5px] border-v2-border-border-base": shape() === "card",
+        "rounded-t-xl border-x-[0.5px] border-t-[0.5px] border-v2-border-border-base": shape() === "tray",
         [split.class ?? ""]: !!split.class,
         ...split.classList,
       }}

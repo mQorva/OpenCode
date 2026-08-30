@@ -31,7 +31,9 @@ declare module "*.mp4" {
 export declare module "solid-js" {
   namespace JSX {
     interface Directives {
-      sortable: true
+      sortable: boolean
+      draggable: unknown
+      droppable: unknown
     }
   }
 }

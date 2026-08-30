@@ -14,7 +14,7 @@ export type SessionComposerFollowupDock = {
   onSend: (id: string) => void
   onEdit: (id: string) => void
   onRemove: (id: string) => void
-  onMove: (fromID: string, toID: string) => void
+  onMove: (fromID: string, toID: string, position: "before" | "after") => void
   onItemPauseToggle: (id: string) => void
 }
 

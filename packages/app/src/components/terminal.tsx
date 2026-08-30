@@ -50,37 +50,25 @@ type TerminalColors = {
   selectionBackground: string
 }
 
-const DEFAULT_TERMINAL_COLORS: Record<"light" | "dark", TerminalColors> = {
-  light: {
-    background: "#fcfcfc",
-    foreground: "#211e1e",
-    cursor: "#211e1e",
-    selectionBackground: withAlpha("#211e1e", 0.2),
-  },
-  dark: {
-    background: "#191515",
-    foreground: "#d4d4d4",
-    cursor: "#d4d4d4",
-    selectionBackground: withAlpha("#d4d4d4", 0.25),
-  },
-}
-
 const debugTerminal = (...values: unknown[]) => {
   if (!import.meta.env.DEV) return
   console.debug("[terminal]", ...values)
 }
 
-const resolveV2Token = (tokens: ResolvedV2Theme, key: string) => {
-  let current = tokens[key]
+const resolveV2Token = (tokens: ResolvedV2Theme, key: string): HexColor => {
+  let current: string | undefined = tokens[key]
   for (let i = 0; i < 8 && current; i++) {
     const match = /^var\(--([^)]+)\)$/.exec(current.trim())
     if (!match) {
-      const hex = current.trim()
-      if (/^#[0-9a-fA-F]{8}$/.test(hex)) return hex.slice(0, 7)
-      return hex
+      const color = current.trim()
+      // ghostty-web passes the value to a 24-bit RGB parser; retaining a V2 token's alpha byte
+      // shifts the channels and turns opaque dark greys into blue.
+      if (/^#[0-9a-fA-F]{8}$/.test(color)) return color.slice(0, 7) as HexColor
+      return color as HexColor
     }
     current = tokens[match[1]]
   }
+  throw new Error(`[terminal] failed to resolve V2 token "${key}"`)
 }
 
 const useTerminalUiBindings = (input: {
@@ -264,25 +252,25 @@ export const Terminal = (props: TerminalProps) => {
 
   const getTerminalColors = (): TerminalColors => {
     const mode = theme.mode() === "dark" ? "dark" : "light"
-    const fallback = DEFAULT_TERMINAL_COLORS[mode]
-    const currentTheme = theme.themes()[theme.themeId()]
-    if (!currentTheme) return fallback
+    const currentTheme = theme.themes()[theme.themeId()] ?? theme.themes()["oc-2"]
+    if (!currentTheme) throw new Error("[terminal] no theme loaded (oc-2 default missing)")
     const variant = mode === "dark" ? currentTheme.dark : currentTheme.light
-    if (!variant?.seeds && !variant?.palette) return fallback
-    const resolved = resolveThemeVariant(variant, mode === "dark")
-    const text = resolved["text-base"] ?? fallback.foreground
+    if (!variant?.seeds && !variant?.palette)
+      throw new Error("[terminal] theme variant has no seeds or palette")
+    const resolvedV2 = resolveThemeVariantV2(variant, mode === "dark")
+    const resolvedV1 = resolveThemeVariant(variant, mode === "dark")
+    const text = settings.general.newLayoutDesigns()
+      ? resolveV2Token(resolvedV2, "v2-text-text-muted")
+      : (resolvedV1["text-base"] as HexColor)
     const background = settings.general.newLayoutDesigns()
-      ? (resolveV2Token(resolveThemeVariantV2(variant, mode === "dark"), "v2-background-bg-base") ??
-        fallback.background)
-      : (resolved["background-stronger"] ?? fallback.background)
+      ? resolveV2Token(resolvedV2, "v2-background-bg-deep")
+      : (resolvedV1["background-stronger"] as HexColor)
     const alpha = mode === "dark" ? 0.25 : 0.2
-    const base = text.startsWith("#") ? (text as HexColor) : (fallback.foreground as HexColor)
-    const selectionBackground = withAlpha(base, alpha)
     return {
       background,
       foreground: text,
       cursor: text,
-      selectionBackground,
+      selectionBackground: withAlpha(text, alpha),
     }
   }
 

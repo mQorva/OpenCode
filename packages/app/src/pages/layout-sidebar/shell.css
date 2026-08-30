@@ -1,18 +1,21 @@
-/* Tailwind resolves `bg-v2-*` / `text-v2-*` through a second variable that is computed on :root,
-   so overriding the theme token alone reaches CSS files but none of the utility classes. Both
-   layers have to be set for a scoped override to take effect everywhere.
-
-   Straight bg-base makes the workspace read as a hole once the sidebar and title bar sit on
-   layer-01, so it takes a step towards it — far enough from #242424 that the two stay apart.
-   Mixed from the two tokens rather than hardcoded, so a theme change carries through.
-
-   Body copy sits at the very top of the grey ramp (#fafafa), the hardest contrast in the window:
-   the sidebar reads at #a0a0a0, dialogs mix base with muted. Two steps down keeps long answers
-   readable without the glare. Secondary text is already calm and stays put. Light mode keeps the
-   defaults throughout. */
+/* The workspace uses bg-base. Its chrome needs a quieter step between that surface and layer-01;
+   the semantic token stays theme-driven without introducing a fixed colour. */
 [data-slot="sidebar-shell"] {
-  --workspace-surface: color-mix(in srgb, var(--v2-background-bg-base) 60%, var(--v2-background-bg-layer-01));
+  --sidebar-chrome-surface: var(--v2-background-bg-layer-01);
   --workspace-text: var(--v2-grey-400);
+}
+
+[data-color-scheme="dark"] [data-slot="sidebar-shell"] {
+  --sidebar-chrome-surface: color-mix(
+    in srgb,
+    var(--v2-background-bg-base),
+    var(--v2-background-bg-layer-01)
+  );
+}
+
+[data-slot="sidebar-shell"] [data-slot="titlebar-v2"],
+[data-slot="sidebar-shell"] [data-component="sidebar-layout-sidebar"] {
+  background-color: var(--sidebar-chrome-surface);
 }
 
 /* Set on the workspace rather than on the composer region: a new session renders its own
@@ -22,9 +25,6 @@
 }
 
 [data-color-scheme="dark"] [data-slot="sidebar-workspace"] {
-  --v2-background-bg-base: var(--workspace-surface);
-  --color-v2-background-bg-base: var(--workspace-surface);
   --v2-text-text-base: var(--workspace-text);
   --color-v2-text-text-base: var(--workspace-text);
-  background: var(--workspace-surface);
 }

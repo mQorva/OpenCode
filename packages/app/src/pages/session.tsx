@@ -1919,7 +1919,12 @@ export default function Page() {
     )
   }
 
-  const moveFollowup = (sessionID: string, fromID: string, toID: string) => {
+  const moveFollowup = (
+    sessionID: string,
+    fromID: string,
+    toID: string,
+    position: "before" | "after" = "before",
+  ) => {
     if (fromID === toID) return
     setFollowup("items", sessionID, (items) => {
       const list = items ?? []
@@ -1928,7 +1933,8 @@ export default function Page() {
       if (from === -1 || to === -1) return list
       const next = [...list]
       const [moved] = next.splice(from, 1)
-      next.splice(to, 0, moved)
+      const target = to > from ? to - 1 : to
+      next.splice(position === "after" ? target + 1 : target, 0, moved)
       return next
     })
   }
@@ -2281,7 +2287,8 @@ export default function Page() {
                     onSend: (id) => void sendFollowup(params.id!, id, { manual: true }),
                     onEdit: editFollowup,
                     onRemove: (id) => removeFollowup(params.id!, id),
-                    onMove: (fromID, toID) => moveFollowup(params.id!, fromID, toID),
+                    onMove: (fromID, toID, position) =>
+                      moveFollowup(params.id!, fromID, toID, position),
                     onItemPauseToggle: (id) => toggleFollowupPause(params.id!, id),
                   }
                 : undefined,

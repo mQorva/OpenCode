@@ -82,7 +82,7 @@ export function WindowsAppMenu(props: {
             <DropdownMenu.Trigger
               as="button"
               type="button"
-              class="h-7 rounded-md px-2 text-13-regular text-v2-text-text-muted hover:bg-v2-background-bg-hover hover:text-v2-text-text-strong data-[expanded]:bg-v2-background-bg-hover data-[expanded]:text-v2-text-text-strong"
+              class="h-7 rounded-md px-2 text-13-regular text-v2-text-text-muted hover:bg-v2-overlay-simple-overlay-hover hover:text-v2-text-text-strong data-[expanded]:bg-v2-overlay-simple-overlay-hover data-[expanded]:text-v2-text-text-strong"
             >
               {menuLabel(menu)}
             </DropdownMenu.Trigger>
