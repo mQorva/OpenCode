@@ -1,6 +1,7 @@
 import { Component, createMemo, createSignal, startTransition } from "solid-js"
 import { Dialog } from "@opencode-ai/ui/v2/dialog-v2"
 import { TabsV2 } from "@opencode-ai/ui/v2/tabs-v2"
+import { TooltipV2 } from "@opencode-ai/ui/v2/tooltip-v2"
 import { Icon } from "@opencode-ai/ui/icon"
 import { useLanguage } from "@/context/language"
 import { usePlatform } from "@/context/platform"
@@ -92,9 +93,9 @@ export const DialogSettings: Component<{
                 <>
                   <span>{`OpenCode – ${platform.edition.name} Edition`}</span>
                   <span>{`OpenCode v${platform.version}`}</span>
-                  <span title={platform.edition.displayVersion}>
-                    {`${platform.edition.name} r${platform.edition.revision} · ${platform.edition.buildCommit}`}
-                  </span>
+                  <TooltipV2 value={platform.edition.displayVersion} placement="top">
+                    <span>{`${platform.edition.name} r${platform.edition.revision} · ${platform.edition.buildCommit}`}</span>
+                  </TooltipV2>
                 </>
               ) : (
                 <>

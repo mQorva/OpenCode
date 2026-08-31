@@ -1,6 +1,6 @@
 import { createEffect, createSignal, Show, type Accessor } from "solid-js"
 import { createDraggable, createDroppable, useDragDropContext } from "@thisbeyond/solid-dnd"
-import { Icon, IconButton, MenuV2, Spinner, Tooltip, useLanguage } from "./upstream"
+import { Icon, IconButton, MenuV2, Spinner, TooltipV2, useLanguage } from "./upstream"
 import { SidebarMarquee } from "./marquee"
 import type { SidebarSession } from "./sessions"
 import { isNewChat } from "@/utils/session-title"
@@ -144,15 +144,16 @@ export function SessionItem(props: {
         <Show
           when={editing()}
           fallback={
-            <button
-              type="button"
-              onClick={props.onSelect}
-              title={title()}
-              class="min-w-0 h-full flex-1 flex items-center gap-2 text-left outline-none"
-              aria-current={props.active ? "page" : undefined}
-            >
-              <SidebarMarquee>{title()}</SidebarMarquee>
-            </button>
+            <TooltipV2 value={title()} placement="right" class="min-w-0 h-full flex-1">
+              <button
+                type="button"
+                onClick={props.onSelect}
+                class="min-w-0 h-full w-full flex items-center gap-2 text-left outline-none"
+                aria-current={props.active ? "page" : undefined}
+              >
+                <SidebarMarquee>{title()}</SidebarMarquee>
+              </button>
+            </TooltipV2>
           }
         >
           <input
@@ -179,7 +180,7 @@ export function SessionItem(props: {
         <Show when={!editing()}>
           {/* Actions replace the status marker on hover — the row is too narrow for both. */}
           <div class="shrink-0 items-center hidden group-hover/session:flex group-focus-within/session:flex">
-            <Tooltip
+            <TooltipV2
               value={props.pinned ? language.t("sidebarLayout.unpin") : language.t("sidebarLayout.pin")}
               placement="top"
             >
@@ -192,9 +193,9 @@ export function SessionItem(props: {
               >
                 <PinIcon filled={props.pinned} />
               </button>
-            </Tooltip>
+            </TooltipV2>
             <Show when={props.onArchive}>
-              <Tooltip value={language.t("common.archive")} placement="top">
+              <TooltipV2 value={language.t("common.archive")} placement="top">
                 <IconButton
                   icon="archive"
                   iconSize="small"
@@ -203,13 +204,13 @@ export function SessionItem(props: {
                   onClick={props.onArchive}
                   aria-label={language.t("common.archive")}
                 />
-              </Tooltip>
+              </TooltipV2>
             </Show>
           </div>
 
           <Show when={props.attention()}>
             {(attention) => (
-              <Tooltip
+              <TooltipV2
                 value={language.t(
                   attention() === "permission" ? "notification.permission.title" : "notification.question.title",
                 )}
@@ -223,7 +224,7 @@ export function SessionItem(props: {
                 >
                   <Icon name={attention() === "permission" ? "checklist" : "bubble-5"} size="small" />
                 </span>
-              </Tooltip>
+              </TooltipV2>
             )}
           </Show>
           <Show when={!props.attention()}>

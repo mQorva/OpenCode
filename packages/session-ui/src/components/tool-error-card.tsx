@@ -5,7 +5,9 @@ import { Collapsible } from "@opencode-ai/ui/collapsible"
 import { Icon } from "@opencode-ai/ui/icon"
 import { IconButton } from "@opencode-ai/ui/icon-button"
 import { Tooltip } from "@opencode-ai/ui/tooltip"
+import { TooltipV2 } from "@opencode-ai/ui/v2/tooltip-v2"
 import { useI18n } from "@opencode-ai/ui/context/i18n"
+import { Dynamic } from "solid-js/web"
 
 export interface ToolErrorCardProps extends Omit<ComponentProps<typeof Card>, "children" | "variant"> {
   tool: string
@@ -17,6 +19,7 @@ export interface ToolErrorCardProps extends Omit<ComponentProps<typeof Card>, "c
   subtitle?: string
   href?: string
   onSubtitleClick?: (event: MouseEvent) => void
+  useV2Tooltip?: boolean
 }
 
 export function ToolErrorCard(props: ToolErrorCardProps) {
@@ -37,6 +40,7 @@ export function ToolErrorCard(props: ToolErrorCardProps) {
     "subtitle",
     "href",
     "onSubtitleClick",
+    "useV2Tooltip",
   ])
   const setOpen = (value: boolean) => {
     if (props.open === undefined) setState("open", value)
@@ -134,7 +138,8 @@ export function ToolErrorCard(props: ToolErrorCardProps) {
           <div data-slot="tool-error-card-content">
             <Show when={open()}>
               <div data-slot="tool-error-card-copy">
-                <Tooltip
+                <Dynamic
+                  component={split.useV2Tooltip ? TooltipV2 : Tooltip}
                   value={copied() ? i18n.t("ui.message.copied") : i18n.t("ui.toolErrorCard.copyError")}
                   placement="top"
                   gutter={4}
@@ -150,7 +155,7 @@ export function ToolErrorCard(props: ToolErrorCardProps) {
                     }}
                     aria-label={copied() ? i18n.t("ui.message.copied") : i18n.t("ui.toolErrorCard.copyError")}
                   />
-                </Tooltip>
+                </Dynamic>
               </div>
             </Show>
             <Show when={body()}>{(value) => <CardDescription>{value()}</CardDescription>}</Show>

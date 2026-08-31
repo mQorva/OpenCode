@@ -44,7 +44,7 @@ export { IconButtonV2 } from "@opencode-ai/ui/v2/icon-button-v2"
 export { MenuV2 } from "@opencode-ai/ui/v2/menu-v2"
 export { ResizeHandle } from "@opencode-ai/ui/resize-handle"
 export { ScrollView } from "@opencode-ai/ui/scroll-view"
-export { Tooltip } from "@opencode-ai/ui/tooltip"
+export { TooltipV2 } from "@opencode-ai/ui/v2/tooltip-v2"
 export { ButtonV2 } from "@opencode-ai/ui/v2/button-v2"
 export { DialogFooter, DialogHeader, DialogTitleGroup, DialogV2 } from "@opencode-ai/ui/v2/dialog-v2"
 

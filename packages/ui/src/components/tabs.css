@@ -686,9 +686,7 @@
 }
 
 body[data-new-layout] #review-panel [data-component="tabs"],
-body[data-new-layout] #terminal-panel [data-component="tabs"],
-body[data-new-layout] #review-panel [data-component="tabs"][data-variant="normal"][data-orientation="horizontal"],
-body[data-new-layout] #terminal-panel [data-component="tabs"][data-variant="normal"][data-orientation="horizontal"] {
+body[data-new-layout] #review-panel [data-component="tabs"][data-variant="normal"][data-orientation="horizontal"] {
   background-color: var(--v2-background-bg-base);
 
   [data-slot="tabs-list"] {
@@ -705,6 +703,32 @@ body[data-new-layout] #terminal-panel [data-component="tabs"][data-variant="norm
         background: linear-gradient(270deg, transparent, var(--v2-background-bg-base));
       }
     }
+  }
+}
+
+body[data-new-layout] #terminal-panel [data-component="tabs"],
+body[data-new-layout] #terminal-panel [data-component="tabs"][data-variant="normal"][data-orientation="horizontal"] {
+  --terminal-tabs-surface: var(--sidebar-chrome-surface, var(--v2-background-bg-layer-01));
+  background-color: var(--terminal-tabs-surface);
+
+  [data-slot="tabs-list"] {
+    background-color: var(--terminal-tabs-surface);
+
+    > .sticky {
+      background-color: var(--terminal-tabs-surface);
+
+      &::before {
+        background: linear-gradient(90deg, transparent, var(--terminal-tabs-surface));
+      }
+
+      &:dir(rtl)::before {
+        background: linear-gradient(270deg, transparent, var(--terminal-tabs-surface));
+      }
+    }
+  }
+
+  [data-slot="tabs-trigger-wrapper"]:has([data-selected]) {
+    background-color: var(--v2-background-bg-layer-02);
   }
 }
 

@@ -12,6 +12,8 @@ export const MQORVA_APP_NAMES: Record<DesktopChannel, string> = {
   prod: "OpenCode mQorva",
 }
 
+export const MQORVA_UNPACKAGED_APP_ID = "de.mqorva.opencode.desktop.dev.unpacked"
+
 export const LEGACY_OPENCODE_APP_IDS: Record<DesktopChannel, string> = {
   dev: "ai.opencode.desktop.dev",
   beta: "ai.opencode.desktop.beta",

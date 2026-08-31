@@ -3,9 +3,11 @@ import type { SessionStatus } from "@opencode-ai/sdk/v2/client"
 import { useI18n } from "@opencode-ai/ui/context/i18n"
 import { Card } from "@opencode-ai/ui/card"
 import { Tooltip } from "@opencode-ai/ui/tooltip"
+import { TooltipV2 } from "@opencode-ai/ui/v2/tooltip-v2"
 import { Spinner } from "@opencode-ai/ui/spinner"
+import { Dynamic } from "solid-js/web"
 
-export function SessionRetry(props: { status: SessionStatus; show?: boolean }) {
+export function SessionRetry(props: { status: SessionStatus; show?: boolean; useV2Tooltip?: boolean }) {
   const i18n = useI18n()
   const retry = createMemo(() => {
     if (props.status.type !== "retry") return
@@ -58,11 +60,15 @@ export function SessionRetry(props: { status: SessionStatus; show?: boolean }) {
             <Spinner class="size-4 mt-0.5" />
             <div class="min-w-0">
               <Show when={truncated()} fallback={<div data-slot="session-turn-retry-message">{message()}</div>}>
-                <Tooltip value={retry()?.message ?? ""} placement="top">
+                <Dynamic
+                  component={props.useV2Tooltip ? TooltipV2 : Tooltip}
+                  value={retry()?.message ?? ""}
+                  placement="top"
+                >
                   <div data-slot="session-turn-retry-message" class="cursor-help truncate">
                     {message()}
                   </div>
-                </Tooltip>
+                </Dynamic>
               </Show>
               <Show when={info()}>{(line) => <div data-slot="session-turn-retry-info">{line()}</div>}</Show>
             </div>

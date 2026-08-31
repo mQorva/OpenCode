@@ -1329,14 +1329,15 @@ export function UserMessageDisplay(props: {
                   </div>
                 }
               >
-                <AttachmentCardV2
-                  title={getFilename(name)}
-                  hover={name}
-                  clickable={!!props.actions?.openAttachment}
-                  onClick={() => props.actions?.openAttachment?.(file)}
-                >
-                  {typeLabel(name, file.mime, i18n.t("ui.common.file"))}
-                </AttachmentCardV2>
+                <TooltipV2 value={name} placement="top" contentClass="break-all">
+                  <AttachmentCardV2
+                    title={getFilename(name)}
+                    clickable={!!props.actions?.openAttachment}
+                    onClick={() => props.actions?.openAttachment?.(file)}
+                  >
+                    {typeLabel(name, file.mime, i18n.t("ui.common.file"))}
+                  </AttachmentCardV2>
+                </TooltipV2>
               </Show>
             )
           }}
@@ -1627,6 +1628,7 @@ PART_MAPPING["tool"] = function ToolPartDisplay(props) {
                 <ToolErrorCard
                   tool={part().tool}
                   error={error()}
+                  useV2Tooltip={props.useV2Actions}
                   title={
                     part().tool === "websearch" ? webSearchProviderLabel(partMetadata().provider, i18n) : undefined
                   }

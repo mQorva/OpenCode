@@ -1,6 +1,7 @@
 import { ButtonV2 } from "@opencode-ai/ui/v2/button-v2"
 import { Dialog, DialogBody, DialogFooter, DialogHeader, DialogTitle } from "@opencode-ai/ui/v2/dialog-v2"
 import { DividerV2 } from "@opencode-ai/ui/v2/divider-v2"
+import { TooltipV2 } from "@opencode-ai/ui/v2/tooltip-v2"
 import { useDialog } from "@opencode-ai/ui/context/dialog"
 import { For, Show, createResource, createSignal } from "solid-js"
 import { useLanguage } from "@/context/language"
@@ -54,9 +55,11 @@ export function DialogSavedProjectPermissions(props: { projectID: string }) {
                   <div class="flex min-w-0 items-center gap-3 rounded-md bg-v2-background-bg-layer-02 px-3 py-2">
                     <div class="flex min-w-0 flex-1 flex-col gap-0.5">
                       <span class="text-12-medium text-v2-text-text-base">{permission.action}</span>
-                      <code class="truncate text-12-regular text-v2-text-text-muted" title={permission.resource}>
-                        {permission.resource}
-                      </code>
+                      <TooltipV2 class="min-w-0" contentClass="break-all" value={permission.resource} placement="top">
+                        <code class="block truncate text-12-regular text-v2-text-text-muted">
+                          {permission.resource}
+                        </code>
+                      </TooltipV2>
                     </div>
                     <ButtonV2
                       size="small"

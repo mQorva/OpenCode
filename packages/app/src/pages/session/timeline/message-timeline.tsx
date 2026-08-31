@@ -1303,7 +1303,11 @@ export function MessageTimeline(props: {
         return (
           <TimelineRowFrame row={retryRow}>
             <div data-slot="session-turn-message-container" class="w-full px-4 md:px-5">
-              <SessionRetry status={sessionStatus()} show={activeMessageID() === retryRow().userMessageID} />
+              <SessionRetry
+                status={sessionStatus()}
+                show={activeMessageID() === retryRow().userMessageID}
+                useV2Tooltip={settings.general.newLayoutDesigns()}
+              />
             </div>
           </TimelineRowFrame>
         )

@@ -231,7 +231,7 @@ export function SortableTerminalTabV2(props: {
                 <IconButtonV2
                   size="small"
                   variant="ghost-muted"
-                  icon={<IconV2 name="close-small" size="small" />}
+                  icon={<IconV2 name="xmark-small" size="small" />}
                   class="h-5 w-5"
                   onClick={(e) => {
                     e.stopPropagation()

@@ -626,7 +626,7 @@ export function SessionSidePanel(props: {
                                     <IconButtonV2
                                       size="small"
                                       variant="ghost-muted"
-                                      icon={<IconV2 name="close-small" size="small" />}
+                                      icon={<IconV2 name="xmark-small" size="small" />}
                                       class="h-5 w-5"
                                       onClick={() => tabs().close("context")}
                                       aria-label={language.t("common.closeTab")}
@@ -674,7 +674,7 @@ export function SessionSidePanel(props: {
                                         <IconButtonV2
                                           size="small"
                                           variant="ghost-muted"
-                                          icon={<IconV2 name="close-small" size="small" />}
+                                          icon={<IconV2 name="xmark-small" size="small" />}
                                           class="h-5 w-5"
                                           onClick={() => tabs().close(SESSION_OPEN_FILE_TAB)}
                                           aria-label={language.t("common.closeTab")}

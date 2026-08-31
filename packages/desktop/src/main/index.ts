@@ -47,7 +47,7 @@ import { registerWslIpcHandlers } from "./wsl/ipc"
 import { spawnWslSidecar } from "./wsl/sidecar"
 import { migrate } from "./migrate"
 import { migrateMqorvaUserData } from "./mqorva-migration"
-import { MQORVA_APP_IDS, MQORVA_APP_NAMES, MQORVA_PROTOCOL } from "../../identity"
+import { MQORVA_APP_IDS, MQORVA_APP_NAMES, MQORVA_PROTOCOL, MQORVA_UNPACKAGED_APP_ID } from "../../identity"
 import { cleanupStoreFiles } from "./store-cleanup"
 import { startBackgroundCli } from "./background-cli"
 import { setNativeTranslations } from "./native-translations"
@@ -149,12 +149,13 @@ const main = Effect.gen(function* () {
         }
       })()
   app.setName(appName)
-  app.setAppUserModelId(appId)
+  app.setAppUserModelId(app.isPackaged ? appId : MQORVA_UNPACKAGED_APP_ID)
   app.setPath("userData", userDataPath)
   if (onboardingTestRoot) app.setPath("sessionData", join(onboardingTestRoot, "session"))
   initializeOldLayoutEligibility(app.getPath("userData"))
   logger = initLogging()
-  if (mqorvaMigration && "error" in mqorvaMigration) logger.warn("mQorva profile migration failed", mqorvaMigration.error)
+  if (mqorvaMigration && "error" in mqorvaMigration)
+    logger.warn("mQorva profile migration failed", mqorvaMigration.error)
   if (mqorvaMigration && "migrated" in mqorvaMigration && mqorvaMigration.migrated) {
     logger.log("mQorva profile migrated", { copied: mqorvaMigration.copied })
   }

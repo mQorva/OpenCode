@@ -606,9 +606,9 @@ function SessionHeaderV2Actions(props: { state: SessionHeaderV2ActionsState }) {
   return (
     <div class="flex items-center gap-1">
       <Show when={props.state.statusVisible}>
-        <Tooltip placement="bottom" value={props.state.statusLabel}>
+        <TooltipV2 placement="bottom" value={props.state.statusLabel}>
           <StatusPopoverV2 />
-        </Tooltip>
+        </TooltipV2>
       </Show>
       <Show when={props.state.terminalVisible}>
         <TooltipV2 class="shrink-0" placement="bottom" value={props.state.terminalLabel}>

@@ -2,7 +2,7 @@ import { createSignal, For, Show } from "solid-js"
 import { IconButtonV2 } from "@opencode-ai/ui/v2/icon-button-v2"
 import { ComposerCard } from "@opencode-ai/ui/composer-card"
 import { Icon } from "@opencode-ai/ui/icon"
-import { Tooltip } from "@opencode-ai/ui/tooltip"
+import { TooltipV2 } from "@opencode-ai/ui/v2/tooltip-v2"
 import { useLanguage } from "@/context/language"
 
 function TrashIcon() {
@@ -122,7 +122,7 @@ export function SessionFollowupDock(props: {
                   {item.text}
                 </span>
                 <div class="shrink-0 flex items-center gap-1.5">
-                  <Tooltip value={language.t("session.followupDock.steer")} placement="top">
+                  <TooltipV2 value={language.t("session.followupDock.steer")} placement="top">
                     <IconButtonV2
                       type="button"
                       size="small"
@@ -135,8 +135,8 @@ export function SessionFollowupDock(props: {
                     >
                       <Icon name="arrow-up" size="small" />
                     </IconButtonV2>
-                  </Tooltip>
-                  <Tooltip value={language.t("session.followupDock.edit")} placement="top">
+                  </TooltipV2>
+                  <TooltipV2 value={language.t("session.followupDock.edit")} placement="top">
                     <IconButtonV2
                       type="button"
                       size="small"
@@ -148,8 +148,8 @@ export function SessionFollowupDock(props: {
                     >
                       <Icon name="pencil-line" size="small" />
                     </IconButtonV2>
-                  </Tooltip>
-                  <Tooltip
+                  </TooltipV2>
+                  <TooltipV2
                     value={
                       item.paused
                         ? language.t("session.followupDock.item.resume")
@@ -176,8 +176,8 @@ export function SessionFollowupDock(props: {
                         <ResumeIcon />
                       </Show>
                     </IconButtonV2>
-                  </Tooltip>
-                  <Tooltip value={language.t("common.delete")} placement="top">
+                  </TooltipV2>
+                  <TooltipV2 value={language.t("common.delete")} placement="top">
                     <IconButtonV2
                       type="button"
                       size="small"
@@ -189,7 +189,7 @@ export function SessionFollowupDock(props: {
                     >
                       <TrashIcon />
                     </IconButtonV2>
-                  </Tooltip>
+                  </TooltipV2>
                 </div>
               </div>
               <Show

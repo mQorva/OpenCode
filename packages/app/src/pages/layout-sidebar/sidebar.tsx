@@ -58,7 +58,7 @@ import {
   sortedRootSessions,
   errorMessage,
   showToast,
-  Tooltip,
+  TooltipV2,
   useDirectoryPicker,
   useDialog,
   useGlobal,
@@ -157,16 +157,16 @@ function DraftItem(props: { draft: DraftTab; active: boolean; onSelect: () => vo
       >
         <SidebarMarquee>{language.t("sidebarLayout.draft")}</SidebarMarquee>
       </button>
-      <Tooltip value={language.t("common.close")} placement="top">
+      <TooltipV2 value={language.t("common.close")} placement="top">
         <IconButtonV2
           size="small"
           variant="ghost-muted"
-          icon={<IconV2 name="close-small" size="small" />}
+          icon={<IconV2 name="xmark-small" size="small" />}
           class="!size-7 shrink-0 rounded-md opacity-0 group-hover/draft:opacity-100 group-focus-within/draft:opacity-100"
           onClick={props.onClose}
           aria-label={language.t("common.close")}
         />
-      </Tooltip>
+      </TooltipV2>
     </div>
   )
 }
@@ -292,7 +292,7 @@ function ProjectGroup(props: {
             onPointerDown={(event) => event.stopPropagation()}
             class="shrink-0 items-center pr-1 hidden group-hover/project:flex group-focus-within/project:flex"
           >
-            <Tooltip value={language.t("command.session.new")} placement="top">
+            <TooltipV2 value={language.t("command.session.new")} placement="top">
               <IconButtonV2
                 size="small"
                 variant="ghost-muted"
@@ -301,7 +301,7 @@ function ProjectGroup(props: {
                 onClick={props.onNewChat}
                 aria-label={language.t("command.session.new")}
               />
-            </Tooltip>
+            </TooltipV2>
           </div>
         </MenuV2.Context.Trigger>
         <MenuV2.Context.Portal>
@@ -873,7 +873,7 @@ export function Sidebar() {
       style={{ width: `${sidebarWidth()}px` }}
     >
       <div class="shrink-0 h-12 px-3 flex items-center gap-1">
-        <Tooltip placement="bottom" value={language.t("sidebarLayout.toggle")}>
+        <TooltipV2 placement="bottom" value={language.t("sidebarLayout.toggle")}>
           <IconButtonV2
             type="button"
             variant="ghost-muted"
@@ -884,9 +884,9 @@ export function Sidebar() {
             aria-expanded={layout.sidebar.opened()}
             icon={<Icon name="layout-left" size="small" />}
           />
-        </Tooltip>
+        </TooltipV2>
         <div class="flex-1" />
-        <Tooltip placement="bottom" value={language.t("sidebarLayout.search")}>
+        <TooltipV2 placement="bottom" value={language.t("sidebarLayout.search")}>
           <IconButtonV2
             type="button"
             variant="ghost-muted"
@@ -896,7 +896,7 @@ export function Sidebar() {
             onClick={() => (searching() ? closeSearch() : setSearching(true))}
             aria-label={language.t("sidebarLayout.search")}
           />
-        </Tooltip>
+        </TooltipV2>
       </div>
 
       <Show when={searching()}>
@@ -922,7 +922,7 @@ export function Sidebar() {
             <IconButtonV2
               size="small"
               variant="ghost-muted"
-              icon={<IconV2 name="close-small" size="small" />}
+              icon={<IconV2 name="xmark-small" size="small" />}
               class="!size-6 absolute end-5 top-1/2 -translate-y-1/2 rounded-md"
               onClick={() => setFilter("")}
               aria-label={language.t("common.clear")}
@@ -1040,7 +1040,7 @@ export function Sidebar() {
                 <div class="flex flex-col gap-2">
                   <div class="flex items-center gap-1 px-2 py-1 text-[11px] font-[530] leading-4 tracking-[0.05px] text-text-weak">
                     <span class="flex-1">{language.t("sidebarLayout.projects")}</span>
-                    <Tooltip placement="top" value={language.t("sidebarLayout.addProject")}>
+                    <TooltipV2 placement="top" value={language.t("sidebarLayout.addProject")}>
                       <IconButtonV2
                         size="small"
                         variant="ghost-muted"
@@ -1048,7 +1048,7 @@ export function Sidebar() {
                         onClick={addProject}
                         aria-label={language.t("sidebarLayout.addProject")}
                       />
-                    </Tooltip>
+                    </TooltipV2>
                   </div>
                   <For each={split().projects}>
                     {(group) => (
