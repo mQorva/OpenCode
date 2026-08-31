@@ -20,7 +20,7 @@ lokale Archiv-Tags entfernt und werden nicht unverändert wiederverwendet:
 | Kandidat | Alter PR | Zustand | Nächster Schritt |
 |---|---:|---|---|
 | #1 | `anomalyco/opencode#45557` | geschlossen, nicht gemergt; Branch entfernt, Tag `archive/upstream-pr-45557` | Duplikate prüfen, Issue anlegen, frisch von aktuellem `upstream/dev` extrahieren und erneut testen |
-| #2 | `anomalyco/opencode#45607` (alt) / `anomalyco/opencode#46125` (neu) | alt: geschlossen, nicht gemergt; Branch entfernt, Tag `archive/upstream-pr-45607`. neu: PR offen gegen `upstream/dev` `dc4449df0d`, Branch `async-session-idle` HEAD `48d064de56`, Issue #45610, +1/-0 in `session.ts`, `bun typecheck` in dieser Umgebung blockiert (tsgo fehlt) | auf Bot-/Reviewer-Feedback warten, Merge-Status beobachten |
+| #2 | `anomalyco/opencode#45607` (alt) / `anomalyco/opencode#46125` (neu) | alt: geschlossen, nicht gemergt; Branch entfernt, Tag `archive/upstream-pr-45607`. neu: PR offen gegen `upstream/dev` `10765ff2a9`, Branch `async-session-idle` HEAD `763d4ca96d`, Issue #45610; `tsgo --noEmit` exit 0 | auf Maintainer-Feedback warten |
 | #3 | `anomalyco/opencode#45609` | geschlossen, nicht gemergt; Branch entfernt, Tag `archive/upstream-pr-45609` | Root-Fall testen, danach Issue und neuer kurzer Branch |
 
 `v2-compat.ts` und die zwischenzeitlichen Azure-Anpassungen sind keine neuen Fork-Kandidaten:
@@ -66,7 +66,7 @@ es gegen den aktuellen Fork erneut abgeglichen:
    Veröffentlichungshelfer laufen darf.
 
 Stand: `async-session-idle` (Kandidat #2) ist als PR #46125 offen, basiert auf `upstream/dev`
-`dc4449df0d`, HEAD `48d064de56`. Vor jedem Update dieses PRs Diff, Hunks und Status gegen den
+`10765ff2a9`, HEAD `763d4ca96d`. Vor jedem Update dieses PRs Diff, Hunks und Status gegen den
 aktuellen Fork-Stand `b152378fed` erneut prüfen. Die übrigen Kandidaten haben noch keine
 Paketbranches; ihre Korrekturen liegen weiter auf `dev`/`origin/dev` und werden beim späteren
 just-in-time-Aufbau automatisch aus dem aktuellen Verhaltensdiff übernommen.
@@ -105,13 +105,13 @@ vor und werden erst nach dem v2-Architektur-Gate angegangen. Permission-Verträg
 
 | Reihenfolge | PR-Paket (Branch) | Kandidaten | Status | Inhalt / Voraussetzung |
 |---:|---|---|---|---|
-| 0 | `auth-json-safety-pilot` | #1 | PR #46023 offen gegen `upstream/dev` `dc4449df0d`, HEAD `f9753245e7`, Issue #46020; +34/-12 in `auth/index.ts`; `tsgo --noEmit` exit 0; am 29.08. von `df35e842f5` rebased | auf Maintainer-Feedback warten |
-| 1 | `async-session-idle` | #2 | PR #46125 offen gegen `upstream/dev` `dc4449df0d`, HEAD `48d064de56`, Issue #45610; `tsgo --noEmit` exit 0 | auf Maintainer-Feedback warten |
-| 2 | `init-safety` (Bündel) | #6 + #7 | PR #46162 offen gegen `upstream/dev` `dc4449df0d`, Branch-HEADs `85a2b3bdb2` (#6) und `edd743a009` (#7); Issues #42002 und #46161; +4/-1 in `config.ts` und +11/-5 in `plugin/index.ts`; `tsgo --noEmit` exit 0. **Konkurrenz:** PR #42003 fixt dasselbe Issue #42002 über `InstallationChannel === "latest"` (statt `InstallationVersion.startsWith("0.0.0-dev")`) und berührt `config.ts` + `tui.ts`. Maintainer entscheidet, welche Heuristik gemergt wird; PR #46162 wird nicht zurückgezogen, sondern läuft parallel | auf Maintainer-Entscheidung warten |
-| 3 | `filesystem-root-watch` | #3 | PR #46148 offen gegen `upstream/dev` `dc4449df0d`, HEAD `8db031423c`, Issue #45611; +7/-2 in `watcher.ts`; `tsgo --noEmit` exit 0 | auf Maintainer-Feedback warten |
-| 4 | `bootstrap-init-timeout` | #8 | PR #46167 offen gegen `upstream/dev` `dc4449df0d`, HEAD `a95369d965`, Issue #46166; +16/-2 in `bootstrap.ts`; `tsgo --noEmit` exit 0 | auf Maintainer-Feedback warten |
+| 0 | `auth-json-safety-pilot` | #1 | PR #46023 offen gegen `upstream/dev` `10765ff2a9`, HEAD `5b9bb8411c`, Issue #46020; +34/-12 in `auth/index.ts`; `tsgo --noEmit` exit 0; am 30.08. re-rebased von `dc4449df0d` auf `10765ff2a9` | auf Maintainer-Feedback warten |
+| 1 | `async-session-idle` | #2 | PR #46125 offen gegen `upstream/dev` `10765ff2a9`, HEAD `763d4ca96d`, Issue #45610; `tsgo --noEmit` exit 0 | auf Maintainer-Feedback warten |
+| 2 | `init-safety` (Bündel) | #6 + #7 | PR #46162 offen gegen `upstream/dev` `10765ff2a9`, Branch-HEADs `a856022bf7` (Tip) / `85a2b3bdb2` (#6) / `edd743a009` (#7); Issues #42002 und #46161; +4/-1 in `config.ts` und +11/-5 in `plugin/index.ts`; `tsgo --noEmit` exit 0. **Konkurrenz:** PR #42003 fixt dasselbe Issue #42002 über `InstallationChannel === "latest"` (statt `InstallationVersion.startsWith("0.0.0-dev")`) und berührt `config.ts` + `tui.ts`. Maintainer entscheidet, welche Heuristik gemergt wird; PR #46162 wird nicht zurückgezogen, sondern läuft parallel | auf Maintainer-Entscheidung warten |
+| 3 | `filesystem-root-watch` | #3 | PR #46148 offen gegen `upstream/dev` `10765ff2a9`, HEAD `46bcd01c49`, Issue #45611; +7/-2 in `watcher.ts`; `tsgo --noEmit` exit 0 | auf Maintainer-Feedback warten |
+| 4 | `bootstrap-init-timeout` | #8 | PR #46167 offen gegen `upstream/dev` `10765ff2a9`, HEAD `cc3fe65b0c`, Issue #46166; +16/-2 in `bootstrap.ts`; `tsgo --noEmit` exit 0 | auf Maintainer-Feedback warten |
 | 5 | `windows-zorder-reset` | #20 | PR #46305 offen gegen `upstream/dev` `10765ff2a9`, HEAD `13bed544a9`, Issue #46304; +5/-0 in `windows.ts`; `tsgo -b` exit 0 in `packages/desktop`; **Windows-Runtime-Nachweis blockiert** (kein Win-Host in dieser Umgebung), ehrlich im PR-Body dokumentiert | auf Maintainer-Feedback warten, ggf. Win-Verifikation durch Maintainer |
-| 6 | `build-and-dev-flags` (Bündel) | #9 + #21 | PR #46196 offen gegen `upstream/dev` `dc4449df0d`, HEADs `a748a93544` (#9) und `9fda3f7da1` (#21); Issues #46194 und #46195; +2/-1 in `build.ts` und +4/-1 in `index.ts`; `tsgo --noEmit` exit 0 in beiden Paketen | auf Maintainer-Feedback warten |
+| 6 | `build-and-dev-flags` (Bündel) | #9 + #21 | PR #46196 offen gegen `upstream/dev` `10765ff2a9`, HEADs `d93bd149da` (Tip) / `a748a93544` (#9) / `9fda3f7da1` (#21); Issues #46194 und #46195; +2/-1 in `build.ts` und +4/-1 in `index.ts`; `tsgo --noEmit` exit 0 in beiden Paketen | auf Maintainer-Feedback warten |
 | 7 | `permission-dock-layout` | #32 | **entfällt vorerst**: Fork-Hunk nicht mehr in `upstream/dev` auffindbar (`git diff upstream/dev..dev` ist leer für die betroffenen Dateien auf `10765ff2a9`). Letzter Fork-Commit auf `dev` ist `b152378fed chore: Repo-Root, packages aktualisiert (2 Dateien)`; entweder wurde der Fork-Patch durch nachfolgende `chore:`-Updates neutralisiert oder Upstream hat die Logik inzwischen selbst. Vor Re-Aufnahme Inventar-Check und `git log` der Original-Commits nötig | — |
 | 8 | `persistent-permission-choice` | #33 | PR #46302 offen gegen `upstream/dev` `10765ff2a9`, HEAD `a2beb0b98c`, Issue #46301; +7/-0 in `session-composer-state.ts`; `tsgo -b` exit 0 in `packages/app` | auf Maintainer-Feedback warten |
 | v2-1 | `sidebar-workspace-ui` | #28 + Sidebar-Teile aus #31 | blockiert | gegen `v2` re-evaluieren |
@@ -312,17 +312,20 @@ PR-Pakete in Reihenfolge** weiter oben bündelt die unabhängigen Core-/Server-/
 Permission-Korrekturen zu 9 PR-Paketen (Pakete 0–8: 1 laufend, 8 neu). Hinzu kommen die
 v2-abhängigen Pakete (v2-1 bis v2-7), die App-Fixes (`app-v1`) und die entfallenen Themen
 (`followup-queue-controls`, `session-title-generation`). PR #46125 ist offen
-(Branch `async-session-idle`, HEAD `48d064de56`, Basis `upstream/dev` `dc4449df0d`); PR #46023
-ist der laufende Pilot (`auth-json-safety-pilot`, Basis `upstream/dev` `dc4449df0d`, HEAD `f9753245e7`); PR #46148
-ist offen (Branch `filesystem-root-watch`, HEAD `8db031423c`, Basis `upstream/dev` `dc4449df0d`);
-PR #46162 ist offen (Branch `init-safety`, Bündel #6+#7, HEADs `85a2b3bdb2` und `edd743a009`,
-Basis `upstream/dev` `dc4449df0d`); PR #46167 ist offen (Branch `bootstrap-init-timeout`,
-HEAD `a95369d965`, Basis `upstream/dev` `dc4449df0d`); PR #46196 ist offen (Branch
-`build-and-dev-flags`, Bündel #9+#21, HEADs `a748a93544` und `9fda3f7da1`,
-Basis `upstream/dev` `dc4449df0d`); PR #46302 ist offen (Branch
-`persistent-permission-choice`, HEAD `a2beb0b98c`, Basis `upstream/dev`
-`10765ff2a9`); PR #46305 ist offen (Branch `windows-zorder-reset`, HEAD
-`13bed544a9`, Basis `upstream/dev` `10765ff2a9`).
+(Branch `async-session-idle`, HEAD `763d4ca96d`, Basis `upstream/dev` `10765ff2a9`); PR #46023
+ist der laufende Pilot (`auth-json-safety-pilot`, Basis `upstream/dev` `10765ff2a9`, HEAD `5b9bb8411c`); PR #46148
+ist offen (Branch `filesystem-root-watch`, HEAD `46bcd01c49`, Basis `upstream/dev` `10765ff2a9`);
+PR #46162 ist offen (Branch `init-safety`, Bündel #6+#7, HEADs `a856022bf7`, `85a2b3bdb2` und
+`edd743a009`, Basis `upstream/dev` `10765ff2a9`); PR #46167 ist offen (Branch
+`bootstrap-init-timeout`, HEAD `cc3fe65b0c`, Basis `upstream/dev` `10765ff2a9`); PR #46196 ist
+offen (Branch `build-and-dev-flags`, Bündel #9+#21, HEADs `d93bd149da`, `a748a93544` und
+`9fda3f7da1`, Basis `upstream/dev` `10765ff2a9`); PR #46302 ist offen (Branch
+`persistent-permission-choice`, HEAD `a2beb0b98c`, Basis `upstream/dev` `10765ff2a9`);
+PR #46305 ist offen (Branch `windows-zorder-reset`, HEAD `13bed544a9`, Basis
+`upstream/dev` `10765ff2a9`). Am 30.08. wurden die älteren PRs
+(auth-json-safety-pilot, async-session-idle, init-safety, filesystem-root-watch,
+bootstrap-init-timeout, build-and-dev-flags) per rebase + --force-with-lease
+von `dc4449df0d` auf `10765ff2a9` nachgezogen.
 Die Korrekturen #32 und #33 bleiben zwei getrennte Permission-Verträge, obwohl sie im Fork
 gemeinsam committed wurden. Die großen UI-Themen sind keine Kopie der Upstream-Arbeit, müssen
 ihre Überschneidungen mit `v2` aber vor der Extraktion ausdrücklich abgrenzen.

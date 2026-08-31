@@ -479,7 +479,6 @@ export default function Page() {
 
   const [ui, setUi] = createStore({
     pendingMessage: undefined as string | undefined,
-    reviewSnap: false,
     scrollGesture: 0,
     scroll: {
       overflow: false,
@@ -710,24 +709,10 @@ export default function Page() {
     return key
   })
 
-  let reviewFrame: number | undefined
   let todoFrame: number | undefined
   let todoTimer: number | undefined
   let diffFrame: number | undefined
   let diffTimer: number | undefined
-
-  createComputed((prev) => {
-    const open = desktopReviewOpen()
-    if (prev === undefined || prev === open) return open
-
-    if (reviewFrame !== undefined) cancelAnimationFrame(reviewFrame)
-    setUi("reviewSnap", true)
-    reviewFrame = requestAnimationFrame(() => {
-      reviewFrame = undefined
-      setUi("reviewSnap", false)
-    })
-    return open
-  }, desktopReviewOpen())
 
   const turnDiffs = createMemo(() => list(lastUserMessage()?.summary?.diffs))
   const nogit = createMemo(() => {
@@ -1919,12 +1904,7 @@ export default function Page() {
     )
   }
 
-  const moveFollowup = (
-    sessionID: string,
-    fromID: string,
-    toID: string,
-    position: "before" | "after" = "before",
-  ) => {
+  const moveFollowup = (sessionID: string, fromID: string, toID: string, position: "before" | "after" = "before") => {
     if (fromID === toID) return
     setFollowup("items", sessionID, (items) => {
       const list = items ?? []
@@ -2127,7 +2107,6 @@ export default function Page() {
   })
 
   onCleanup(() => {
-    if (reviewFrame !== undefined) cancelAnimationFrame(reviewFrame)
     if (todoFrame !== undefined) cancelAnimationFrame(todoFrame)
     if (todoTimer !== undefined) window.clearTimeout(todoTimer)
     if (diffFrame !== undefined) cancelAnimationFrame(diffFrame)
@@ -2215,7 +2194,11 @@ export default function Page() {
             {/* Without a fallback the timeline area is blank until messages arrive, which on a
                 slow session switch is indistinguishable from an empty conversation. The composer
                 below is rendered separately, so the placeholder leaves it out. */}
-            <Show when={messagesReady() ? params.id : undefined} keyed fallback={<WorkspaceSkeleton composer={false} />}>
+            <Show
+              when={messagesReady() ? params.id : undefined}
+              keyed
+              fallback={<WorkspaceSkeleton composer={false} />}
+            >
               {(_id) => (
                 <OpenFileProvider open={openChatFilePath}>
                   <MessageTimeline
@@ -2287,8 +2270,7 @@ export default function Page() {
                     onSend: (id) => void sendFollowup(params.id!, id, { manual: true }),
                     onEdit: editFollowup,
                     onRemove: (id) => removeFollowup(params.id!, id),
-                    onMove: (fromID, toID, position) =>
-                      moveFollowup(params.id!, fromID, toID, position),
+                    onMove: (fromID, toID, position) => moveFollowup(params.id!, fromID, toID, position),
                     onItemPauseToggle: (id) => toggleFollowupPause(params.id!, id),
                   }
                 : undefined,
@@ -2404,7 +2386,7 @@ export default function Page() {
           classList={{
             "@container relative shrink-0 flex flex-col min-h-0 h-full flex-1 md:flex-none transition-[width]": true,
             "duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[width] motion-reduce:transition-none":
-              !size.active() && !ui.reviewSnap,
+              !size.active(),
           }}
           style={{
             width: sessionPanelWidth(),
@@ -2444,7 +2426,7 @@ export default function Page() {
           </Show>
         </div>
 
-        <Show when={!newSessionDesign() && desktopSidePanelOpen()}>
+        <Show when={!newSessionDesign() && isDesktop()}>
           <Suspense>
             <SessionSidePanel
               canReview={canReview}
@@ -2457,18 +2439,18 @@ export default function Page() {
               reviewPanel={reviewPanel}
               activeDiff={activeReviewFile()}
               focusReviewDiff={focusReviewDiff}
-              reviewSnap={ui.reviewSnap}
               size={size}
             />
           </Suspense>
         </Show>
-        <Show when={newSessionDesign() && isDesktop() && desktopSidePanelOpen()}>
+        <Show when={newSessionDesign() && isDesktop()}>
           <div
             class="min-w-0 flex flex-1 flex-col"
             classList={{
               "h-full": !sidebarLayout(),
               "-mt-12 h-[calc(100%+3rem)] border-l border-t border-border-weaker-base bg-v2-background-bg-base":
                 sidebarLayout(),
+              "pointer-events-none": !desktopSidePanelOpen(),
             }}
           >
             <div class="min-h-0 flex-1 flex flex-col">
@@ -2502,7 +2484,6 @@ export default function Page() {
                                 variant="ghost-muted"
                                 size="large"
                                 class="!size-8 shrink-0"
-                                state={view().terminal.opened() ? "pressed" : undefined}
                                 onClick={() => {
                                   const opening = !view().terminal.opened()
                                   view().terminal.toggle()
@@ -2537,7 +2518,6 @@ export default function Page() {
                   fileBrowserState={reviewV2State}
                   activeDiff={activeReviewFile()}
                   focusReviewDiff={focusReviewDiff}
-                  reviewSnap={ui.reviewSnap}
                   size={size}
                   stacked={sidebarLayout()}
                 />
@@ -2547,23 +2527,25 @@ export default function Page() {
         </Show>
       </div>
 
-      <Show when={newSessionDesign() && terminalOpen()}>
+      <Show when={newSessionDesign()}>
         <Show when={isDesktop()}>
-          <div class="relative h-2 shrink-0" onPointerDown={() => size.start()}>
-            <ResizeHandle
-              class="!relative !inset-auto !h-full !w-full !transform-none"
-              direction="vertical"
-              size={layout.terminal.height()}
-              min={100}
-              max={typeof window === "undefined" ? 600 : window.innerHeight * 0.6}
-              collapseThreshold={50}
-              onResize={(height) => {
-                size.touch()
-                layout.terminal.resize(height)
-              }}
-              onCollapse={() => view().terminal.close()}
-            />
-          </div>
+          <Show when={terminalOpen()}>
+            <div class="relative h-2 shrink-0" onPointerDown={() => size.start()}>
+              <ResizeHandle
+                class="!relative !inset-auto !h-full !w-full !transform-none"
+                direction="vertical"
+                size={layout.terminal.height()}
+                min={100}
+                max={typeof window === "undefined" ? 600 : window.innerHeight * 0.6}
+                collapseThreshold={50}
+                onResize={(height) => {
+                  size.touch()
+                  layout.terminal.resize(height)
+                }}
+                onCollapse={() => view().terminal.close()}
+              />
+            </div>
+          </Show>
         </Show>
         <TerminalPanelV2 stacked={isDesktop()} />
       </Show>

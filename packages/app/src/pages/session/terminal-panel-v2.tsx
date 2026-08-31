@@ -57,7 +57,7 @@ export function TerminalPanelV2(props: { stacked?: boolean } = {}) {
   const pane = () => Math.min(height(), max())
   const stacked = createMemo(() => isDesktop() && props.stacked)
   const panelHeight = createMemo(() =>
-    isDesktop() ? (stacked() ? `${pane()}px` : "100%") : opened() ? `${pane()}px` : "0px",
+    isDesktop() ? (stacked() ? (opened() ? `${pane()}px` : "0px") : "100%") : opened() ? `${pane()}px` : "0px",
   )
   const contentHeight = createMemo(() => (isDesktop() ? (stacked() ? `${pane()}px` : "100%") : `${pane()}px`))
   const newTerminalKeybind = createMemo(() => command.keybindParts("terminal.new"))
@@ -179,7 +179,7 @@ export function TerminalPanelV2(props: { stacked?: boolean } = {}) {
         "w-0 h-full pointer-events-none": isDesktop() && !opened(),
         "rounded-[10px] shadow-[var(--v2-elevation-raised)]": isDesktop() && newLayout(),
         "transition-[height] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[height] motion-reduce:transition-none":
-          !isDesktop() && !size.active(),
+          (!isDesktop() || stacked()) && !size.active(),
       }}
       style={{ height: panelHeight() }}
     >

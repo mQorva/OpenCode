@@ -81,7 +81,6 @@ export function SessionSidePanel(props: {
   fileBrowserState?: SessionFileBrowserState
   activeDiff?: string
   focusReviewDiff: (path: string) => void
-  reviewSnap: boolean
   size: Sizing
   stacked?: boolean
 }) {
@@ -110,12 +109,33 @@ export function SessionSidePanel(props: {
   const open = createMemo(() => reviewOpen() || fileOpen())
   const fileTreeWidth = createMemo(() => Math.max(FILE_TREE_WIDTH_MIN, layout.fileTree.width()))
   const reviewTab = createMemo(() => isDesktop())
+  const [rendered, setRendered] = createStore({ review: false, file: false })
+  let closeTimer: number | undefined
+  createEffect(() => {
+    const review = reviewOpen()
+    const file = fileOpen()
+    if (review || file) {
+      if (closeTimer !== undefined) window.clearTimeout(closeTimer)
+      closeTimer = undefined
+      setRendered({ review, file })
+      return
+    }
+    if (!rendered.review && !rendered.file) return
+    closeTimer = window.setTimeout(() => {
+      closeTimer = undefined
+      setRendered({ review: false, file: false })
+    }, 240)
+  })
+  onCleanup(() => {
+    if (closeTimer !== undefined) window.clearTimeout(closeTimer)
+  })
+  const renderedOpen = createMemo(() => rendered.review || rendered.file)
   const panelWidth = createMemo(() => {
-    if (!open()) return "0px"
-    if (reviewOpen()) return "auto"
+    if (!renderedOpen()) return "0px"
+    if (rendered.review) return "auto"
     return `${fileTreeWidth()}px`
   })
-  const treeWidth = createMemo(() => (fileOpen() ? `${fileTreeWidth()}px` : "0px"))
+  const treeWidth = createMemo(() => (rendered.file ? `${fileTreeWidth()}px` : "0px"))
 
   const diffs = createMemo(() => props.diffs().filter(renderDiff))
   const diffFiles = createMemo(() => diffs().map((d) => d.file))
@@ -314,21 +334,21 @@ export function SessionSidePanel(props: {
           "h-full min-h-0": props.stacked,
           "pointer-events-none": !open(),
           "transition-[width] duration-[240ms] ease-[cubic-bezier(0.22,1,0.36,1)] will-change-[width] motion-reduce:transition-none":
-            !props.size.active() && !props.reviewSnap,
+            !props.size.active(),
           "rounded-[10px] shadow-[var(--v2-elevation-raised)] overflow-hidden":
             settings.general.newLayoutDesigns() && settings.general.layoutMode() !== "sidebar",
-          "flex-1": reviewOpen(),
+          "flex-1": rendered.review,
         }}
         style={{ width: panelWidth() }}
       >
-        <Show when={open()}>
+        <Show when={renderedOpen()}>
           <div
             class="size-full flex"
             classList={{
               "border-l border-border-weaker-base": !settings.general.newLayoutDesigns(),
             }}
           >
-            <Show when={reviewOpen()}>
+            <Show when={rendered.review}>
               <div
                 class="relative min-w-0 h-full flex-1 overflow-hidden"
                 classList={{
@@ -794,7 +814,7 @@ export function SessionSidePanel(props: {
               </div>
             </Show>
 
-            <Show when={fileOpen()}>
+            <Show when={rendered.file}>
               <div
                 id="file-tree-panel"
                 class="relative min-w-0 h-full shrink-0 overflow-hidden"
@@ -806,7 +826,7 @@ export function SessionSidePanel(props: {
               >
                 <div
                   class="h-full flex flex-col overflow-hidden group/filetree"
-                  classList={{ "border-l border-border-weaker-base": reviewOpen() }}
+                  classList={{ "border-l border-border-weaker-base": rendered.review }}
                 >
                   <Tabs
                     variant="pill"

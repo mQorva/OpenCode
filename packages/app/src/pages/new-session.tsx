@@ -92,7 +92,6 @@ export default function NewSessionPage() {
             variant="ghost-muted"
             size="large"
             class="!size-8 shrink-0"
-            state={view().terminal.opened() ? "pressed" : undefined}
             onClick={() => view().terminal.toggle()}
             aria-label={language.t("command.terminal.toggle")}
             aria-expanded={view().terminal.opened()}
@@ -124,26 +123,24 @@ export default function NewSessionPage() {
           <DraftWorkspacePanel onClose={() => setWorkspaceOpen(false)} onResizeStart={size.start} />
         </Show>
       </div>
-      <Show when={view().terminal.opened()}>
-        <Show when={isDesktop()}>
-          <div class="relative h-2 shrink-0" onPointerDown={() => size.start()}>
-            <ResizeHandle
-              class="!relative !inset-auto !h-full !w-full !transform-none"
-              direction="vertical"
-              size={layout.terminal.height()}
-              min={100}
-              max={typeof window === "undefined" ? 600 : window.innerHeight * 0.6}
-              collapseThreshold={50}
-              onResize={(height) => {
-                size.touch()
-                layout.terminal.resize(height)
-              }}
-              onCollapse={() => view().terminal.close()}
-            />
-          </div>
-        </Show>
-        <TerminalPanelV2 stacked={isDesktop()} />
+      <Show when={isDesktop() && view().terminal.opened()}>
+        <div class="relative h-2 shrink-0" onPointerDown={() => size.start()}>
+          <ResizeHandle
+            class="!relative !inset-auto !h-full !w-full !transform-none"
+            direction="vertical"
+            size={layout.terminal.height()}
+            min={100}
+            max={typeof window === "undefined" ? 600 : window.innerHeight * 0.6}
+            collapseThreshold={50}
+            onResize={(height) => {
+              size.touch()
+              layout.terminal.resize(height)
+            }}
+            onCollapse={() => view().terminal.close()}
+          />
+        </div>
       </Show>
+      <TerminalPanelV2 stacked={isDesktop()} />
     </div>
   )
 }
