@@ -2,12 +2,15 @@
 
 Bestandsaufnahme aller Fork-Änderungen gegenüber `anomalyco/opencode`: Was ist eigen, was ist Naht,
 was kann zurück ans Original? Grundlage für künftige Upstream-PRs und für die Pflege von
-`plans/upstream-patches.md`. Zuletzt vollständig gegen `upstream/dev` auf `dc4449df0d`
-und den Fork-Stand `b152378fed` geprüft. Seit `1be9fd55a9` wuchs `upstream/dev` um die in
-`#46125` referenzierten Server-Commits (relevant für Kandidat #2) und ein paar
-`chore:`-/Versionssyncs; keine neue Fork-Korrektur erzwingt einen neuen Upstream-Kandidaten.
-Für App-Features wurde zusätzlich der aktive Architekturzweig `upstream/v2` auf `1c8e557eb4`
-geprüft, weil dort bereits Funktionen und Dateistrukturen liegen, die `dev` noch nicht enthält.
+`plans/upstream-patches.md`. Zuletzt vollständig gegen `upstream/dev` auf `9f69463f1d`
+und den Fork-Ausgangsstand `b4f6409470` geprüft. Der Upstream-Sync übernimmt den Rename-Fix aus
+`#46116` in die mQorva-Titelleiste, ohne deren Sidebar-Portal zu entfernen; daraus entsteht kein
+neuer Upstream-Kandidat. Die acht vorbereiteten oder veröffentlichten Paketbranches wurden am
+31. August 2026 auf GitHub geprüft: Alle zugehörigen PRs sind weiterhin offen, ihre dokumentierten
+HEADs unverändert und die gemeldeten Standard-/Compliance-Checks erfolgreich. Der fokussierte
+Rename-/Tab-E2E-Test lief im expliziten Tabs-Modus mit 8/8 Szenarien erfolgreich. Für App-Features
+wurde zusätzlich der aktive Architekturzweig `upstream/v2` auf `eb083cce63` geprüft, weil dort
+bereits Funktionen und Dateistrukturen liegen, die `dev` noch nicht enthält.
 
 ## Stand der bisherigen Upstream-Versuche
 
@@ -29,7 +32,7 @@ Authentifizierung selbst. Gegen den aktuellen Upstream bleibt in `config.ts` dav
 
 ## Versandmodell: Branchpakete statt Fork-Historie
 
-Die 24 Fork-Commits gegenüber `upstream/dev` sind **keine** 24 Upstream-PRs. Viele davon sind
+Die 33 Fork-Commits gegenüber `upstream/dev` sind **keine** 33 Upstream-PRs. Viele davon sind
 Zwischenstände mit mehreren vermischten Themen. Für Upstream wird deshalb nicht die bestehende
 Historie weitergereicht, sondern jedes fachliche Paket frisch aus ausgewählten Hunks aufgebaut:
 
