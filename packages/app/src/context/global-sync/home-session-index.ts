@@ -81,6 +81,11 @@ export function homeSessionIndexRefresh(event: Event["type"], connected: boolean
   }
 }
 
+export type HomeSessionIndexCache = ReturnType<typeof createHomeSessionIndexCache>
+
+/** The paging callback `loadHomeSessionIndex` drives — the SDK's server-wide session list. */
+export type HomeSessionIndexList = Parameters<typeof loadHomeSessionIndex>[0]
+
 export function createHomeSessionIndexCache(queryClient: QueryClient, server: string) {
   const indexKey = homeSessionIndexKey(server)
   const eventsKey = homeSessionEventsKey(server)

@@ -20,13 +20,14 @@ export { useSettings } from "@/context/settings"
 export { ServerConnection, useServer } from "@/context/server"
 export { useServerSync } from "@/context/server-sync"
 export { useServerSDK } from "@/context/server-sdk"
+export { createSessionIndexQuery } from "@/context/global-sync/session-index-query"
 export { sessionHasOpenTab, tabKey, useTabs, type DraftTab, type SessionTab, type Tab } from "@/context/tabs"
 
 export { useDirectoryPicker } from "@/components/directory-picker"
 export { useSettingsDialog } from "@/components/settings-dialog"
 export { createHomeController } from "@/pages/home/home-controller"
 
-export { displayName, errorMessage, getProjectAvatarSource, sortedRootSessions } from "@/pages/layout/helpers"
+export { compareSessionTime, displayName, errorMessage, getProjectAvatarSource, sortedRootSessions } from "@/pages/layout/helpers"
 
 export { Persist, persisted } from "@/utils/persist"
 export { pathKey } from "@/utils/path-key"

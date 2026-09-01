@@ -1,6 +1,7 @@
 import { describe, expect, test } from "bun:test"
 import {
   applyOrder,
+  chatDirectories,
   draftsForProject,
   hiddenCount,
   moveDraftTarget,
@@ -14,6 +15,7 @@ import {
   type SidebarProject,
   type SidebarSession,
 } from "./sessions"
+import { pathKey, tabKey } from "./upstream"
 
 const entry = (id: string, worktree: string) =>
   ({
@@ -152,5 +154,76 @@ describe("manual order", () => {
   test("reorder ignores an unknown target and a self drop", () => {
     expect(reorder(["a", "b"], "a", "zzz")).toEqual(["a", "b"])
     expect(reorder(["a", "b"], "a", "a")).toEqual(["a", "b"])
+  })
+})
+
+describe("chatDirectories", () => {
+  const sessionTab = (sessionId: string) => ({ type: "session", server: "local", sessionId }) as never
+  const key = (sessionId: string, server = "local") =>
+    tabKey({ type: "session", server, sessionId } as never)
+
+  const call = (input: {
+    tabs?: never[]
+    workingDirectory?: string
+    info?: Record<string, { directory?: string }>
+    owned?: string[]
+  }) =>
+    chatDirectories({
+      tabs: input.tabs ?? [],
+      server: "local" as never,
+      workingDirectory: input.workingDirectory,
+      info: input.info ?? {},
+      owned: new Set(input.owned ?? []),
+    })
+
+  test("keeps the server working directory when no project owns it", () => {
+    expect(call({ workingDirectory: "/work" })).toEqual(["/work"])
+  })
+
+  test("drops the server working directory once a project owns it", () => {
+    expect(call({ workingDirectory: "/work", owned: [pathKey("/work")] })).toEqual([])
+  })
+
+  test("adds directories of open session tabs so their sessions stay reachable", () => {
+    const result = call({
+      workingDirectory: "/work",
+      owned: [pathKey("/work")],
+      tabs: [sessionTab("one")] as never,
+      info: { [key("one")]: { directory: "/elsewhere" } },
+    })
+
+    expect(result).toEqual(["/elsewhere"])
+  })
+
+  test("skips tab directories that a project already owns", () => {
+    const result = call({
+      owned: [pathKey("/project")],
+      tabs: [sessionTab("one")] as never,
+      info: { [key("one")]: { directory: "/project" } },
+    })
+
+    expect(result).toEqual([])
+  })
+
+  test("reports each directory once", () => {
+    const result = call({
+      workingDirectory: "/work",
+      tabs: [sessionTab("one"), sessionTab("two")] as never,
+      info: { [key("one")]: { directory: "/work" }, [key("two")]: { directory: "/other" } },
+    })
+
+    expect(result).toEqual(["/work", "/other"])
+  })
+
+  test("ignores tabs of other servers and drafts", () => {
+    const result = call({
+      tabs: [
+        { type: "session", server: "remote", sessionId: "one" },
+        { type: "draft", draftID: "d1", server: "local", directory: "/draft" },
+      ] as never,
+      info: { [key("one", "remote")]: { directory: "/remote" } },
+    })
+
+    expect(result).toEqual([])
   })
 })

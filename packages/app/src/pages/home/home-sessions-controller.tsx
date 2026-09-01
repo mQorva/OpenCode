@@ -6,11 +6,8 @@ import { DateTime } from "luxon"
 import { type Accessor, createEffect, createMemo, createRoot, type JSX, startTransition } from "solid-js"
 import { produce } from "solid-js/store"
 import { useCommand } from "@/context/command"
-import {
-  loadHomeSessionIndex,
-  retainHomeSessions,
-  type HomeSessionEvents,
-} from "@/context/global-sync/home-session-index"
+import { retainHomeSessions } from "@/context/global-sync/home-session-index"
+import { createSessionIndexQuery } from "@/context/global-sync/session-index-query"
 import type { LocalProject } from "@/context/layout"
 import { useLanguage } from "@/context/language"
 import { ServerConnection } from "@/context/server"
@@ -52,40 +49,15 @@ export function createHomeSessionsController(home: HomeController) {
     () => new Map(home.project.list().flatMap((project) => (project.id ? [[project.id, project] as const] : []))),
   )
   const homeSessions = () => home.server.focusedSync().homeSessions
-  const sessionEventLoad = useQuery(() => ({
-    queryKey: homeSessions().eventsKey,
-    queryFn: async (): Promise<HomeSessionEvents> => ({ sequence: 0, entries: [] }),
-    initialData: { sequence: 0, entries: [] } satisfies HomeSessionEvents,
-    enabled: false,
-  }))
-  const sessionLoad = useQuery(() => ({
-    queryKey: homeSessions().indexKey,
-    enabled: !!home.server.focusedContext(),
-    queryFn: async ({ signal }) => {
+  const globalSessions = createSessionIndexQuery({
+    cache: homeSessions,
+    list: () => {
       const ctx = home.server.focusedContext()
-      if (!ctx) return { sessions: [], eventSequence: 0 }
-      const cache = homeSessions()
-      const eventSequence = cache.eventSequence()
-      const index = await loadHomeSessionIndex(
-        (input, options) => ctx.sdk.client.v2.session.list(input, options),
-        eventSequence,
-        signal,
-      )
-      cache.complete(eventSequence)
-      return index
+      if (!ctx) return
+      return (input, options) => ctx.sdk.client.v2.session.list(input, options)
     },
-    retry: false,
-    staleTime: 30_000,
-    refetchOnMount: true,
-    refetchOnReconnect: true,
-  }))
-  const indexedSessions = createMemo(() =>
-    retainHomeSessions(
-      homeSessions().sessions(sessionLoad.data, sessionEventLoad.data),
-      HOME_SESSION_LIMIT,
-      Date.now(),
-    ),
-  )
+  })
+  const indexedSessions = createMemo(() => retainHomeSessions(globalSessions.sessions(), HOME_SESSION_LIMIT, Date.now()))
   const allRecords = createMemo(() =>
     buildHomeSessionRecords({
       sessions: indexedSessions,
@@ -170,7 +142,7 @@ export function createHomeSessionsController(home: HomeController) {
     data: {
       records,
       groups,
-      loading: () => sessionLoad.isLoading,
+      loading: globalSessions.loading,
       searchRecords: allRecords,
     },
     session: {

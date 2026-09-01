@@ -25,6 +25,7 @@ import {
   splitPinned,
   togglePin,
   applyOrder,
+  chatDirectories,
   reorder,
   CHATS_ORDER_KEY,
   PINNED_ORDER_KEY,
@@ -56,6 +57,9 @@ import {
   pathKey,
   persisted,
   sortedRootSessions,
+  compareSessionTime,
+  createSessionIndexQuery,
+  type Session,
   errorMessage,
   showToast,
   TooltipV2,
@@ -498,23 +502,58 @@ export function Sidebar() {
     return keys
   })
 
+  // The server-wide index is the only source that knows about sessions in directories this client
+  // holds no store for. It is shared with the home view through the per-server cache, so reading it
+  // here costs no extra request.
+  const globalSessions = createSessionIndexQuery({
+    cache: () => serverSync().homeSessions,
+    list: () =>
+      protocol() === "v1" ? undefined : (input, options) => serverSDK().client.v2.session.list(input, options),
+  })
+
+  // The directories the child stores cover. Only a v1 server needs them: it answers no server-wide
+  // session list, so its unassigned chats have to be assembled from per-directory stores instead.
+  const chatLocations = createMemo(() => {
+    if (protocol() !== "v1") return []
+    const path = serverSync().data.path
+    return chatDirectories({
+      tabs: [...tabs.store],
+      server: server.key,
+      workingDirectory: path.directory || path.home,
+      info: tabs.info,
+      owned: ownedDirectories(),
+    })
+  })
+
   // Sessions started outside every open project — e.g. a prompt submitted in an unassigned chat
   // before it was dragged into one. They would otherwise disappear from the sidebar entirely.
   const chatSessions = createMemo<SidebarSession[]>(() => {
-    const path = serverSync().data.path
-    const directory = path.directory || path.home
-    if (!directory || ownedDirectories().has(pathKey(directory))) return []
-    const [store] = serverSync().child(directory, { bootstrap: true })
-    const sessions = sortedRootSessions(store, 0)
-      .filter((session) => !ownedDirectories().has(pathKey(session.directory ?? directory)))
-      .map((session) => ({ session, server: server.key, directory: session.directory ?? directory }))
+    const owned = ownedDirectories()
+    const seen = new Set<string>()
+    const sessions: SidebarSession[] = []
+    const add = (session: Session, fallbackDirectory?: string) => {
+      const directory = session.directory ?? fallbackDirectory
+      if (!directory || session.parentID || session.time?.archived) return
+      if (owned.has(pathKey(directory)) || seen.has(session.id)) return
+      seen.add(session.id)
+      sessions.push({ session, server: server.key, directory })
+    }
+
+    for (const session of globalSessions.sessions()) add(session)
+    for (const directory of chatLocations()) {
+      const [store] = serverSync().child(directory, { bootstrap: true })
+      for (const session of sortedRootSessions(store, 0)) add(session, directory)
+    }
+    // Index and stores each sorted only their own rows, so the merged list needs one pass.
+    sessions.sort((left, right) => compareSessionTime(left.session, right.session))
+
     const current = activeSession()
     if (
       current &&
       !current.parentID &&
       !current.time.archived &&
-      !ownedDirectories().has(pathKey(current.directory)) &&
-      !sessions.some((entry) => entry.session.id === current.id)
+      !owned.has(pathKey(current.directory)) &&
+      !seen.has(current.id)
     ) {
       sessions.unshift({ session: current, server: server.key, directory: current.directory })
     }

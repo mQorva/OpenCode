@@ -2,14 +2,14 @@
 
 Bestandsaufnahme aller Fork-Änderungen gegenüber `anomalyco/opencode`: Was ist eigen, was ist Naht,
 was kann zurück ans Original? Grundlage für künftige Upstream-PRs und für die Pflege von
-`plans/upstream-patches.md`. Zuletzt vollständig gegen `upstream/dev` auf `9f69463f1d`
-und den Fork-Ausgangsstand `b4f6409470` geprüft. Der Upstream-Sync übernimmt den Rename-Fix aus
+`plans/upstream-patches.md`. Zuletzt vollständig gegen `upstream/dev` `04284921ac`, Fork `dev`
+`ec00c58590` und `upstream/v2` `fac875dba0` geprüft. Der Upstream-Sync übernimmt den Rename-Fix aus
 `#46116` in die mQorva-Titelleiste, ohne deren Sidebar-Portal zu entfernen; daraus entsteht kein
-neuer Upstream-Kandidat. Die acht vorbereiteten oder veröffentlichten Paketbranches wurden am
-31. August 2026 auf GitHub geprüft: Alle zugehörigen PRs sind weiterhin offen, ihre dokumentierten
-HEADs unverändert und die gemeldeten Standard-/Compliance-Checks erfolgreich. Der fokussierte
+neuer Upstream-Kandidat. Die acht veröffentlichten Paketbranches sind weiterhin offen, ihre dokumentierten HEADs unverändert und die
+gemeldeten Standard-/Compliance-Checks erfolgreich; GitHub meldet sie ohne Maintainer-Freigabe als
+blockiert. Der fokussierte
 Rename-/Tab-E2E-Test lief im expliziten Tabs-Modus mit 8/8 Szenarien erfolgreich. Für App-Features
-wurde zusätzlich der aktive Architekturzweig `upstream/v2` auf `eb083cce63` geprüft, weil dort
+wurde zusätzlich der aktive Architekturzweig `upstream/v2` auf `fac875dba0` geprüft, weil dort
 bereits Funktionen und Dateistrukturen liegen, die `dev` noch nicht enthält.
 
 ## Stand der bisherigen Upstream-Versuche
@@ -77,7 +77,7 @@ just-in-time-Aufbau automatisch aus dem aktuellen Verhaltensdiff übernommen.
 ### Zusätzlicher Upstream-Architektur-Gate
 
 Für kurzfristige PRs bleibt `upstream/dev` die verbindliche Basis. Bei App-Features reicht dieser
-Vergleich inzwischen aber nicht mehr: Der aktive Zweig `upstream/v2` steht auf `1c8e557eb4`, hat
+Vergleich inzwischen aber nicht mehr: Der aktive Zweig `upstream/v2` steht auf `fac875dba0`, hat
 eine vollständig neue App-Dateistruktur und enthält bereits Änderungen, die auf `dev` noch fehlen.
 Die bisherigen App-Dateien für Global Sync, Prompt-Submit, Terminalzustand, Provider-Verbindung und
 Fehlerauswertung existieren dort nicht mehr unter denselben Pfaden.
@@ -117,6 +117,7 @@ vor und werden erst nach dem v2-Architektur-Gate angegangen. Permission-Verträg
 | 6 | `build-and-dev-flags` (Bündel) | #9 + #21 | PR #46196 offen gegen `upstream/dev` `10765ff2a9`, HEADs `d93bd149da` (Tip) / `a748a93544` (#9) / `9fda3f7da1` (#21); Issues #46194 und #46195; +2/-1 in `build.ts` und +4/-1 in `index.ts`; `tsgo --noEmit` exit 0 in beiden Paketen | auf Maintainer-Feedback warten |
 | 7 | `permission-dock-layout` | #32 | **entfällt vorerst**: Fork-Hunk nicht mehr in `upstream/dev` auffindbar (`git diff upstream/dev..dev` ist leer für die betroffenen Dateien auf `10765ff2a9`). Letzter Fork-Commit auf `dev` ist `b152378fed chore: Repo-Root, packages aktualisiert (2 Dateien)`; entweder wurde der Fork-Patch durch nachfolgende `chore:`-Updates neutralisiert oder Upstream hat die Logik inzwischen selbst. Vor Re-Aufnahme Inventar-Check und `git log` der Original-Commits nötig | — |
 | 8 | `persistent-permission-choice` | #33 | PR #46302 offen gegen `upstream/dev` `10765ff2a9`, HEAD `a2beb0b98c`, Issue #46301; +7/-0 in `session-composer-state.ts`; `tsgo -b` exit 0 in `packages/app` | auf Maintainer-Feedback warten |
+| 9 | `desktop-dev-identity` | #34 | PR #46474 offen gegen `upstream/dev` `04284921ac`, HEAD `47e49d1f59`, Issue #46473; +23/-1 in `app-identity.ts`, Test und `index.ts`; Identitätstest 2/2, Desktop-Typecheck und Build erfolgreich. Der verwandte gemergte PR #23368 führte die explizite Windows-ID ein, trennte aber den unverpackten Start nicht von der installierten Dev-App. | auf Maintainer-Feedback und Pflichtchecks warten |
 | v2-1 | `sidebar-workspace-ui` | #28 + Sidebar-Teile aus #31 | blockiert | gegen `v2` re-evaluieren |
 | v2-2 | `session-navigation-ui` | #18, #19, #25, #29 | blockiert | gegen `v2` re-evaluieren |
 | v2-3 | `session-workspace-layout` | layoutneutrale Teile aus #31 | blockiert | nach `v2` Übernahme |
@@ -128,11 +129,8 @@ vor und werden erst nach dem v2-Architektur-Gate angegangen. Permission-Verträg
 | entfällt | `followup-queue-controls` | #22, #26 | entfällt | in `v2` bereits umgesetzt |
 | ohne | `session-title-generation` | #4, #24 | ohne Branch | Architekturentscheidung offen |
 
-Damit sind 9 PR-Pakete (1 laufend, 8 neu) der „Non-v2"-Strecke definiert. PR 0 (Pilot) und
-PR 1 (async-session-idle) laufen schon. Die Pakete 2–8 bauen jeweils auf dem aktuellen
-`upstream/dev`-Stand auf (just-in-time), mit eigenem Issue und vollständiger PR-Vorlage.
-Bündel-Pakete (2, 6) erhalten eine intentionale Commit-Serie, sodass jeder Korrekturteil
-einzeln prüfbar bleibt.
+Damit sind 10 PR-Pakete (9 veröffentlicht, 1 entfallen) der „Non-v2"-Strecke definiert. Die Pakete
+0–6, 8 und 9 sind veröffentlicht; Paket 7 ist vorerst entfallen.
 
 ### Zusammenhängende Features und größere Funktionsverträge
 
@@ -174,9 +172,9 @@ die querschnittlichen Pflichten, die unabhängig vom konkreten Paket gelten:
 2. **Tabs-Abweichungen akzeptieren und dokumentieren** — erledigt: Abschnitt „Sichtbare
    Abweichungen im Tab-Modus" unten. Alle vier Stellen sind Verbesserungen, die auch im
    Tab-Modus funktionieren; der Umschalter bleibt voll bedienbar.
-3. **Nicht-v2-Pakete zuerst**: Pakete 0–8 der Abarbeitungsliste (Auth, Async-Idle, Init-Safety,
+3. **Nicht-v2-Pakete zuerst**: Pakete 0–9 der Abarbeitungsliste (Auth, Async-Idle, Init-Safety,
    Filesystem-Root, Bootstrap-Timeout, Windows-Z-Order, Build-Flags, Permission-Dock,
-   Permission-Choice) sind unabhängig vom `v2`-Architektur-Gate und werden in dieser
+   Permission-Choice und Dev-App-Identität) sind unabhängig vom `v2`-Architektur-Gate und werden in dieser
    Reihenfolge abgearbeitet. Bündel (`init-safety`, `build-and-dev-flags`) erhalten je
    eine intentionale Commit-Serie, damit die Mitglieder einzeln prüfbar bleiben.
 4. **v2-Pakete nach Architektur-Gate**: v2-1 bis v2-7 sowie `app-v1` erst nach Übernahme
@@ -252,6 +250,7 @@ die querschnittlichen Pflichten, die unabhängig vom konkreten Paket gelten:
 | 31 | **D mit Design-Review** — zusammenhängende Arbeitsfläche für Datei-/Review-Panel, Terminal und Composer | ausgewählte Hunks aus `packages/app/src/pages/session.tsx`, `packages/app/src/pages/session/file-tabs.tsx`, `packages/app/src/pages/session/session-side-panel.tsx`, `packages/app/src/components/session/session-header.tsx`, `packages/app/src/components/prompt-input-v2.tsx`, `packages/session-ui/src/v2/components/prompt-input/index.tsx`, `packages/ui/src/components/dock-surface.css` | aufteilen: sidebar-spezifische Anordnung gehört zum Vertrag #28; layoutneutrale Arbeitsflächenverbesserungen bilden erst nach Vergleich mit dem neuen `v2`-Session-Screen das eigene Feature `session-workspace-layout` |
 | 32 | **C mit UI-Nachweis** — Permission-Aktionen optional innerhalb der gemeinsamen Prompt-Shell halten | `packages/session-ui/src/components/dock-prompt.tsx`, `packages/session-ui/src/components/dock-prompt.stories.tsx`, `packages/app/src/pages/session/composer/session-permission-dock.tsx`, zugehörige Permission-Regeln in `packages/session-ui/src/components/message-part.css` | eigenständiger Fix `permission-dock-layout`; das additive `footerInside` bleibt opt-in und darf Question-Docks nicht verändern; Story, schmale Breite, Umbruch und Fokuswege visuell prüfen |
 | 33 | **C nach Vertragsprüfung** — dauerhafte Permission-Antwort anbieten, sobald die Anfrage `always`-Muster liefert | `packages/app/src/pages/session/composer/session-composer-state.ts` | eigenständiger Fix `persistent-permission-choice`; nicht an `protocol() === "v2"` koppeln, aber zuerst bestätigen, dass der V1-Request die `always`-Semantik tatsächlich unterstützt; beide Protokollpfade testen |
+| 34 | **C mit Windows-Nachweis** — unverpackten Electron-Entwicklungsstart von der installierten Dev-App-ID trennen | `packages/desktop/src/main/index.ts`; neutraler Identitätsvertrag/Test nahe der Desktop-Konfiguration | veröffentlicht als PR #46474 mit Issue #46473 auf Branch `desktop-dev-identity`; der neutrale Test hält installierte IDs stabil und erzwingt eine eigene unverpackte AppUserModelID. Reproduktion im Fork: richtige und verwaiste Startmenü-Verknüpfung teilten eine AppUserModelID, die verwaiste Verknüpfung zeigte auf eine fehlende `electron.exe`, Taskleiste zeigte generisches Dokument-Icon. |
 
 ### Neue Integrationsnähte, keine direkten PR-Kandidaten
 
@@ -310,9 +309,10 @@ Abweichungen sind produktneutrale Verbesserungen:
 
 ## Zählung und Pflegezustand
 
-Die Liste enthält 33 nummerierte Prüfthemen, aber keine 33 PRs. Die **Abarbeitungsliste:
+Die Liste enthält 34 nummerierte Prüfthemen, aber keine 34 PRs. Die **Abarbeitungsliste:
 PR-Pakete in Reihenfolge** weiter oben bündelt die unabhängigen Core-/Server-/Desktop-/
-Permission-Korrekturen zu 9 PR-Paketen (Pakete 0–8: 1 laufend, 8 neu). Hinzu kommen die
+Permission- und Desktop-Korrekturen zu 10 PR-Paketen (Pakete 0–9: 8 veröffentlicht, 1 entfallen,
+1 vorgemerkt). Hinzu kommen die
 v2-abhängigen Pakete (v2-1 bis v2-7), die App-Fixes (`app-v1`) und die entfallenen Themen
 (`followup-queue-controls`, `session-title-generation`). PR #46125 ist offen
 (Branch `async-session-idle`, HEAD `763d4ca96d`, Basis `upstream/dev` `10765ff2a9`); PR #46023
