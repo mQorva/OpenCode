@@ -767,6 +767,8 @@ export function Sidebar() {
     ))
   }
 
+  // `sidebar.toggle` lives in the shell, not here: this component only exists while the sidebar is
+  // open, so registering it here would unregister it on close and leave no way to reopen.
   command.register("sidebar-project-add", () => [
     {
       id: "project.add",

@@ -2,7 +2,17 @@ import { createEffect, Show, Suspense, type ParentProps } from "solid-js"
 import { createStore } from "solid-js/store"
 import { WorkspaceSkeleton } from "@/components/workspace-skeleton"
 import { Sidebar } from "./sidebar"
-import { DebugBar, TabsInfoPopup, Titlebar, ToastRegion, setV2Toast, useLayout, usePlatform } from "./upstream"
+import {
+  DebugBar,
+  TabsInfoPopup,
+  Titlebar,
+  ToastRegion,
+  setV2Toast,
+  useCommand,
+  useLanguage,
+  useLayout,
+  usePlatform,
+} from "./upstream"
 import type { TitlebarUpdate } from "./upstream"
 import "./shell.css"
 
@@ -13,7 +23,23 @@ import "./shell.css"
 export default function SidebarLayout(props: ParentProps) {
   const platform = usePlatform()
   const layout = useLayout()
+  const command = useCommand()
+  const language = useLanguage()
   const [state, setState] = createStore({ debugTools: false })
+
+  // The tab layout registers this in `pages/layout.tsx`; this layout replaces that shell and has to
+  // bring its own, or the app menu entry stays disabled. It belongs here rather than in `Sidebar`,
+  // which is only mounted while the sidebar is open — registering it there would take the command
+  // down with the sidebar and leave no way to reopen it.
+  command.register("sidebar-layout", () => [
+    {
+      id: "sidebar.toggle",
+      title: language.t("command.sidebar.toggle"),
+      category: language.t("command.category.view"),
+      keybind: "mod+b",
+      onSelect: () => layout.sidebar.toggle(),
+    },
+  ])
 
   createEffect(() => setV2Toast(true))
 

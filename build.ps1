@@ -14,6 +14,9 @@ Skips the OpenCode CLI/Server build.
 .PARAMETER SkipDesktop
 Skips the Electron desktop build.
 
+.PARAMETER SkipInstall
+Skips the dependency sync that runs before the builds.
+
 .EXAMPLE
 .\build.ps1
 #>
@@ -26,7 +29,10 @@ param(
     [switch]$SkipCli,
 
     [Parameter()]
-    [switch]$SkipDesktop
+    [switch]$SkipDesktop,
+
+    [Parameter()]
+    [switch]$SkipInstall
 )
 
 Set-StrictMode -Version Latest
@@ -95,6 +101,14 @@ try {
     Write-Host "[build] Repository: $repoRoot"
     Write-Host "[build] Bun: $installedBunVersion"
     Write-Host ("[build] Edition: OpenCode {0} · mQorva r{1}" -f $mqorva.upstream.version, $mqorva.revision)
+
+    # Builds compile against the installed packages, so node_modules has to match bun.lock first.
+    # Without this a stale tree fails deep inside a package build instead of here.
+    if (-not $SkipInstall) {
+        Invoke-BunScript -PackageDirectory $repoRoot -Arguments @("install", "--frozen-lockfile")
+    } else {
+        Write-Host "[build] Abhängigkeitsabgleich übersprungen."
+    }
 
     if (-not $SkipApp) {
         Invoke-BunScript -PackageDirectory $packageDirectories.App -Arguments @("run", "build")
