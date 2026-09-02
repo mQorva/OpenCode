@@ -58,16 +58,25 @@ export default function SidebarLayout(props: ParentProps) {
     if (target) navigateSession(target)
   }
 
+  /**
+   * Projects follow the sidebar's project order. A project is represented by its topmost session,
+   * so one without sessions is skipped — there would be nothing to navigate to.
+   */
   const stepProject = (offset: number) => {
-    const projects = data.ordered().map((group) => group.project)
-    if (projects.length === 0) return
-    const active = data.activeSession()?.directory
-    const at = active ? projects.findIndex((project) => pathKey(project.worktree) === pathKey(active)) : -1
-    const target = at === -1 ? (offset > 0 ? projects[0] : projects[projects.length - 1]) : projects[(at + offset + projects.length) % projects.length]
-    if (!target) return
-    // Jump to the project's most recent session; its group is already in display order.
-    const group = data.ordered().find((item) => item.project.worktree === target.worktree)
-    const first = group?.sessions[0]
+    const groups = data.ordered().filter((group) => group.sessions.length > 0)
+    if (groups.length === 0) return
+    const route = layout.route()
+    const at =
+      route.type === "session"
+        ? groups.findIndex((group) => group.sessions.some((entry) => entry.session.id === route.sessionId))
+        : -1
+    const target =
+      at === -1
+        ? offset > 0
+          ? groups[0]
+          : groups[groups.length - 1]
+        : groups[(at + offset + groups.length) % groups.length]
+    const first = target?.sessions[0]
     if (first) navigateSession(first)
   }
 
