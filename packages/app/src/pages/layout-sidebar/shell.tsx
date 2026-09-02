@@ -1,17 +1,24 @@
 import { createEffect, Show, Suspense, type ParentProps } from "solid-js"
 import { createStore } from "solid-js/store"
 import { WorkspaceSkeleton } from "@/components/workspace-skeleton"
+import { createLayoutCommands } from "../layout-commands"
+import { createProjectStartController } from "./project-start"
+import { createSidebarData } from "./sidebar-data"
 import { Sidebar } from "./sidebar"
 import {
   DebugBar,
   TabsInfoPopup,
   Titlebar,
   ToastRegion,
+  createHomeController,
+  pathKey,
+  ServerConnection,
   setV2Toast,
   useCommand,
   useLanguage,
   useLayout,
   usePlatform,
+  useTabs,
 } from "./upstream"
 import type { TitlebarUpdate } from "./upstream"
 import "./shell.css"
@@ -24,13 +31,48 @@ export default function SidebarLayout(props: ParentProps) {
   const platform = usePlatform()
   const layout = useLayout()
   const command = useCommand()
+  const tabs = useTabs()
   const language = useLanguage()
   const [state, setState] = createStore({ debugTools: false })
 
-  // The tab layout registers this in `pages/layout.tsx`; this layout replaces that shell and has to
-  // bring its own, or the app menu entry stays disabled. It belongs here rather than in `Sidebar`,
-  // which is only mounted while the sidebar is open — registering it there would take the command
-  // down with the sidebar and leave no way to reopen it.
+  // The tab layout registers these in `pages/layout.tsx`; this layout replaces that shell and has to
+  // bring its own, or the app menu entries stay disabled. They belong here rather than in `Sidebar`,
+  // which is only mounted while the sidebar is open — registering them there takes the commands down
+  // with the sidebar, leaving no way to reopen it and no way to add a project from the menu.
+  createLayoutCommands()
+  const projectStart = createProjectStartController({ home: createHomeController() })
+  const data = createSidebarData()
+
+  const navigateSession = (entry: { session: { id: string }; server: ServerConnection.Key }) => {
+    const tab = tabs.addSessionTab({ server: entry.server, sessionId: entry.session.id })
+    tabs.select(tab)
+  }
+
+  /** Step through the sidebar list, wrapping at both ends; an unknown position starts at the edge. */
+  const stepSession = (offset: number) => {
+    const entries = data.flat()
+    if (entries.length === 0) return
+    const route = layout.route()
+    const at = route.type === "session" ? entries.findIndex((entry) => entry.session.id === route.sessionId) : -1
+    const target = at === -1 ? (offset > 0 ? entries[0] : entries[entries.length - 1]) : entries[(at + offset + entries.length) % entries.length]
+    if (target) navigateSession(target)
+  }
+
+  const stepProject = (offset: number) => {
+    const projects = data.ordered().map((group) => group.project)
+    if (projects.length === 0) return
+    const active = data.activeSession()?.directory
+    const at = active ? projects.findIndex((project) => pathKey(project.worktree) === pathKey(active)) : -1
+    const target = at === -1 ? (offset > 0 ? projects[0] : projects[projects.length - 1]) : projects[(at + offset + projects.length) % projects.length]
+    if (!target) return
+    // Jump to the project's most recent session; its group is already in display order.
+    const group = data.ordered().find((item) => item.project.worktree === target.worktree)
+    const first = group?.sessions[0]
+    if (first) navigateSession(first)
+  }
+
+
+
   command.register("sidebar-layout", () => [
     {
       id: "sidebar.toggle",
@@ -38,6 +80,41 @@ export default function SidebarLayout(props: ParentProps) {
       category: language.t("command.category.view"),
       keybind: "mod+b",
       onSelect: () => layout.sidebar.toggle(),
+    },
+    {
+      id: "session.previous",
+      title: language.t("command.session.previous"),
+      category: language.t("command.category.session"),
+      keybind: "alt+arrowup",
+      onSelect: () => stepSession(-1),
+    },
+    {
+      id: "session.next",
+      title: language.t("command.session.next"),
+      category: language.t("command.category.session"),
+      keybind: "alt+arrowdown",
+      onSelect: () => stepSession(1),
+    },
+    {
+      id: "project.previous",
+      title: language.t("command.project.previous"),
+      category: language.t("command.category.project"),
+      keybind: "mod+alt+arrowup",
+      onSelect: () => stepProject(-1),
+    },
+    {
+      id: "project.next",
+      title: language.t("command.project.next"),
+      category: language.t("command.category.project"),
+      keybind: "mod+alt+arrowdown",
+      onSelect: () => stepProject(1),
+    },
+    {
+      id: "project.add",
+      title: language.t("sidebarLayout.addProject"),
+      category: language.t("command.category.project"),
+      keybind: "mod+o",
+      onSelect: projectStart.addProject,
     },
   ])
 
@@ -74,7 +151,7 @@ export default function SidebarLayout(props: ParentProps) {
       />
       <div class="flex-1 min-h-0 min-w-0 flex flex-row">
         <Show when={layout.sidebar.opened()}>
-          <Sidebar />
+          <Sidebar data={data} />
         </Show>
         <div class="flex-1 min-h-0 min-w-0 flex flex-col border-t border-border-weaker-base">
           <main

@@ -50,7 +50,7 @@ import { SessionRouteKey, SessionStateKey } from "@/utils/server-scope"
 import { listAllSessions } from "@/utils/session"
 
 import { useDialog } from "@opencode-ai/ui/context/dialog"
-import { useTheme, type ColorScheme } from "@opencode-ai/ui/theme/context"
+import { useTheme } from "@opencode-ai/ui/theme/context"
 import { useCommand, type CommandOption } from "@/context/command"
 import { ConstrainDragXAxis, getDraggableId } from "@/utils/solid-dnd"
 import { DebugBar } from "@/components/debug-bar"
@@ -58,7 +58,7 @@ import { TabsInfoPopup } from "@/components/help-button"
 import { Titlebar, type TitlebarUpdate } from "@/components/titlebar"
 import { useDirectoryPicker } from "@/components/directory-picker"
 import { ServerConnection, useServer } from "@/context/server"
-import { useLanguage, type Locale } from "@/context/language"
+import { useLanguage } from "@/context/language"
 import { pathKey } from "@/utils/path-key"
 import {
   displayName,
@@ -74,6 +74,7 @@ import {
   drainPendingDeepLinks,
 } from "./layout/deep-links"
 import { createInlineEditorController } from "./layout/inline-editor"
+import { createLayoutCommands } from "./layout-commands"
 import {
   LocalWorkspace,
   SortableWorkspace,
@@ -135,14 +136,6 @@ export default function LegacyLayout(props: ParentProps) {
       dir: store[0].path.directory || dir,
     }
   })
-  const availableThemeEntries = createMemo(() => theme.ids().map((id) => [id, theme.themes()[id]] as const))
-  const colorSchemeOrder: ColorScheme[] = ["system", "light", "dark"]
-  const colorSchemeKey: Record<ColorScheme, "theme.scheme.system" | "theme.scheme.light" | "theme.scheme.dark"> = {
-    system: "theme.scheme.system",
-    light: "theme.scheme.light",
-    dark: "theme.scheme.dark",
-  }
-  const colorSchemeLabel = (scheme: ColorScheme) => language.t(colorSchemeKey[scheme])
   const currentDir = createMemo(() => route().dir)
 
   const [state, setState] = createStore({
@@ -326,50 +319,6 @@ export default function LegacyLayout(props: ParentProps) {
     clearSidebarHoverState()
     navigate(href)
     layout.mobileSidebar.hide()
-  }
-
-  function cycleTheme(direction = 1) {
-    const ids = availableThemeEntries().map(([id]) => id)
-    if (ids.length === 0) return
-    const currentIndex = ids.indexOf(theme.themeId())
-    const nextIndex = currentIndex === -1 ? 0 : (currentIndex + direction + ids.length) % ids.length
-    const nextThemeId = ids[nextIndex]
-    theme.setTheme(nextThemeId)
-    showToast({
-      title: language.t("toast.theme.title"),
-      description: theme.name(nextThemeId),
-    })
-  }
-
-  function cycleColorScheme(direction = 1) {
-    const current = theme.colorScheme()
-    const currentIndex = colorSchemeOrder.indexOf(current)
-    const nextIndex =
-      currentIndex === -1 ? 0 : (currentIndex + direction + colorSchemeOrder.length) % colorSchemeOrder.length
-    const next = colorSchemeOrder[nextIndex]
-    theme.setColorScheme(next)
-    showToast({
-      title: language.t("toast.scheme.title"),
-      description: colorSchemeLabel(next),
-    })
-  }
-
-  function setLocale(next: Locale) {
-    if (next === language.locale()) return
-    language.setLocale(next)
-    showToast({
-      title: language.t("toast.language.title"),
-      description: language.t("toast.language.description", { language: language.label(next) }),
-    })
-  }
-
-  function cycleLanguage(direction = 1) {
-    const locales = language.locales
-    const currentIndex = locales.indexOf(language.locale())
-    const nextIndex = currentIndex === -1 ? 0 : (currentIndex + direction + locales.length) % locales.length
-    const next = locales[nextIndex]
-    if (!next) return
-    setLocale(next)
   }
 
   const useSDKNotificationToasts = () =>
@@ -895,6 +844,10 @@ export default function LegacyLayout(props: ParentProps) {
     }
   }
 
+  // Appearance, language, settings, server and provider commands are not layout-bound and live in
+  // `layout-commands.tsx`, so the sidebar layout gets them too.
+  const app = createLayoutCommands()
+
   command.register("layout", () => {
     const commands: CommandOption[] = [
       {
@@ -924,25 +877,6 @@ export default function LegacyLayout(props: ParentProps) {
         category: language.t("command.category.project"),
         keybind: "mod+alt+arrowdown",
         onSelect: () => navigateProjectByOffset(1),
-      },
-      {
-        id: "provider.connect",
-        title: language.t("command.provider.connect"),
-        category: language.t("command.category.provider"),
-        onSelect: () => connectProvider(),
-      },
-      {
-        id: "server.switch",
-        title: language.t("command.server.switch"),
-        category: language.t("command.category.server"),
-        onSelect: () => openServer(),
-      },
-      {
-        id: "settings.open",
-        title: language.t("command.settings.open"),
-        category: language.t("command.category.settings"),
-        keybind: "mod+comma",
-        onSelect: () => openSettings(),
       },
       {
         id: "session.previous",
@@ -1007,13 +941,6 @@ export default function LegacyLayout(props: ParentProps) {
           })
         },
       },
-      {
-        id: "theme.cycle",
-        title: language.t("command.theme.cycle"),
-        category: language.t("command.category.theme"),
-        keybind: "mod+shift+t",
-        onSelect: () => cycleTheme(1),
-      },
     ]
 
     Array.from({ length: 9 }, (_, i) => {
@@ -1030,85 +957,8 @@ export default function LegacyLayout(props: ParentProps) {
       })
     })
 
-    for (const [id] of availableThemeEntries()) {
-      commands.push({
-        id: `theme.set.${id}`,
-        title: language.t("command.theme.set", { theme: theme.name(id) }),
-        category: language.t("command.category.theme"),
-        onSelect: () => theme.commitPreview(),
-        onHighlight: () => {
-          theme.previewTheme(id)
-          return () => theme.cancelPreview()
-        },
-      })
-    }
-
-    commands.push({
-      id: "theme.scheme.cycle",
-      title: language.t("command.theme.scheme.cycle"),
-      category: language.t("command.category.theme"),
-      keybind: "mod+shift+s",
-      onSelect: () => cycleColorScheme(1),
-    })
-
-    for (const scheme of colorSchemeOrder) {
-      commands.push({
-        id: `theme.scheme.${scheme}`,
-        title: language.t("command.theme.scheme.set", { scheme: colorSchemeLabel(scheme) }),
-        category: language.t("command.category.theme"),
-        onSelect: () => theme.commitPreview(),
-        onHighlight: () => {
-          theme.previewColorScheme(scheme)
-          return () => theme.cancelPreview()
-        },
-      })
-    }
-
-    commands.push({
-      id: "language.cycle",
-      title: language.t("command.language.cycle"),
-      category: language.t("command.category.language"),
-      onSelect: () => cycleLanguage(1),
-    })
-
-    for (const locale of language.locales) {
-      commands.push({
-        id: `language.set.${locale}`,
-        title: language.t("command.language.set", { language: language.label(locale) }),
-        category: language.t("command.category.language"),
-        onSelect: () => setLocale(locale),
-      })
-    }
-
     return commands
   })
-
-  function connectProvider() {
-    const run = ++dialogRun
-    void import("@/components/dialog-connect-provider").then((x) => {
-      if (dialogDead || dialogRun !== run) return
-      void dialog.show(() => <x.DialogConnectProvider />)
-    })
-  }
-
-  function openServer() {
-    const run = ++dialogRun
-    void import("@/components/dialog-select-server").then((x) => {
-      if (dialogDead || dialogRun !== run) return
-      dialog.show(() => <x.DialogSelectServer />)
-    })
-  }
-
-  function openSettings() {
-    const run = ++dialogRun
-    const module = settings.general.newLayoutDesigns()
-      ? import("@/components/settings-v2")
-      : import("@/components/dialog-settings")
-    void module.then((x) => {
-      if (dialogDead || dialogRun !== run) return
-      dialog.show(() => <x.DialogSettings />)
-    })
-  }
 
   function projectRoot(directory: string) {
     const key = pathKey(directory)
@@ -2202,7 +2052,7 @@ export default function LegacyLayout(props: ParentProps) {
                 </div>
               </div>
               <div data-component="getting-started-actions">
-                <Button size="large" icon="plus-small" onClick={connectProvider}>
+                <Button size="large" icon="plus-small" onClick={app.connectProvider}>
                   {language.t("command.provider.connect")}
                 </Button>
                 <Button size="large" variant="ghost" onClick={() => setStore("gettingStartedDismissed", true)}>
@@ -2236,7 +2086,7 @@ export default function LegacyLayout(props: ParentProps) {
       renderProjectOverlay={projectOverlay}
       settingsLabel={() => language.t("sidebar.settings")}
       settingsKeybind={() => command.keybind("settings.open")}
-      onOpenSettings={openSettings}
+      onOpenSettings={app.openSettings}
       helpLabel={() => language.t("sidebar.help")}
       onOpenHelp={() => platform.openExternal("https://opencode.ai/desktop-feedback")}
       renderPanel={() =>

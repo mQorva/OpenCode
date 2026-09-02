@@ -15,7 +15,6 @@ import { SidebarMarquee } from "./marquee"
 import "./sidebar.css"
 import { isNewChat } from "@/utils/session-title"
 import { sessionPermissionRequest, sessionQuestionRequest } from "@/pages/session/composer/session-request-tree"
-import { ProjectStartDialog } from "./project-start-dialog"
 import {
   draftsForProject,
   hiddenCount,
@@ -34,6 +33,8 @@ import {
   type SidebarProject,
   type SidebarSession,
 } from "./sessions"
+import { createProjectStartController } from "./project-start"
+import type { SidebarData } from "./sidebar-data"
 import {
   displayName,
   createHomeController,
@@ -388,7 +389,7 @@ function ProjectGroup(props: {
   )
 }
 
-export function Sidebar() {
+export function Sidebar(props: { data: SidebarData }) {
   const language = useLanguage()
   const layout = useLayout()
   const server = useServer()
@@ -406,10 +407,12 @@ export function Sidebar() {
   const showServers = useSettingsDialog("servers")
   const command = useCommand()
 
-  const [pinned, setPinned] = persisted(Persist.window("sidebar-layout.pinned"), createStore<string[]>([]))
+  // Order and session data come from the shell so the navigation commands walk the same list.
+  const { activeSession, groups, order, ownedDirectories, pinned, protocol, setOrder, setPinned } = props.data
+  const allChatSessions = props.data.chatSessions
+
   const [unread, setUnread] = persisted(Persist.window("sidebar-layout.unread"), createStore<string[]>([]))
   const [collapsed, setCollapsed] = persisted(Persist.window("sidebar-layout.collapsed"), createStore<string[]>([]))
-  const [order, setOrder] = persisted(Persist.window("sidebar-layout.order"), createStore<Record<string, string[]>>({}))
   const [expandedSessions, setExpandedSessions] = createSignal<string[]>([])
   const [searching, setSearching] = createSignal(false)
   const [scrolled, setScrolled] = createSignal(false)
@@ -418,7 +421,6 @@ export function Sidebar() {
     setFilter("")
   }
   const [filter, setFilter] = createSignal("")
-  const [protocol] = createResource(() => serverSDK().protocol)
   const route = createMemo(() => layout.route())
   const activeSessionID = createMemo(() => {
     const value = route()
@@ -428,44 +430,6 @@ export function Sidebar() {
     const value = route()
     return value.type === "draft" ? value.draftID : undefined
   })
-  const [activeSession] = createResource(
-    () => {
-      const value = route()
-      if (value.type !== "session") return
-      const conn = global.servers.list().find((item) => ServerConnection.key(item) === (value.server ?? server.key))
-      return conn ? { sessionID: value.sessionId, sdk: global.ensureServerCtx(conn).sdk } : undefined
-    },
-    ({ sessionID, sdk }) => sdk.api.session.get({ sessionID }).then(normalizeSessionInfo),
-  )
-
-  const groups = createMemo<SidebarProject[]>(() =>
-    layout.projects.list().map((project) => {
-      const directories = [
-        project.worktree,
-        ...(layout.sidebar.workspaces(project.worktree)() ? (project.sandboxes ?? []) : []),
-      ]
-      const sessions = directories.flatMap((directory) => {
-        const [store] = serverSync().child(directory, { bootstrap: true })
-        return sortedRootSessions(store, 0).map<SidebarSession>((session) => ({
-          session,
-          server: server.key,
-          directory: session.directory ?? directory,
-        }))
-      })
-      const current = activeSession()
-      if (
-        current &&
-        !current.parentID &&
-        !current.time.archived &&
-        directories.some((directory) => pathKey(directory) === pathKey(current.directory)) &&
-        !sessions.some((entry) => entry.session.id === current.id)
-      ) {
-        sessions.unshift({ session: current, server: server.key, directory: current.directory })
-      }
-      return { project, sessions }
-    }),
-  )
-
   const needle = createMemo(() => filter().trim().toLowerCase())
   const matches = (entry: SidebarSession) => (entry.session.title ?? "").toLowerCase().includes(needle())
 
@@ -492,74 +456,7 @@ export function Sidebar() {
   )
 
   const chatDrafts = createMemo(() => (needle() ? [] : unassignedDrafts([...tabs.store]).reverse()))
-
-  const ownedDirectories = createMemo(() => {
-    const keys = new Set<string>()
-    for (const group of groups()) {
-      keys.add(pathKey(group.project.worktree))
-      for (const sandbox of group.project.sandboxes ?? []) keys.add(pathKey(sandbox))
-    }
-    return keys
-  })
-
-  // The server-wide index is the only source that knows about sessions in directories this client
-  // holds no store for. It is shared with the home view through the per-server cache, so reading it
-  // here costs no extra request.
-  const globalSessions = createSessionIndexQuery({
-    cache: () => serverSync().homeSessions,
-    list: () =>
-      protocol() === "v1" ? undefined : (input, options) => serverSDK().client.v2.session.list(input, options),
-  })
-
-  // The directories the child stores cover. Only a v1 server needs them: it answers no server-wide
-  // session list, so its unassigned chats have to be assembled from per-directory stores instead.
-  const chatLocations = createMemo(() => {
-    if (protocol() !== "v1") return []
-    const path = serverSync().data.path
-    return chatDirectories({
-      tabs: [...tabs.store],
-      server: server.key,
-      workingDirectory: path.directory || path.home,
-      info: tabs.info,
-      owned: ownedDirectories(),
-    })
-  })
-
-  // Sessions started outside every open project — e.g. a prompt submitted in an unassigned chat
-  // before it was dragged into one. They would otherwise disappear from the sidebar entirely.
-  const chatSessions = createMemo<SidebarSession[]>(() => {
-    const owned = ownedDirectories()
-    const seen = new Set<string>()
-    const sessions: SidebarSession[] = []
-    const add = (session: Session, fallbackDirectory?: string) => {
-      const directory = session.directory ?? fallbackDirectory
-      if (!directory || session.parentID || session.time?.archived) return
-      if (owned.has(pathKey(directory)) || seen.has(session.id)) return
-      seen.add(session.id)
-      sessions.push({ session, server: server.key, directory })
-    }
-
-    for (const session of globalSessions.sessions()) add(session)
-    for (const directory of chatLocations()) {
-      const [store] = serverSync().child(directory, { bootstrap: true })
-      for (const session of sortedRootSessions(store, 0)) add(session, directory)
-    }
-    // Index and stores each sorted only their own rows, so the merged list needs one pass.
-    sessions.sort((left, right) => compareSessionTime(left.session, right.session))
-
-    const current = activeSession()
-    if (
-      current &&
-      !current.parentID &&
-      !current.time.archived &&
-      !owned.has(pathKey(current.directory)) &&
-      !seen.has(current.id)
-    ) {
-      sessions.unshift({ session: current, server: server.key, directory: current.directory })
-    }
-    const rest = sessions.filter((entry) => !pinned.includes(sessionPinKey(entry)))
-    return applyOrder(needle() ? rest.filter(matches) : rest, order[CHATS_ORDER_KEY])
-  })
+  const chatSessions = createMemo(() => (needle() ? allChatSessions().filter(matches) : allChatSessions()))
 
   const sidebarWidth = createMemo(() => layout.sidebar.width())
   const sidebarWidthMax = () =>
@@ -704,80 +601,8 @@ export function Sidebar() {
     void tabs.newDraft({ server: server.key, directory: project.worktree, worktree: project.worktree })
   }
 
-  const createProjectSession = async (directory: string) => {
-    layout.projects.open(directory)
-    const created = await serverSDK()
-      .api.session.create({ location: { directory } })
-      .then(normalizeSessionInfo)
-      .catch((error) => {
-        showToast({
-          title: language.t("prompt.toast.sessionCreateFailed.title"),
-          description: errorMessage(error, language.t("common.requestFailed")),
-        })
-        return undefined
-      })
-    if (!created) return
+  const { addProject, createProjectSession } = createProjectStartController({ home })
 
-    serverSync().session.remember(created)
-    // Fetch sessions lazily (no bootstrap:true) so the new tab can render
-    // immediately instead of waiting for a full provider/path/agent bootstrap.
-    serverSync().child(directory)[1]("session", (sessions) =>
-      sessions.some((session) => session.id === created.id) ? sessions : [...sessions, created],
-    )
-    const tab = tabs.addSessionTab({ server: server.key, sessionId: created.id })
-    tabs.select(tab)
-  }
-
-  const chooseProjectFolder = () => {
-    const conn = server.current
-    if (!conn) return
-    dialog.close()
-    queueMicrotask(() =>
-      pickDirectory({
-        server: conn,
-        title: language.t("sidebarLayout.addProject"),
-        multiple: false,
-        onSelect: (result) => {
-          if (!result) return
-          const directory = Array.isArray(result) ? result[0] : result
-          if (!directory) return
-          // Kick off project registration without blocking: register first,
-          // then create the session; do not chain via .then(...) which defers
-          // the session creation until file.list/initGit completes.
-          void Promise.resolve(home.project.add(conn, [directory])).then(() => createProjectSession(directory))
-        },
-      }),
-    )
-  }
-
-  const addProject = () => {
-    void dialog.show(() => (
-      <ProjectStartDialog
-        recent={layout.projects.recentlyClosed()}
-        onChooseFolder={chooseProjectFolder}
-        onReopen={(project) => {
-          dialog.close()
-          void createProjectSession(project.worktree)
-        }}
-        onManageServers={() => {
-          dialog.close()
-          queueMicrotask(showServers)
-        }}
-      />
-    ))
-  }
-
-  // `sidebar.toggle` lives in the shell, not here: this component only exists while the sidebar is
-  // open, so registering it here would unregister it on close and leave no way to reopen.
-  command.register("sidebar-project-add", () => [
-    {
-      id: "project.add",
-      title: language.t("sidebarLayout.addProject"),
-      category: language.t("command.category.project"),
-      keybind: "mod+o",
-      onSelect: addProject,
-    },
-  ])
 
   const editProject = (project: LocalProject) => {
     const conn = server.current
