@@ -6,7 +6,7 @@ import {
   type ServerConnection,
   type Session,
   type Tab,
-} from "./upstream"
+} from "./upstream-core"
 
 export const SESSION_DISPLAY_LIMIT = 6
 
@@ -187,4 +187,33 @@ export function reorder(keys: string[], moved: string, target: string) {
 export function orderFor(sessions: SidebarSession[], stored: string[] | undefined) {
   const keys = applyOrder(sessions, stored).map(sessionPinKey)
   return keys
+}
+
+/**
+ * Index of the entry to move to, wrapping at both ends.
+ *
+ * `from` of -1 means the current position is unknown — stepping forward then starts at the first
+ * entry, stepping back at the last, so a keypress always lands somewhere.
+ */
+export function stepIndex(length: number, from: number, offset: number) {
+  if (length === 0) return -1
+  if (from < 0) return offset > 0 ? 0 : length - 1
+  return (from + offset + length) % length
+}
+
+/**
+ * Like `stepIndex`, but skips entries that cannot be navigated to — a project whose sessions have
+ * not loaded yet has nothing to open. Returns -1 when every entry is empty.
+ *
+ * Walking on instead of filtering keeps the index stable while sessions are still arriving: the
+ * position of the remaining projects does not shift under a second keypress.
+ */
+export function stepIndexSkipping(length: number, from: number, offset: number, usable: (index: number) => boolean) {
+  if (length === 0) return -1
+  let at = from
+  for (let taken = 0; taken < length; taken++) {
+    at = stepIndex(length, at, offset)
+    if (usable(at)) return at
+  }
+  return -1
 }

@@ -42,12 +42,9 @@ type RecentTab = {
   key?: string
 }
 
-export const draftHref = (draftID: string) => `/new-session?draftId=${encodeURIComponent(draftID)}`
-
-export const tabHref = (tab: Tab) =>
-  tab.type === "draft" ? draftHref(tab.draftID) : sessionHref(tab.server, tab.sessionId)
-
-export const tabKey = (tab: Tab) => (tab.type === "draft" ? `draft:${tab.draftID}` : `${tab.server}\n${tabHref(tab)}`)
+// Addressing lives in `tab-key.ts` so logic modules can use it without loading the router.
+export { draftHref, tabHref, tabKey } from "./tab-key"
+import { draftHref, tabHref, tabKey } from "./tab-key"
 
 export function sessionHasOpenTab(tabs: Tab[], server: ServerConnection.Key, session: Session) {
   return tabs.some((tab) => tab.type === "session" && tab.server === server && tab.sessionId === session.id)

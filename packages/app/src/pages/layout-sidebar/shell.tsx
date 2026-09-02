@@ -1,8 +1,9 @@
-import { createEffect, Show, Suspense, type ParentProps } from "solid-js"
+import { createEffect, createSignal, on, Show, Suspense, type ParentProps } from "solid-js"
 import { createStore } from "solid-js/store"
 import { WorkspaceSkeleton } from "@/components/workspace-skeleton"
 import { createLayoutCommands } from "../layout-commands"
 import { createProjectStartController } from "./project-start"
+import { stepIndex, stepIndexSkipping } from "./sessions"
 import { createSidebarData } from "./sidebar-data"
 import { Sidebar } from "./sidebar"
 import {
@@ -43,7 +44,25 @@ export default function SidebarLayout(props: ParentProps) {
   const projectStart = createProjectStartController({ home: createHomeController() })
   const data = createSidebarData()
 
+  // `navigate()` reaches the router asynchronously, so `layout.route()` still reports the previous
+  // session right after a jump. Two quick presses would then both start from the same spot and land
+  // on the same target. The cursor holds the position we last sent the user to and hands over to the
+  // route as soon as that catches up — or whenever the user navigates by any other means.
+  const [cursor, setCursor] = createSignal<string>()
+  createEffect(
+    on(
+      () => layout.route(),
+      (route) => setCursor(route.type === "session" ? route.sessionId : undefined),
+      { defer: true },
+    ),
+  )
+  const currentSessionID = () => {
+    const route = layout.route()
+    return cursor() ?? (route.type === "session" ? route.sessionId : undefined)
+  }
+
   const navigateSession = (entry: { session: { id: string }; server: ServerConnection.Key }) => {
+    setCursor(entry.session.id)
     const tab = tabs.addSessionTab({ server: entry.server, sessionId: entry.session.id })
     tabs.select(tab)
   }
@@ -51,10 +70,9 @@ export default function SidebarLayout(props: ParentProps) {
   /** Step through the sidebar list, wrapping at both ends; an unknown position starts at the edge. */
   const stepSession = (offset: number) => {
     const entries = data.flat()
-    if (entries.length === 0) return
-    const route = layout.route()
-    const at = route.type === "session" ? entries.findIndex((entry) => entry.session.id === route.sessionId) : -1
-    const target = at === -1 ? (offset > 0 ? entries[0] : entries[entries.length - 1]) : entries[(at + offset + entries.length) % entries.length]
+    const active = currentSessionID()
+    const at = active ? entries.findIndex((entry) => entry.session.id === active) : -1
+    const target = entries[stepIndex(entries.length, at, offset)]
     if (target) navigateSession(target)
   }
 
@@ -63,19 +81,12 @@ export default function SidebarLayout(props: ParentProps) {
    * so one without sessions is skipped — there would be nothing to navigate to.
    */
   const stepProject = (offset: number) => {
-    const groups = data.ordered().filter((group) => group.sessions.length > 0)
-    if (groups.length === 0) return
-    const route = layout.route()
-    const at =
-      route.type === "session"
-        ? groups.findIndex((group) => group.sessions.some((entry) => entry.session.id === route.sessionId))
-        : -1
-    const target =
-      at === -1
-        ? offset > 0
-          ? groups[0]
-          : groups[groups.length - 1]
-        : groups[(at + offset + groups.length) % groups.length]
+    // Every project stays in the list, even while its sessions are still loading — dropping them
+    // would shift the positions of the rest between two keypresses. Empty ones are stepped over.
+    const groups = data.ordered()
+    const active = currentSessionID()
+    const at = active ? groups.findIndex((group) => group.sessions.some((entry) => entry.session.id === active)) : -1
+    const target = groups[stepIndexSkipping(groups.length, at, offset, (index) => !!groups[index]?.sessions.length)]
     const first = target?.sessions[0]
     if (first) navigateSession(first)
   }

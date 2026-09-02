@@ -1,6 +1,6 @@
 import { describe, expect, test } from "bun:test"
 import { resolveLayoutMode } from "@/context/settings"
-import type { DraftTab, ServerConnection, Tab } from "./upstream"
+import type { DraftTab, ServerConnection, Tab } from "./upstream-core"
 import { draftsForProject, moveDraftTarget, unassignedDrafts } from "./sessions"
 
 describe("resolveLayoutMode", () => {

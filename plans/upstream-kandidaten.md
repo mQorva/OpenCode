@@ -2,14 +2,21 @@
 
 Bestandsaufnahme aller Fork-Änderungen gegenüber `anomalyco/opencode`: Was ist eigen, was ist Naht,
 was kann zurück ans Original? Grundlage für künftige Upstream-PRs und für die Pflege von
-`plans/upstream-patches.md`. Zuletzt vollständig gegen `upstream/dev` `04284921ac`, Fork `dev`
-`ec00c58590` und `upstream/v2` `fac875dba0` geprüft. Der Upstream-Sync übernimmt den Rename-Fix aus
+`plans/upstream-patches.md`. Zuletzt vollständig gegen `upstream/dev` auf `ef2792511d`
+(`fix(console): restore migrated inference proxy requests (#46854)`) und den Fork-Ausgangsstand
+`fe27d3dcd8` geprüft. Stichtag 02.09.2026: 37 neue Upstream-Commits seit dem vorherigen
+Sync-Basis `10765ff2a9` (30.08.); keiner davon berührt eine Datei der acht offenen
+Paketbranches, alle `merge-base` der PR-Branches liegen auf dem aktuellen `upstream/dev`.
+Upstream hat in diesem Zeitraum ausschließlich Provider-Themen, Test-Stabilität und die
+Azure-Discovery-Entfernung abgearbeitet — Bereiche ohne Fork-Hunk. Daraus entsteht **kein**
+neuer Upstream-Kandidat. Der Upstream-Sync übernimmt den Rename-Fix aus
 `#46116` in die mQorva-Titelleiste, ohne deren Sidebar-Portal zu entfernen; daraus entsteht kein
-neuer Upstream-Kandidat. Die acht veröffentlichten Paketbranches sind weiterhin offen, ihre dokumentierten HEADs unverändert und die
-gemeldeten Standard-/Compliance-Checks erfolgreich; GitHub meldet sie ohne Maintainer-Freigabe als
-blockiert. Der fokussierte
+neuer Upstream-Kandidat. Die neun vorbereiteten oder veröffentlichten Paketbranches wurden am
+02. September 2026 auf GitHub geprüft: Alle zugehörigen PRs sind weiterhin offen, ihre dokumentierten
+HEADs unverändert und die gemeldeten Standard-/Compliance-Checks erfolgreich. Maintainer-Aktivität
+(Kommentare, Reviews, Statuswechsel) ist seit dem 30.08. in keinem PR zu verzeichnen. Der fokussierte
 Rename-/Tab-E2E-Test lief im expliziten Tabs-Modus mit 8/8 Szenarien erfolgreich. Für App-Features
-wurde zusätzlich der aktive Architekturzweig `upstream/v2` auf `fac875dba0` geprüft, weil dort
+wurde zusätzlich der aktive Architekturzweig `upstream/v2` auf `4772b6a3e8` geprüft, weil dort
 bereits Funktionen und Dateistrukturen liegen, die `dev` noch nicht enthält.
 
 ## Stand der bisherigen Upstream-Versuche
@@ -77,7 +84,7 @@ just-in-time-Aufbau automatisch aus dem aktuellen Verhaltensdiff übernommen.
 ### Zusätzlicher Upstream-Architektur-Gate
 
 Für kurzfristige PRs bleibt `upstream/dev` die verbindliche Basis. Bei App-Features reicht dieser
-Vergleich inzwischen aber nicht mehr: Der aktive Zweig `upstream/v2` steht auf `fac875dba0`, hat
+Vergleich inzwischen aber nicht mehr: Der aktive Zweig `upstream/v2` steht auf `4772b6a3e8`, hat
 eine vollständig neue App-Dateistruktur und enthält bereits Änderungen, die auf `dev` noch fehlen.
 Die bisherigen App-Dateien für Global Sync, Prompt-Submit, Terminalzustand, Provider-Verbindung und
 Fehlerauswertung existieren dort nicht mehr unter denselben Pfaden.
@@ -113,7 +120,7 @@ vor und werden erst nach dem v2-Architektur-Gate angegangen. Permission-Verträg
 | 2 | `init-safety` (Bündel) | #6 + #7 | PR #46162 offen gegen `upstream/dev` `10765ff2a9`, Branch-HEADs `a856022bf7` (Tip) / `85a2b3bdb2` (#6) / `edd743a009` (#7); Issues #42002 und #46161; +4/-1 in `config.ts` und +11/-5 in `plugin/index.ts`; `tsgo --noEmit` exit 0. **Konkurrenz:** PR #42003 fixt dasselbe Issue #42002 über `InstallationChannel === "latest"` (statt `InstallationVersion.startsWith("0.0.0-dev")`) und berührt `config.ts` + `tui.ts`. Maintainer entscheidet, welche Heuristik gemergt wird; PR #46162 wird nicht zurückgezogen, sondern läuft parallel | auf Maintainer-Entscheidung warten |
 | 3 | `filesystem-root-watch` | #3 | PR #46148 offen gegen `upstream/dev` `10765ff2a9`, HEAD `46bcd01c49`, Issue #45611; +7/-2 in `watcher.ts`; `tsgo --noEmit` exit 0 | auf Maintainer-Feedback warten |
 | 4 | `bootstrap-init-timeout` | #8 | PR #46167 offen gegen `upstream/dev` `10765ff2a9`, HEAD `cc3fe65b0c`, Issue #46166; +16/-2 in `bootstrap.ts`; `tsgo --noEmit` exit 0 | auf Maintainer-Feedback warten |
-| 5 | `windows-zorder-reset` | #20 | PR #46305 offen gegen `upstream/dev` `10765ff2a9`, HEAD `13bed544a9`, Issue #46304; +5/-0 in `windows.ts`; `tsgo -b` exit 0 in `packages/desktop`; **Windows-Runtime-Nachweis blockiert** (kein Win-Host in dieser Umgebung), ehrlich im PR-Body dokumentiert | auf Maintainer-Feedback warten, ggf. Win-Verifikation durch Maintainer |
+| 5 | `windows-zorder-reset` | #20 | PR #46305 offen gegen `upstream/dev` `10765ff2a9`, HEAD `13bed544a9`, Issue #46304; +5/-0 in `windows.ts`; `tsgo -b` exit 0 in `packages/desktop` auf Win11 (`10.0.26200.0`); **Windows-Laufzeit-Smoke der Z-Order-Reparatur nicht durchgeführt** (kein Skript-/Manuelltest außerhalb der Maintainer-CI), ehrlich im PR-Body dokumentiert | auf Maintainer-Feedback warten, ggf. Win-Verifikation durch Maintainer |
 | 6 | `build-and-dev-flags` (Bündel) | #9 + #21 | PR #46196 offen gegen `upstream/dev` `10765ff2a9`, HEADs `d93bd149da` (Tip) / `a748a93544` (#9) / `9fda3f7da1` (#21); Issues #46194 und #46195; +2/-1 in `build.ts` und +4/-1 in `index.ts`; `tsgo --noEmit` exit 0 in beiden Paketen | auf Maintainer-Feedback warten |
 | 7 | `permission-dock-layout` | #32 | **entfällt vorerst**: Fork-Hunk nicht mehr in `upstream/dev` auffindbar (`git diff upstream/dev..dev` ist leer für die betroffenen Dateien auf `10765ff2a9`). Letzter Fork-Commit auf `dev` ist `b152378fed chore: Repo-Root, packages aktualisiert (2 Dateien)`; entweder wurde der Fork-Patch durch nachfolgende `chore:`-Updates neutralisiert oder Upstream hat die Logik inzwischen selbst. Vor Re-Aufnahme Inventar-Check und `git log` der Original-Commits nötig | — |
 | 8 | `persistent-permission-choice` | #33 | PR #46302 offen gegen `upstream/dev` `10765ff2a9`, HEAD `a2beb0b98c`, Issue #46301; +7/-0 in `session-composer-state.ts`; `tsgo -b` exit 0 in `packages/app` | auf Maintainer-Feedback warten |
@@ -131,6 +138,17 @@ vor und werden erst nach dem v2-Architektur-Gate angegangen. Permission-Verträg
 
 Damit sind 10 PR-Pakete (9 veröffentlicht, 1 entfallen) der „Non-v2"-Strecke definiert. Die Pakete
 0–6, 8 und 9 sind veröffentlicht; Paket 7 ist vorerst entfallen.
+
+**Re-Audit 02.09.2026:** `merge-base` jedes offenen PR-Branches gegen `upstream/dev`
+`ef2792511d` ist identisch mit dem PR-Basis-Commit `10765ff2a9` (Paket 9: `04284921ac`).
+Upstream hat seit dem 30.08. keine Datei der Pakete 0–8 und 9 berührt. Damit sind alle
+veröffentlichten Pakete ohne Rebase aktuell; eine `git diff` der PR-Branches gegen
+`upstream/dev` zeigt weiterhin genau die im Inventar genannten Hunks. Die 37 neuen
+Upstream-Commits betreffen ausschließlich Provider-Themen (`Anthropic thinking block
+binding` #46653, `Bedrock reasoning effort` #46671, `SSE cancel` #44944, `apply patch
+move path` #45329, `time.start reset` #32596, `MutationObserver flake` #46675),
+Versionssynchronisierung (`v1.18.26`) und die Azure-Discovery-Entfernung (#46666, #46646)
+— alles Bereiche ohne Fork-Hunk und damit ohne neuen Kandidaten.
 
 ### Zusammenhängende Features und größere Funktionsverträge
 
@@ -325,10 +343,18 @@ offen (Branch `build-and-dev-flags`, Bündel #9+#21, HEADs `d93bd149da`, `a748a9
 `9fda3f7da1`, Basis `upstream/dev` `10765ff2a9`); PR #46302 ist offen (Branch
 `persistent-permission-choice`, HEAD `a2beb0b98c`, Basis `upstream/dev` `10765ff2a9`);
 PR #46305 ist offen (Branch `windows-zorder-reset`, HEAD `13bed544a9`, Basis
-`upstream/dev` `10765ff2a9`). Am 30.08. wurden die älteren PRs
-(auth-json-safety-pilot, async-session-idle, init-safety, filesystem-root-watch,
+`upstream/dev` `10765ff2a9`); PR #46474 ist offen (Branch `desktop-dev-identity`, HEAD
+`47e49d1f59`, Basis `upstream/dev` `04284921ac`, Issue #46473). Am 30.08. wurden die älteren
+PRs (auth-json-safety-pilot, async-session-idle, init-safety, filesystem-root-watch,
 bootstrap-init-timeout, build-and-dev-flags) per rebase + --force-with-lease
-von `dc4449df0d` auf `10765ff2a9` nachgezogen.
+von `dc4449df0d` auf `10765ff2a9` nachgezogen. Am 31.08. wurde der PR-Body von
+`windows-zorder-reset` (#46305) über `gh pr edit` korrigiert (Windows-Laufzeit-Smoke
+ehrlich dokumentiert statt pauschal als blockiert).
+**Stichtag 02.09.2026:** `upstream/dev` `ef2792511d` (37 Commits seit 30.08.),
+Fork `dev` `fe27d3dcd8`. `merge-base` der 9 offenen PR-Branches = ihre jeweilige
+PR-Basis; Upstream hat in keiner PR-Datei Eingriffe vorgenommen. Keine neuen
+Upstream-Kandidaten. Maintainer-Aktivität weiterhin null. `upstream/v2`
+`4772b6a3e8` (2 Commits gegenüber dem letzten Audit, kein Architektur-Sprung).
 Die Korrekturen #32 und #33 bleiben zwei getrennte Permission-Verträge, obwohl sie im Fork
 gemeinsam committed wurden. Die großen UI-Themen sind keine Kopie der Upstream-Arbeit, müssen
 ihre Überschneidungen mit `v2` aber vor der Extraktion ausdrücklich abgrenzen.

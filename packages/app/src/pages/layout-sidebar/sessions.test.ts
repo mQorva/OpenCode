@@ -2,6 +2,8 @@ import { describe, expect, test } from "bun:test"
 import {
   applyOrder,
   chatDirectories,
+  stepIndex,
+  stepIndexSkipping,
   draftsForProject,
   hiddenCount,
   moveDraftTarget,
@@ -15,7 +17,7 @@ import {
   type SidebarProject,
   type SidebarSession,
 } from "./sessions"
-import { pathKey, tabKey } from "./upstream"
+import { pathKey, tabKey } from "./upstream-core"
 
 const entry = (id: string, worktree: string) =>
   ({
@@ -225,5 +227,48 @@ describe("chatDirectories", () => {
     })
 
     expect(result).toEqual([])
+  })
+})
+
+describe("stepIndex", () => {
+  test("wraps around both ends", () => {
+    expect(stepIndex(3, 2, 1)).toBe(0)
+    expect(stepIndex(3, 0, -1)).toBe(2)
+  })
+
+  test("starts at the near edge when the position is unknown", () => {
+    expect(stepIndex(3, -1, 1)).toBe(0)
+    expect(stepIndex(3, -1, -1)).toBe(2)
+  })
+
+  test("reports nothing for an empty list", () => {
+    expect(stepIndex(0, -1, 1)).toBe(-1)
+  })
+
+  test("moves by one from a known position", () => {
+    expect(stepIndex(4, 1, 1)).toBe(2)
+    expect(stepIndex(4, 1, -1)).toBe(0)
+  })
+})
+
+describe("stepIndexSkipping", () => {
+  const usable = (allowed: number[]) => (index: number) => allowed.includes(index)
+
+  test("steps over entries that cannot be navigated to", () => {
+    // Positions 1 and 2 are still loading, so moving forward from 0 has to reach 3.
+    expect(stepIndexSkipping(4, 0, 1, usable([0, 3]))).toBe(3)
+  })
+
+  test("keeps the remaining order stable regardless of how many are empty", () => {
+    expect(stepIndexSkipping(5, 4, 1, usable([2, 4]))).toBe(2)
+    expect(stepIndexSkipping(5, 2, -1, usable([2, 4]))).toBe(4)
+  })
+
+  test("returns -1 when nothing is usable", () => {
+    expect(stepIndexSkipping(3, 0, 1, () => false)).toBe(-1)
+  })
+
+  test("stays put when only the current entry is usable", () => {
+    expect(stepIndexSkipping(3, 1, 1, usable([1]))).toBe(1)
   })
 })
