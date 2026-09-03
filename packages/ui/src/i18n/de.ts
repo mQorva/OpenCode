@@ -215,10 +215,16 @@ export const dict = {
   "ui.promptInput.chooseAgent": "Agenten auswählen",
   "ui.promptInput.chooseModel": "Modell auswählen",
   "ui.promptInput.chooseVariant": "Modellvariante auswählen",
-  "ui.promptInput.choosePermission": "Berechtigungen wählen",
-  "ui.promptInput.permission.ask": "nachfragen",
-  "ui.promptInput.permission.workspace": "Workspace",
+  "ui.promptInput.choosePermission": "Wie sollen Aktionen genehmigt werden?",
+  "ui.promptInput.permission.ask": "Genehmigung anfordern",
+  "ui.promptInput.permission.ask.description":
+    "Vor jeder Dateiänderung, jedem Befehl und jedem Netzzugriff nachfragen.",
+  "ui.promptInput.permission.workspace": "Workspace-Zugriff",
+  "ui.promptInput.permission.workspace.description":
+    "Im Workspace frei arbeiten. Nur bei Dateien außerhalb und beim Lesen von .env-Dateien nachfragen.",
   "ui.promptInput.permission.full": "Vollzugriff",
+  "ui.promptInput.permission.full.description":
+    "Nie nachfragen — auch nicht bei Dateien außerhalb des Workspace oder bei Geheimnissen.",
   "ui.promptInput.send": "Senden",
   "ui.promptInput.stop": "Stoppen",
   "ui.tabs.close": "Tab schließen",

@@ -222,9 +222,13 @@ Vorauswahl — identisch zur heutigen Modell-Semantik.
 
 `packages/session-ui/src/v2/components/prompt-input/index.tsx`:
 
-- Neue Komponente `PromptInputV2PermissionSelect` neben
-  `PromptInputV2ConfiguredSelect` (Z. 475-551) als `MenuV2.RadioGroup` mit drei
-  Einträgen, Trigger-Stil wie der Variant-Select.
+- Eigene Komponente `PromptInputV2PermissionSelect` statt des generischen
+  `PromptInputV2Select`: Anders als Agent, Modell und Variant ist eine
+  Berechtigungsstufe **kein Name, den der Leser schon kennt** — der Titel allein
+  sagt nicht, wobei die Sitzung stehen bleibt und nachfragt. Der Aufbau folgt
+  deshalb Codex: Menü-Überschrift, pro Eintrag Icon + Titel + erklärende Zeile,
+  und „Vollzugriff" in der Warnfarbe (`--v2-state-fg-danger`) — im Eintrag wie im
+  Trigger.
 - Platzierung in der **linken** Gruppe (Z. 206-233), nach dem Agent-Select:
   `[+] · Agent · Berechtigung | … | Modell · Variant · Senden`.
 - Sichtbarkeit: `inert` im Shell-Modus, wie die Nachbarn.
@@ -252,10 +256,16 @@ Neue Keys:
 
 ```
 ui.promptInput.choosePermission
-ui.promptInput.permission.ask / .description
-ui.promptInput.permission.work / .description
-ui.promptInput.permission.full / .description
+ui.promptInput.permission.ask              "Genehmigung anfordern"
+ui.promptInput.permission.ask.description
+ui.promptInput.permission.workspace        "Workspace-Zugriff"
+ui.promptInput.permission.workspace.description
+ui.promptInput.permission.full             "Vollzugriff"
+ui.promptInput.permission.full.description
 ```
+
+Titel sind ganze Bezeichnungen, keine Einzelwörter — ein Wort allein trägt die
+Bedeutung einer Stufe nicht.
 
 **Nur `en` und `de` pflegen.** `packages/app/src/context/language.tsx:49` legt jedes
 Locale über die englische Basis (`{ ...base, ...flatten(locale) }`), fehlende Keys

@@ -399,11 +399,12 @@ export function usePromptInputV2Controller(props: PromptInputV2ControllerProps):
           : undefined
       },
       permission: {
-        options: () => [
-          { id: "ask", label: language.t("ui.promptInput.permission.ask") },
-          { id: "workspace", label: language.t("ui.promptInput.permission.workspace") },
-          { id: "full", label: language.t("ui.promptInput.permission.full") },
-        ],
+        options: () =>
+          (["ask", "workspace", "full"] as const).map((id) => ({
+            id,
+            label: language.t(`ui.promptInput.permission.${id}`),
+            description: language.t(`ui.promptInput.permission.${id}.description`),
+          })),
         current: () => local.permission.current(),
         onSelect: (value) => local.permission.set(value as PermissionLevel),
       },

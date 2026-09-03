@@ -136,10 +136,16 @@ export const dict: Record<string, string> = {
   "ui.promptInput.chooseAgent": "Choose agent",
   "ui.promptInput.chooseModel": "Choose model",
   "ui.promptInput.chooseVariant": "Choose model variant",
-  "ui.promptInput.choosePermission": "Choose permissions",
-  "ui.promptInput.permission.ask": "ask first",
-  "ui.promptInput.permission.workspace": "Workspace",
+  "ui.promptInput.choosePermission": "How should actions be approved?",
+  "ui.promptInput.permission.ask": "Ask for approval",
+  "ui.promptInput.permission.ask.description":
+    "Ask before every file change, shell command and network request.",
+  "ui.promptInput.permission.workspace": "Workspace access",
+  "ui.promptInput.permission.workspace.description":
+    "Work freely inside the workspace. Only ask for files outside it and for reading .env files.",
   "ui.promptInput.permission.full": "Full access",
+  "ui.promptInput.permission.full.description":
+    "Never ask, not even for files outside the workspace or for secrets.",
   "ui.promptInput.send": "Send",
   "ui.promptInput.stop": "Stop",
 

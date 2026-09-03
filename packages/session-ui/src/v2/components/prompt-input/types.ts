@@ -89,6 +89,9 @@ export type PromptInputV2History = {
 export type PromptInputV2Option = {
   id: string
   label: string
+  // A line explaining what the option does, for selects whose labels are not names
+  // the reader already knows.
+  description?: string
   providerID?: string
 }
 

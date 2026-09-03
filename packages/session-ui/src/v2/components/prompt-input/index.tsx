@@ -233,17 +233,7 @@ export function PromptInputV2(props: PromptInputV2Props) {
               )}
             </Show>
             <Show when={view.permission} keyed>
-              {(control) => (
-                <PromptInputV2Select
-                  title={i18n.t("ui.promptInput.choosePermission")}
-                  keybind={control.keybind?.() ?? ["Shift", "Mod", "P"]}
-                  options={control.options()}
-                  current={control.current()}
-                  currentIcon={<IconV2 name={permissionIcon(control.current())} class="shrink-0 opacity-60" />}
-                  capitalize={false}
-                  onSelect={control.onSelect}
-                />
-              )}
+              {(control) => <PromptInputV2PermissionSelect control={control} />}
             </Show>
           </div>
           <div class="flex-1" />
@@ -515,6 +505,70 @@ function permissionIcon(level: string) {
   if (level === "ask") return "shield-question" as const
   if (level === "full") return "shield-off" as const
   return "shield" as const
+}
+
+// Unlike the agent, model and variant selects, a permission level is not a name the
+// reader already knows - the title alone does not say what the session will stop to
+// ask about. Each entry therefore carries a description, and full access is drawn in
+// the warning color on both the menu entry and the trigger.
+function PromptInputV2PermissionSelect(props: { control: PromptInputV2SelectControl }) {
+  const i18n = useI18n()
+  const current = () => props.control.current()
+  const option = (id: string) => props.control.options().find((item) => item.id === id)
+  const danger = (id: string) => (id === "full" ? "text-v2-state-fg-danger" : "")
+  return (
+    <TooltipV2
+      placement="top"
+      value={
+        <>
+          {i18n.t("ui.promptInput.choosePermission")}
+          <KeybindV2 keys={props.control.keybind?.() ?? ["Shift", "Mod", "P"]} variant="neutral" />
+        </>
+      }
+    >
+      <MenuV2 gutter={6} modal={false} placement="top-start">
+        <MenuV2.Trigger
+          as={ButtonV2}
+          variant="ghost-muted"
+          size="normal"
+          class={`max-w-[220px] justify-start ![font-weight:440] ${danger(current())}`}
+          aria-label={i18n.t("ui.promptInput.choosePermission")}
+        >
+          <IconV2 name={permissionIcon(current())} class="shrink-0" />
+          <span class="truncate leading-5">{option(current())?.label ?? current()}</span>
+          <span class="-ms-0.5 -me-1 flex shrink-0">
+            <IconV2 name="chevron-down" />
+          </span>
+        </MenuV2.Trigger>
+        <MenuV2.Portal>
+          <MenuV2.Content class="max-w-[380px]">
+            <MenuV2.Group>
+              <MenuV2.GroupLabel>{i18n.t("ui.promptInput.choosePermission")}</MenuV2.GroupLabel>
+            </MenuV2.Group>
+            <MenuV2.RadioGroup value={current()} onChange={props.control.onSelect}>
+              <For each={props.control.options()}>
+                {(item) => (
+                  <MenuV2.RadioItem
+                    value={item.id}
+                    class="!h-auto !items-start !py-2"
+                    closeOnSelect
+                  >
+                    <IconV2 name={permissionIcon(item.id)} class={`mt-0.5 shrink-0 self-start ${danger(item.id)}`} />
+                    <span class="flex min-w-0 flex-col gap-1">
+                      <span class={`leading-4 ${danger(item.id)}`}>{item.label}</span>
+                      <span class="text-v2-text-text-faint text-[11px] leading-4 whitespace-normal">
+                        {item.description}
+                      </span>
+                    </span>
+                  </MenuV2.RadioItem>
+                )}
+              </For>
+            </MenuV2.RadioGroup>
+          </MenuV2.Content>
+        </MenuV2.Portal>
+      </MenuV2>
+    </TooltipV2>
+  )
 }
 
 export function PromptInputV2Select(props: {
