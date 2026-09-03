@@ -93,6 +93,10 @@ const desktop = [
   "A port lekérése sikertelen",
   "A fájl nem lett kiválasztva a választóban",
   "A kiválasztott mellékletek meghaladják a(z) {{limit}} MB-os korlátot",
+  "Hivatkozás másolása",
+  "Kép másolása",
+  "Kép mentése másként…",
+  "Elem vizsgálata",
 ]
 
 export const dict = {

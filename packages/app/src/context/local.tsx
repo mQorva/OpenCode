@@ -7,6 +7,7 @@ import { useModels } from "@/context/models"
 import { useSettings } from "@/context/settings"
 import { useProviders } from "@/hooks/use-providers"
 import { resolveDefaultModel } from "@/hooks/provider-catalog"
+import { PermissionV1 } from "@opencode-ai/core/v1/permission"
 import { Persist, persisted } from "@/utils/persist"
 import { hasCustomAgent, resolveAgent } from "./local-agent"
 import { cycleModelVariant, getConfiguredAgentVariant, resolveModelVariant } from "./model-variant"
@@ -16,15 +17,22 @@ import { useServerSDK } from "./server-sdk"
 import { ScopedKey, type ServerScope } from "@/utils/server-scope"
 
 export type ModelKey = { providerID: string; modelID: string; variant?: string }
+export type PermissionLevel = PermissionV1.Level
+
+export const DEFAULT_PERMISSION_LEVEL: PermissionLevel = "workspace"
 
 type State = {
   agent?: string
   model?: ModelKey
   variant?: string | null
+  permission?: PermissionLevel
 }
 
 type Saved = {
   session: Record<string, State | undefined>
+  // The level a new session starts on: whatever was chosen last, the same way the
+  // model selection carries over.
+  permission?: PermissionLevel
 }
 
 const WORKSPACE_KEY = "__workspace__"
@@ -38,13 +46,15 @@ const migrate = (value: unknown) => {
   const item = value as {
     session?: Record<string, State | undefined>
     pick?: Record<string, State | undefined>
+    permission?: PermissionLevel
   }
 
-  if (item.session && typeof item.session === "object") return { session: item.session }
+  if (item.session && typeof item.session === "object") return { session: item.session, permission: item.permission }
   if (!item.pick || typeof item.pick !== "object") return { session: {} }
 
   return {
     session: Object.fromEntries(Object.entries(item.pick).filter(([key]) => key !== WORKSPACE_KEY)),
+    permission: item.permission,
   }
 }
 
@@ -258,6 +268,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
         agent: agent.current()?.name,
         model: model ? { providerID: model.provider.id, modelID: model.id } : undefined,
         variant: selected(),
+        permission: permission.current(),
       } satisfies State
     }
 
@@ -273,6 +284,27 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
         return
       }
       setStore("draft", state)
+    }
+
+    const permission = {
+      current(): PermissionLevel {
+        return scope()?.permission ?? saved.permission ?? DEFAULT_PERMISSION_LEVEL
+      },
+      set(level: PermissionLevel) {
+        startTransition(() =>
+          batch(() => {
+            setSaved("permission", level)
+            write({ permission: level })
+            const session = id()
+            if (!session) return
+            // The session row is what the backend evaluates, so mirror the choice there.
+            // Failure leaves the local pick in place; the next prompt sends it again.
+            void serverSDK()
+              .client.session.update({ sessionID: session, directory: sdk().directory, permissionLevel: level })
+              .catch(() => {})
+          }),
+        )
+      },
     }
 
     const recent = createMemo(() => models.recent.list().map(models.find).filter(Boolean))
@@ -376,6 +408,7 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
       slug: createMemo(() => base64Encode(sdk().directory)),
       model,
       agent,
+      permission,
       session: {
         ready: savedReady,
         reset() {

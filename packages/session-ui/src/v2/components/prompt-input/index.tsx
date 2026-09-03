@@ -232,6 +232,19 @@ export function PromptInputV2(props: PromptInputV2Props) {
                 />
               )}
             </Show>
+            <Show when={view.permission} keyed>
+              {(control) => (
+                <PromptInputV2Select
+                  title={i18n.t("ui.promptInput.choosePermission")}
+                  keybind={control.keybind?.() ?? ["Shift", "Mod", "P"]}
+                  options={control.options()}
+                  current={control.current()}
+                  currentIcon={<IconV2 name={permissionIcon(control.current())} class="shrink-0 opacity-60" />}
+                  capitalize={false}
+                  onSelect={control.onSelect}
+                />
+              )}
+            </Show>
           </div>
           <div class="flex-1" />
           <div
@@ -496,6 +509,14 @@ function PromptInputV2ConfiguredSelect(props: {
   )
 }
 
+// The prompt shows one icon per level so the current one reads at a glance; the
+// level ids come from PermissionV1.Level.
+function permissionIcon(level: string) {
+  if (level === "ask") return "shield-question" as const
+  if (level === "full") return "shield-off" as const
+  return "shield" as const
+}
+
 export function PromptInputV2Select(props: {
   title: string
   keybind?: string[]
@@ -503,9 +524,13 @@ export function PromptInputV2Select(props: {
   current: string
   currentIcon?: JSX.Element
   class?: string
+  // Agent and model ids arrive lowercase and are capitalized for display. Labels that
+  // are already written out opt out, so their own casing survives.
+  capitalize?: boolean
   onOpenChange?: (open: boolean) => void
   onSelect: (id: string) => void
 }) {
+  const capitalize = () => (props.capitalize ?? true ? "capitalize" : "")
   return (
     <TooltipV2
       placement="top"
@@ -525,7 +550,7 @@ export function PromptInputV2Select(props: {
           aria-label={props.title}
         >
           {props.currentIcon}
-          <span class="truncate capitalize leading-5">
+          <span class={`truncate leading-5 ${capitalize()}`}>
             {props.options.find((option) => option.id === props.current)?.label ?? props.current}
           </span>
           <span class="-ms-0.5 -me-1 flex shrink-0">
@@ -537,7 +562,7 @@ export function PromptInputV2Select(props: {
             <MenuV2.RadioGroup value={props.current} onChange={props.onSelect}>
               <For each={props.options}>
                 {(option) => (
-                  <MenuV2.RadioItem value={option.id} class="capitalize" closeOnSelect>
+                  <MenuV2.RadioItem value={option.id} class={capitalize()} closeOnSelect>
                     {option.label}
                   </MenuV2.RadioItem>
                 )}

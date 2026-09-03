@@ -73,6 +73,7 @@ import { legacySessionHref, requireServerKey, sessionHref } from "@/utils/sessio
 import { useSDK } from "@/context/sdk"
 import { useSync } from "@/context/sync"
 import { notifySessionTabsRemoved } from "@/components/titlebar-session-events"
+import { TextContextMenu } from "@/components/text-context-menu"
 import { isNewChat, sessionTitle } from "@/utils/session-title"
 import { scheduleConnectedMeasure } from "./measure"
 import { observeElementOffsetReconnectAware } from "./observe-element-offset"
@@ -1955,28 +1956,33 @@ export function MessageTimeline(props: {
             )}
           </HeaderSlot>
         </Show>
-        <div
-          data-timeline-virtual-content
-          ref={(element) => {
-            virtualContent = element
-            props.setContentRef(element)
-          }}
-          style={{
-            height: `${virtualizer.getTotalSize()}px`,
-            position: "relative",
-            width: "100%",
-          }}
-        >
-          <For each={virtualRowKeys()}>{(rowKey) => <VirtualTimelineRow rowKey={rowKey} />}</For>
-          <Show when={timelineRows().length > 0}>
-            <div
-              data-timeline-row="bottom-spacer"
-              aria-hidden="true"
-              class="h-16 absolute top-0 left-0 w-full"
-              style={{ transform: `translateY(${virtualizer.getTotalSize() - 64}px)` }}
-            />
-          </Show>
-        </div>
+        {/* mQorva: Rechtsklick im Verlauf zeigt das Menü aus dem Design-System statt des
+            nativen Chromium-Menüs. Der Trigger sitzt um den gesamten Verlauf, damit
+            „alles markieren" den Verlauf markiert und nicht eine einzelne Zeile. */}
+        <TextContextMenu>
+          <div
+            data-timeline-virtual-content
+            ref={(element) => {
+              virtualContent = element
+              props.setContentRef(element)
+            }}
+            style={{
+              height: `${virtualizer.getTotalSize()}px`,
+              position: "relative",
+              width: "100%",
+            }}
+          >
+            <For each={virtualRowKeys()}>{(rowKey) => <VirtualTimelineRow rowKey={rowKey} />}</For>
+            <Show when={timelineRows().length > 0}>
+              <div
+                data-timeline-row="bottom-spacer"
+                aria-hidden="true"
+                class="h-16 absolute top-0 left-0 w-full"
+                style={{ transform: `translateY(${virtualizer.getTotalSize() - 64}px)` }}
+              />
+            </Show>
+          </div>
+        </TextContextMenu>
       </ScrollView>
     </div>
   )

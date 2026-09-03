@@ -93,6 +93,10 @@ const desktop = [
   "Nepavyko gauti prievado",
   "Failas nebuvo pasirinktas failų parinkiklyje",
   "Pasirinkti priedai viršija {{limit}} MB ribą",
+  "Kopijuoti nuorodą",
+  "Kopijuoti paveikslą",
+  "Įrašyti paveikslą kaip…",
+  "Tikrinti elementą",
 ]
 
 export const dict = {

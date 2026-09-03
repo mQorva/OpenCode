@@ -18,6 +18,10 @@ Valid types are `feat`, `fix`, `docs`, `chore`, `refactor`, and `test`. Scopes a
 
 Examples: `fix(tui): simplify thinking toggle styling`, `docs: update contributing guide`, `chore(sdk): regenerate types`.
 
+## Upstream PRs
+
+Upstream-PRs aus dem mQorva-Fork werden vom persönlichen GitHub-Account eröffnet; der Commit-Author verlinkt nicht direkt auf die mQorva-Org. Damit Reviewer den Fork finden, gehört in jeden PR-Body eine Pflicht-Sektion `### Fork` mit `https://github.com/mQorva/OpenCode`, einem Compare-Link gegen `dev` und ggf. einem mQorva-Kontext-Link. Vollständiges Layout siehe `references/issue-pr-layout.md` im `upstream-pr`-Skill.
+
 ## Style Guide
 
 ### General Principles

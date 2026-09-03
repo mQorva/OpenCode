@@ -167,6 +167,8 @@ export type PermissionRule = {
 
 export type PermissionRuleset = Array<PermissionRule>
 
+export type PermissionLevel = "ask" | "workspace" | "full"
+
 export type Session = {
   id: string
   slug: string
@@ -212,6 +214,7 @@ export type Session = {
     archived?: number
   }
   permission?: PermissionRuleset
+  permissionLevel?: PermissionLevel
   revert?: {
     messageID: string
     partID?: string
@@ -2237,6 +2240,7 @@ export type GlobalSession = {
     archived?: number
   }
   permission?: PermissionRuleset
+  permissionLevel?: PermissionLevel
   revert?: {
     messageID: string
     partID?: string
@@ -9484,6 +9488,7 @@ export type SessionCreateData = {
       [key: string]: unknown
     }
     permission?: PermissionRuleset
+    permissionLevel?: PermissionLevel
     workspaceID?: string
   }
   path?: never
@@ -9617,6 +9622,7 @@ export type SessionUpdateData = {
       [key: string]: unknown
     }
     permission?: PermissionRuleset
+    permissionLevel?: PermissionLevel
     time?: {
       archived?: number
     }

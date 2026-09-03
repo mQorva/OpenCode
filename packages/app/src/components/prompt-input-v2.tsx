@@ -18,6 +18,7 @@ import { selectionFromLines, type SelectedLineRange, useFile } from "@/context/f
 import { useComments } from "@/context/comments"
 import { useCommand } from "@/context/command"
 import { useLanguage } from "@/context/language"
+import { useLocal, type PermissionLevel } from "@/context/local"
 import { useLayout } from "@/context/layout"
 import { usePermission } from "@/context/permission"
 import { type ImageAttachmentPart, usePrompt } from "@/context/prompt"
@@ -90,6 +91,7 @@ export function usePromptInputV2Controller(props: PromptInputV2ControllerProps):
   const command = useCommand()
   const permission = usePermission()
   const language = useLanguage()
+  const local = useLocal()
   const platform = usePlatform()
   const prompt = props.state ?? usePrompt()
   let editor: HTMLDivElement | undefined
@@ -395,6 +397,15 @@ export function usePromptInputV2Controller(props: PromptInputV2ControllerProps):
               keybind: () => command.keybindParts("agent.cycle"),
             }
           : undefined
+      },
+      permission: {
+        options: () => [
+          { id: "ask", label: language.t("ui.promptInput.permission.ask") },
+          { id: "workspace", label: language.t("ui.promptInput.permission.workspace") },
+          { id: "full", label: language.t("ui.promptInput.permission.full") },
+        ],
+        current: () => local.permission.current(),
+        onSelect: (value) => local.permission.set(value as PermissionLevel),
       },
       variant: {
         options: () => variants().map((value) => ({ id: value, label: value })),

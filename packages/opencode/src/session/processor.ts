@@ -369,6 +369,9 @@ const layer = Layer.effect(
             }
 
             const agent = yield* agents.get(ctx.assistantMessage.agent)
+            // Deliberately the agent ruleset rather than Permission.forSession: the doom
+            // loop prompt guards against a model burning tokens in a loop, which is a spend
+            // guard rather than a permission, so the session level must not switch it off.
             yield* permission.ask({
               permission: "doom_loop",
               patterns: [value.name],

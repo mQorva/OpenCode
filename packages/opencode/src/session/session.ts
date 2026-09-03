@@ -109,6 +109,7 @@ export function fromRow(row: SessionRow): Info {
     metadata: row.metadata ?? undefined,
     revert,
     permission: row.permission ? [...row.permission] : undefined,
+    permissionLevel: row.permission_level ?? undefined,
     time: {
       created: row.time_created,
       updated: row.time_updated,
@@ -152,6 +153,7 @@ export function toRow(info: Info) {
         }
       : null,
     permission: info.permission,
+    permission_level: info.permissionLevel,
     time_created: info.time.created,
     time_updated: info.time.updated,
     time_compacting: info.time.compacting,
@@ -241,6 +243,7 @@ export const Info = Schema.Struct({
   metadata: optional(Metadata),
   time: Time,
   permission: optional(PermissionV1.Ruleset),
+  permissionLevel: optional(PermissionV1.Level),
   revert: optional(Revert),
 }).annotate({ identifier: "Session" })
 export type Info = Types.DeepMutable<Schema.Schema.Type<typeof Info>>
@@ -266,6 +269,7 @@ export const CreateInput = Schema.optional(
     model: Schema.optional(Model),
     metadata: Schema.optional(Metadata),
     permission: Schema.optional(PermissionV1.Ruleset),
+    permissionLevel: Schema.optional(PermissionV1.Level),
     workspaceID: Schema.optional(WorkspaceV2.ID),
   }),
 )
@@ -421,6 +425,7 @@ export interface Interface {
     model?: Schema.Schema.Type<typeof Model>
     metadata?: typeof Metadata.Type
     permission?: PermissionV1.Ruleset
+    permissionLevel?: PermissionV1.Level
     workspaceID?: WorkspaceV2.ID
   }) => Effect.Effect<Info>
   readonly fork: (input: { sessionID: SessionID; messageID?: MessageID }) => Effect.Effect<Info, NotFound>
@@ -436,6 +441,7 @@ export interface Interface {
     time: number
   }) => Effect.Effect<void>
   readonly setPermission: (input: { sessionID: SessionID; permission: PermissionV1.Ruleset }) => Effect.Effect<void>
+  readonly setPermissionLevel: (input: { sessionID: SessionID; level: PermissionV1.Level }) => Effect.Effect<void>
   readonly setRevert: (input: {
     sessionID: SessionID
     revert: Info["revert"]
@@ -508,6 +514,7 @@ const layer: Layer.Layer<
       path?: string
       metadata?: typeof Metadata.Type
       permission?: PermissionV1.Ruleset
+      permissionLevel?: PermissionV1.Level
     }) {
       const ctx = yield* InstanceState.context
       const result: Info = {
@@ -524,6 +531,7 @@ const layer: Layer.Layer<
         model: input.model,
         metadata: input.metadata,
         permission: input.permission ? [...input.permission] : undefined,
+        permissionLevel: input.permissionLevel,
         cost: 0,
         tokens: EmptyTokens,
         time: {
@@ -785,6 +793,13 @@ const layer: Layer.Layer<
       )
     })
 
+    const setPermissionLevel = Effect.fn("Session.setPermissionLevel")(function* (input: {
+      sessionID: SessionID
+      level: PermissionV1.Level
+    }) {
+      yield* patch(input.sessionID, { permissionLevel: input.level, time: { updated: Date.now() } }).pipe(Effect.orDie)
+    })
+
     const setRevert = Effect.fn("Session.setRevert")(function* (input: {
       sessionID: SessionID
       revert: Info["revert"]
@@ -916,6 +931,7 @@ const layer: Layer.Layer<
       setMetadata,
       setAgentModel,
       setPermission,
+      setPermissionLevel,
       setRevert,
       clearRevert,
       setSummary,

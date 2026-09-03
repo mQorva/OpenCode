@@ -454,11 +454,13 @@ export default function Page() {
   const reviewMode = () => view().review.mode() ?? "git"
 
   const openPaletteFile = createCommandPaletteFileOpener()
-  const openChatFilePath = async (input: string) => {
+  // mQorva: Panel und Tab sofort öffnen, Inhalt parallel laden. Vorher wurde auf den
+  // kompletten Dateiinhalt gewartet, wodurch nach dem Klick sekundenlang nichts geschah.
+  // Der `loaded`-Wächter schützte dabei vor nichts: eine fehlende Datei liefert vom
+  // Server HTTP 200 mit leerem Inhalt, gilt also ebenfalls als geladen.
+  const openChatFilePath = (input: string) => {
     const path = file.normalize(input.replace(/\\/g, "/"))
     if (!path) return
-    await file.load(path)
-    if (!file.get(path)?.loaded) return
     openPaletteFile(path)
   }
 

@@ -136,6 +136,10 @@ export const dict: Record<string, string> = {
   "ui.promptInput.chooseAgent": "Choose agent",
   "ui.promptInput.chooseModel": "Choose model",
   "ui.promptInput.chooseVariant": "Choose model variant",
+  "ui.promptInput.choosePermission": "Choose permissions",
+  "ui.promptInput.permission.ask": "ask first",
+  "ui.promptInput.permission.workspace": "Workspace",
+  "ui.promptInput.permission.full": "Full access",
   "ui.promptInput.send": "Send",
   "ui.promptInput.stop": "Stop",
 

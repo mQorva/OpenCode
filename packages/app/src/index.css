@@ -152,9 +152,12 @@
     background: var(--v2-border-border-muted, var(--border-weak-base));
   }
 
-  /* Markdown-Vorschau im Dateipanel: gleiche Textbreite und -abstände wie im Verlauf. */
+  /* Markdown-Vorschau im Dateipanel: der Text nutzt die Panelbreite. Eine Kappung in `ch`
+     hängt nur an der Schriftgröße und würde beim Ziehen des Griffs oder beim Vergrößern
+     des Fensters nicht mitwachsen. Im Verlauf ist die Kappung sinnvoll, hier nicht:
+     dort liest man Fließtext, hier ein Dokument. */
   .mqorva-markdown-file-view [data-component="markdown"] {
-    max-width: 80ch;
+    max-width: 100%;
   }
 
   [data-slot="desktop-app-menu-chevron"] {

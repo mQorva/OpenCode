@@ -389,9 +389,12 @@ export function Markdown(
     streaming?: boolean
     class?: string
     classList?: Record<string, boolean>
+    // Meldet, ob der Container die formatierte Fassung zeigt. Vor dem ersten Worker-Ergebnis
+    // steht dort der rohe Text aus `fallback()`; Aufrufer können darauf einen Hinweis stützen.
+    onRendered?: (rendered: boolean) => void
   },
 ) {
-  const [local, others] = splitProps(props, ["text", "cacheKey", "streaming", "class", "classList"])
+  const [local, others] = splitProps(props, ["text", "cacheKey", "streaming", "class", "classList", "onRendered"])
   const i18n = useI18n()
   const openFile = useOpenFile()
   const [root, setRoot] = createSignal<HTMLDivElement>()
@@ -525,8 +528,11 @@ export function Markdown(
     if (content.length === 0) {
       disposeCopyButtons(container)
       container.innerHTML = ""
+      local.onRendered?.(false)
       return
     }
+
+    local.onRendered?.(!(content.length === 1 && content[0]?.key === "initial"))
 
     const labels = {
       copy: i18n.t("ui.message.copy"),

@@ -343,7 +343,11 @@ const layer = Layer.effect(
               .ask({
                 ...req,
                 sessionID,
-                ruleset: Permission.merge(taskAgent.permission, session.permission ?? []),
+                ruleset: Permission.forSession({
+                  agent: taskAgent.permission,
+                  session: session.permission,
+                  level: session.permissionLevel,
+                }),
               })
               .pipe(Effect.orDie),
         })
@@ -1273,6 +1277,7 @@ const layer = Layer.effect(
               user: lastUser,
               agent,
               permission: session.permission,
+              permissionLevel: session.permissionLevel,
               sessionID,
               parentSessionID: session.parentID,
               system,

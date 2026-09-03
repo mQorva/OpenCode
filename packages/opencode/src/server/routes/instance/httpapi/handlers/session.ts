@@ -197,6 +197,14 @@ export const sessionHandlers = HttpApiBuilder.group(InstanceHttpApi, "session", 
           permission: Permission.merge(current.permission ?? [], ctx.payload.permission),
         })
       }
+      // Replace rather than merge: the level is a single choice, so a switch must not
+      // leave the previous one behind the way an additive ruleset would.
+      if (ctx.payload.permissionLevel !== undefined) {
+        yield* session.setPermissionLevel({
+          sessionID: ctx.params.sessionID,
+          level: ctx.payload.permissionLevel,
+        })
+      }
       if (ctx.payload.time?.archived !== undefined) {
         yield* session.setArchived({ sessionID: ctx.params.sessionID, time: ctx.payload.time.archived })
       }

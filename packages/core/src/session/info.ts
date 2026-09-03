@@ -96,6 +96,7 @@ export function legacyFromRow(row: typeof SessionTable.$inferSelect) {
         }
       : undefined,
     permission: row.permission ? [...row.permission] : undefined,
+    permissionLevel: row.permission_level ?? undefined,
     time: {
       created: row.time_created,
       updated: row.time_updated,

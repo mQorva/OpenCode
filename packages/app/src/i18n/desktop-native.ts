@@ -319,6 +319,11 @@ export const DESKTOP_NATIVE_ENGLISH = {
 
   "desktop.picker.error.notSelected": "File was not selected by the picker",
   "desktop.picker.error.sizeLimit": "Selected attachments exceed the {{limit}} MB limit",
+
+  "desktop.contextMenu.copyLink": "Copy Link",
+  "desktop.contextMenu.copyImage": "Copy Image",
+  "desktop.contextMenu.saveImageAs": "Save Image As…",
+  "desktop.contextMenu.inspect": "Inspect Element",
 } as const
 
 export type DesktopNativeKey = keyof typeof DESKTOP_NATIVE_ENGLISH

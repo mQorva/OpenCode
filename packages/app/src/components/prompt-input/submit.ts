@@ -8,7 +8,7 @@ import { useTabs } from "@/context/tabs"
 import { useServerSync, type ServerSync } from "@/context/server-sync"
 import { useLanguage } from "@/context/language"
 import { useLayout } from "@/context/layout"
-import { useLocal, type ModelSelection } from "@/context/local"
+import { DEFAULT_PERMISSION_LEVEL, useLocal, type ModelSelection } from "@/context/local"
 import { usePermission } from "@/context/permission"
 import { type ContextItem, type ImageAttachmentPart, type Prompt, type usePrompt } from "@/context/prompt"
 import { useSDK, type DirectorySDK } from "@/context/sdk"
@@ -365,6 +365,7 @@ export function createPromptSubmit(input: PromptSubmitInput) {
     input.addToHistory(currentPrompt, mode)
     input.resetHistoryNavigation()
 
+    const permissionLevel = local.permission.current()
     const projectDirectory = sdk().directory
     const permissionState = permission.currentServerState()
     const isNewSession = !params.id
@@ -432,6 +433,13 @@ export function createPromptSubmit(input: PromptSubmitInput) {
       if (created) {
         seed(sessionDirectory, created)
         session = created
+        // The v1 create route carries no permission level, so hand the picked one to the
+        // new session before the first prompt reaches the model.
+        if (permissionLevel !== DEFAULT_PERMISSION_LEVEL) {
+          await client.session
+            .update({ sessionID: created.id, directory: sessionDirectory, permissionLevel })
+            .catch(() => {})
+        }
         await startTransition(() => {
           if (!session) return
           if (shouldAutoAccept) permissionState.enableAutoAccept(session.id, sessionDirectory)
@@ -439,6 +447,7 @@ export function createPromptSubmit(input: PromptSubmitInput) {
             agent: currentAgent.name,
             model: { providerID: currentModel.provider.id, modelID: currentModel.id },
             variant: variant ?? null,
+            permission: permissionLevel,
           })
           layout.handoff.setTabs(base64Encode(sessionDirectory), session.id)
           const draftID = search.draftId

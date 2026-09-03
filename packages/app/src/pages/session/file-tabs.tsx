@@ -10,6 +10,8 @@ import { createLineCommentControllerV2 } from "@opencode-ai/session-ui/v2/line-c
 import { sampledChecksum } from "@opencode-ai/core/util/encode"
 import { DropdownMenu } from "@opencode-ai/ui/dropdown-menu"
 import { IconButton } from "@opencode-ai/ui/icon-button"
+import { Spinner } from "@opencode-ai/ui/spinner"
+import { LoaderV2 } from "@opencode-ai/ui/v2/loader-v2"
 import { LineCommentV2OverflowIcon } from "@opencode-ai/ui/v2/line-comment-v2"
 import { MenuV2 } from "@opencode-ai/ui/v2/menu-v2"
 import { Markdown } from "@opencode-ai/session-ui/markdown"
@@ -25,9 +27,44 @@ import { getSessionHandoff } from "@/pages/session/handoff"
 import { useSessionLayout } from "@/pages/session/session-layout"
 import { createSessionTabs } from "@/pages/session/helpers"
 import { isMarkdownPath, markdownPreview } from "@/pages/session/markdown-preview"
+import { TextContextMenu } from "@/components/text-context-menu"
 
 type SessionFileViewProps = {
   tab: string
+}
+
+// mQorva: `Markdown` zeigt bis zum ersten Worker-Ergebnis den rohen Text. Das ist gewollt —
+// man sieht sofort etwas —, sieht bei großen Dateien aber nach kaputter Darstellung aus.
+// Ein Hinweis erscheint deshalb erst, wenn das Formatieren spürbar dauert.
+const FORMATTING_HINT_DELAY = 400
+
+function createMarkdownFormattingHint() {
+  const [visible, setVisible] = createSignal(false)
+  let timer: number | undefined
+
+  const clear = () => {
+    if (timer === undefined) return
+    window.clearTimeout(timer)
+    timer = undefined
+  }
+
+  onCleanup(clear)
+
+  return {
+    visible,
+    onRendered(rendered: boolean) {
+      if (rendered) {
+        clear()
+        setVisible(false)
+        return
+      }
+      if (timer !== undefined) return
+      timer = window.setTimeout(() => {
+        timer = undefined
+        setVisible(true)
+      }, FORMATTING_HINT_DELAY)
+    },
+  }
 }
 
 const selectionSide = (range: SelectedLineRange) => range.endSide ?? range.side ?? "additions"
@@ -449,12 +486,19 @@ function SessionFileViewV1(props: { tab: string }) {
   })
 
   const markdownView = createMemo(() => markdownPreview.enabled() && isMarkdownPath(path()))
+  const formattingHint = createMarkdownFormattingHint()
 
   const renderFile = (source: string) =>
     markdownView() ? (
-      <div class="mqorva-markdown-file-view relative overflow-hidden px-6 pt-2 pb-40">
-        <Markdown text={source} cacheKey={cacheKey()} />
-      </div>
+      <TextContextMenu class="mqorva-markdown-file-view relative overflow-hidden px-6 pt-2 pb-40">
+        <Show when={formattingHint.visible()}>
+          <div class="absolute right-6 top-3 z-10 flex items-center gap-1.5 rounded-md border border-border-weaker-base bg-background-stronger px-2 py-1 text-12-regular text-text-weak">
+            <Spinner class="size-3 shrink-0" />
+            {language.t("session.file.markdownFormatting")}
+          </div>
+        </Show>
+        <Markdown text={source} cacheKey={cacheKey()} onRendered={formattingHint.onRendered} />
+      </TextContextMenu>
     ) : (
       <div class="relative overflow-hidden pb-40">
         <Dynamic
@@ -506,7 +550,11 @@ function SessionFileViewV1(props: { tab: string }) {
         <Switch>
           <Match when={state()?.loaded}>{renderFile(contents())}</Match>
           <Match when={state()?.loading}>
-            <div class="px-6 py-4 text-text-weak">{language.t("common.loading")}...</div>
+            <div class="px-6 py-4 flex items-center gap-2 text-text-weak">
+              <Spinner class="size-3.5 shrink-0" />
+              {language.t("common.loading")}
+              {language.t("common.loading.ellipsis")}
+            </div>
           </Match>
           <Match when={state()?.error}>{(err) => <div class="px-6 py-4 text-text-weak">{err()}</div>}</Match>
         </Switch>
@@ -739,12 +787,19 @@ function SessionFileViewV2(props: { tab: string }) {
   })
 
   const markdownView = createMemo(() => markdownPreview.enabled() && isMarkdownPath(path()))
+  const formattingHint = createMarkdownFormattingHint()
 
   const renderFile = (source: string) =>
     markdownView() ? (
-      <div class="mqorva-markdown-file-view relative overflow-hidden px-6 pt-2 pb-40">
-        <Markdown text={source} cacheKey={cacheKey()} />
-      </div>
+      <TextContextMenu class="mqorva-markdown-file-view relative overflow-hidden px-6 pt-2 pb-40">
+        <Show when={formattingHint.visible()}>
+          <div class="absolute right-6 top-3 z-10 flex items-center gap-1.5 rounded-md border border-border-weaker-base bg-background-stronger px-2 py-1 text-12-regular text-text-weak">
+            <LoaderV2 width={12} height={12} class="shrink-0" />
+            {language.t("session.file.markdownFormatting")}
+          </div>
+        </Show>
+        <Markdown text={source} cacheKey={cacheKey()} onRendered={formattingHint.onRendered} />
+      </TextContextMenu>
     ) : (
       <div class="relative overflow-hidden pb-40">
         <Dynamic
@@ -804,7 +859,11 @@ function SessionFileViewV2(props: { tab: string }) {
         <Switch>
           <Match when={state()?.loaded}>{renderFile(contents())}</Match>
           <Match when={state()?.loading}>
-            <div class="px-6 py-4 text-text-weak">{language.t("common.loading")}...</div>
+            <div class="px-6 py-4 flex items-center gap-2 text-text-weak">
+              <LoaderV2 width={14} height={14} class="shrink-0" />
+              {language.t("common.loading")}
+              {language.t("common.loading.ellipsis")}
+            </div>
           </Match>
           <Match when={state()?.error}>{(err) => <div class="px-6 py-4 text-text-weak">{err()}</div>}</Match>
         </Switch>

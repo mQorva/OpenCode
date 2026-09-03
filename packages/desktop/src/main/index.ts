@@ -50,7 +50,7 @@ import { migrateMqorvaUserData } from "./mqorva-migration"
 import { MQORVA_APP_IDS, MQORVA_APP_NAMES, MQORVA_PROTOCOL, MQORVA_UNPACKAGED_APP_ID } from "../../identity"
 import { cleanupStoreFiles } from "./store-cleanup"
 import { startBackgroundCli } from "./background-cli"
-import { setNativeTranslations } from "./native-translations"
+import { nativeT, setNativeTranslations } from "./native-translations"
 
 const TEST_ONBOARDING = process.env.OPENCODE_TEST_ONBOARDING === "1"
 const SIDECAR_VERSION = process.env.OPENCODE_SIDECAR_V2 === "1" ? "v2" : "v1"
@@ -111,7 +111,41 @@ function ensureLoopbackNoProxy() {
 }
 
 const main = Effect.gen(function* () {
-  contextMenu({ showSaveImageAs: true, showLookUpSelection: false, showSearchWithGoogle: false })
+  // mQorva: `electron-context-menu` liest `labels[id]` bei jedem Rechtsklick neu. Die Getter
+  // holen die Beschriftung deshalb erst zum Klickzeitpunkt — beim Start hat der Renderer
+  // seine Sprache noch nicht gemeldet. Verlauf und Dateivorschau bringen ihr eigenes Menü
+  // mit; hier bleibt das native Menü für Eingabefelder, wegen Rechtschreibung und Einfügen.
+  contextMenu({
+    showSaveImageAs: true,
+    showLookUpSelection: false,
+    showSearchWithGoogle: false,
+    labels: {
+      get cut() {
+        return nativeT("desktop.menu.cut")
+      },
+      get copy() {
+        return nativeT("desktop.menu.copy")
+      },
+      get paste() {
+        return nativeT("desktop.menu.paste")
+      },
+      get selectAll() {
+        return nativeT("desktop.menu.selectAll")
+      },
+      get copyLink() {
+        return nativeT("desktop.contextMenu.copyLink")
+      },
+      get copyImage() {
+        return nativeT("desktop.contextMenu.copyImage")
+      },
+      get saveImageAs() {
+        return nativeT("desktop.contextMenu.saveImageAs")
+      },
+      get inspect() {
+        return nativeT("desktop.contextMenu.inspect")
+      },
+    },
+  })
 
   // on macOS apps run in `/` which can cause issues with ripgrep
   try {

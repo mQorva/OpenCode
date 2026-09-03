@@ -6,6 +6,10 @@ import { Deferred, Effect, Layer, Context } from "effect"
 import os from "os"
 import { PermissionV1 } from "@opencode-ai/core/v1/permission"
 import { EventV2Bridge } from "@/event-v2-bridge"
+import { evaluate } from "./evaluate"
+
+export { evaluate } from "./evaluate"
+export { forSession, Level } from "./level"
 
 export const Event = PermissionV1.Event
 
@@ -23,18 +27,6 @@ interface PendingEntry {
 interface State {
   pending: Map<PermissionV1.ID, PendingEntry>
   approved: PermissionV1.Rule[]
-}
-
-export function evaluate(permission: string, pattern: string, ...rulesets: PermissionV1.Ruleset[]): PermissionV1.Rule {
-  return (
-    rulesets
-      .flat()
-      .findLast((rule) => Wildcard.match(permission, rule.permission) && Wildcard.match(pattern, rule.pattern)) ?? {
-      action: "ask",
-      permission,
-      pattern: "*",
-    }
-  )
 }
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/Permission") {}

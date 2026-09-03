@@ -93,6 +93,10 @@ const desktop = [
   "Ekki tókst að sækja gátt",
   "Skráin var ekki valin í skráavalinu",
   "Valin viðhengi fara yfir {{limit}} MB hámarkið",
+  "Afrita tengil",
+  "Afrita mynd",
+  "Vista mynd sem…",
+  "Skoða einingu",
 ]
 
 export const dict = {

@@ -24,6 +24,14 @@ export type Rule = typeof Rule.Type
 export const Ruleset = Schema.Array(Rule).annotate({ identifier: "PermissionRuleset" })
 export type Ruleset = typeof Ruleset.Type
 
+// How much a session asks before acting. A scale of one question: "ask" asks about
+// every write, shell command and network call, "workspace" keeps opencode's default
+// (only outside the workspace and for .env reads), "full" never asks.
+export const Level = Schema.Literals(["ask", "workspace", "full"]).annotate({
+  identifier: "PermissionLevel",
+})
+export type Level = typeof Level.Type
+
 export const Request = Schema.Struct({
   id: ID,
   sessionID: SessionID,

@@ -93,6 +93,10 @@ const desktop = [
   "Nije uspjelo dohvaćanje priključka",
   "Datoteka nije odabrana u izborniku",
   "Odabrani prilozi premašuju ograničenje od {{limit}} MB",
+  "Kopiraj poveznicu",
+  "Kopiraj sliku",
+  "Spremi sliku kao…",
+  "Pregledaj element",
 ]
 
 export const dict = {

@@ -22,6 +22,11 @@ OpenCode-Basis: `1.18.18` (`e23586af2623f1bc2e8e6965d2d7acf7bd03d5c3`)
 - Schriftgrößen, -gewichte und Zeilenhöhen der Seitenleiste an die übrige Oberfläche angeglichen
 - Farben des Fenstermenüs an die übrigen Menüs angeglichen
 - Markdown-Dateien öffnen im Seitenpanel als gesetzte Vorschau; ein Knopf in der Tab-Leiste schaltet auf den Quelltext um
+- Klick auf einen Dateipfad im Verlauf öffnet das Seitenpanel sofort und zeigt dort einen Ladezeiger, statt bis zum fertig geladenen Inhalt zu warten
+- Markdown-Vorschau im Seitenpanel nutzt die Breite des Panels und wächst beim Ziehen des Griffs und beim Vergrößern des Fensters mit
+- dauert das Formatieren einer großen Markdown-Datei, steht der rohe Text schon da und ein kleiner Hinweis meldet die laufende Formatierung
+- Rechtsklick im Verlauf und in der Dateivorschau zeigt das Menü der Oberfläche mit deutschen Beschriftungen statt des nativen Systemmenüs; „alles markieren“ betrifft dabei den Verlauf, nicht das ganze Fenster
+- native Kontextmenüs in Eingabefeldern — dort wegen Rechtschreibprüfung und Einfügen beibehalten — folgen der eingestellten Sprache
 - Tabs, „öffnen mit" und der Einklapp-Knopf des Seitenpanels stehen auf einer Linie mit der Kopfzeile der Sitzung
 - Sitzungsmenü sitzt direkt hinter dem Sitzungstitel statt am rechten Rand
 - Kante zwischen Verlauf und Seitenbereich ist sichtbar und damit als Ziehgriff erkennbar

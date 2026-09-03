@@ -700,6 +700,11 @@ export const dict = {
   "session.review.noBranchChanges": "No branch changes yet",
 
   "session.file.markdownPreview": "Toggle Markdown preview",
+  "session.file.markdownFormatting": "Formatting",
+  "contextMenu.copy": "Copy",
+  "contextMenu.selectAll": "Select all",
+  "contextMenu.copyPath": "Copy path",
+  "contextMenu.copyLink": "Copy link",
   "session.files.selectToOpen": "Select a file to open",
   "session.files.all": "All files",
   "session.files.empty": "No files",
