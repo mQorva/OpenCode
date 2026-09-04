@@ -46,13 +46,28 @@ Isoliert gemessen, ein Server ohne weitere Last:
 4. Aufruf    585 ms   Antwort 5650 KB
 ```
 
-Daraus folgt:
+Die Antwort ist **5,79 MB** groß — der vollständige Katalog aus 213 Providern mit
+7523 Modellen. Verbunden sind davon genau **zwei** (`opencode`, `openrouter`).
 
-- Die Antwort ist **5,65 MB** groß — der vollständige Katalog aus 213 Providern mit
-  7523 Modellen, unabhängig davon, was konfiguriert oder authentifiziert ist.
-- Der serverseitige `ScopedCache` in `InstanceState` greift (Aufbau nur beim ersten Mal),
-  aber die **Serialisierung von 5,65 MB kostet jedes Mal ~575 ms**.
-- Über einen Start werden so ~90 MB JSON erzeugt, übertragen und im Renderer geparst.
+Die Antworten sind über alle Verzeichnisse **byte-identisch** (gleicher Hash, gleiche Länge,
+gleiche `connected`-Liste). Das Verzeichnis ändert bei dieser Konfiguration nichts.
+
+### Woher die Zeit kommt
+
+`ProviderHttpApi.list` in `handlers/provider.ts` cacht **nichts**. Bei jedem Aufruf laufen
+die Transformationen über alle 213 Provider erneut:
+
+```
+fromModelsDevProvider    40 –  73 ms
+toPublicInfo            336 – 423 ms     ← Hotspot
+JSON.stringify           44 –  53 ms
+```
+
+Der `ScopedCache` in `InstanceState` deckt nur `provider.list()` ab, also die verbundenen
+Provider — nicht den Katalog. Die Serialisierung ist entgegen der ersten Vermutung **nicht**
+das Problem; `toPublicInfo` ist es.
+
+Über einen Start werden so ~150 MB JSON erzeugt, übertragen und im Renderer geparst.
 
 ## Messung: drei Instanzen statt einer
 
@@ -102,25 +117,40 @@ Modellauswahl gebraucht (`packages/app/src/pages/session/composer/prompt-model-s
 Erwartung: Start-Antwort von 5,65 MB auf wenige hundert KB, Serialisierung von ~575 ms auf
 zweistellige ms. Der volle Katalog kostet weiterhin ~575 ms, fällt aber aus dem Startpfad.
 
-### 2. Serialisierte Antwort zwischenspeichern
+### 2. Katalogtransformation zwischenspeichern
 
-Unabhängig von Maßnahme 1: Die encodierte Antwort pro Instanz zwischenspeichern, statt sie
-bei jedem Aufruf neu zu erzeugen. Invalidierung an denselben Ereignissen wie der
-`InstanceState`-Cache (Config-Änderung, Auth-Änderung, models.dev-Refresh).
+`ProviderHttpApi.list` transformiert bei jedem Aufruf alle 213 Provider neu. Das Ergebnis
+hängt nur an `models.json`, der Config und den Credentials — es kann zwischengespeichert und
+an denselben Ereignissen invalidiert werden wie der `InstanceState`-Cache.
 
-Erwartung: Folgeaufrufe von ~575 ms auf nahe null. Billig und sofort wirksam, ersetzt
-Maßnahme 1 aber nicht — Übertragung und Parsen im Renderer bleiben.
+Da die Antwort über alle Verzeichnisse identisch ist, genügt ein prozessweiter Cache; er
+muss nicht pro Instanz gehalten werden.
+
+Erwartung: Folgeaufrufe von ~575 ms auf die reine Serialisierung (~50 ms). Billig und
+serverseitig, ersetzt Maßnahme 1 aber nicht — Übertragung und Parsen im Renderer bleiben.
 
 ### 3. Aufrufzahl senken
 
-`loadProvidersQuery` in `packages/app/src/context/global-sync/bootstrap.ts:221` setzt kein
-`staleTime`. Der TanStack-Default ist 0, also holt jeder `fetchQuery` neu — daher 16 Aufrufe.
+In `packages/app/src/context/global-sync/bootstrap.ts` steht **keine einzige** `staleTime`
+(0 Vorkommen). Der TanStack-Default ist 0, also gilt jeder Eintrag sofort als veraltet und
+jeder `fetchQuery`/`createQuery` holt neu. Das betrifft nicht nur `/provider`, sondern
+ebenso `/api/reference`, `/path`, `/lsp` und `/agent`.
 
-- `staleTime` setzen. Der Katalog wird ohnehin nur stündlich aktualisiert; andere Queries im
-  Projekt nutzen `Number.POSITIVE_INFINITY` (`server-sync.tsx:161`).
-- Prüfen, ob der Query-Key das `directory` braucht: Der Katalog stammt für alle Verzeichnisse
-  aus derselben `models.json`. Achtung — `cfg.provider` ist projektspezifisch, die Antworten
-  sind also nicht zwingend identisch. Vor dem Zusammenlegen verifizieren.
+Bei `/provider` multiplizieren vier Konsumenten das über drei Verzeichnisse auf 27 Aufrufe:
+
+- `bootstrap.ts:158` — globaler Bootstrap (`directory: null`)
+- `bootstrap.ts:529` — je Projekt in `bootstrapChild`
+- `child-store.ts:196` — je Projekt-Verzeichnis
+- `session-composer-controls.ts:33-34` — global und je aktuellem Verzeichnis, reaktiv über
+  `createQuery`, also erneut bei jeder Neuauswertung
+
+Maßnahmen:
+
+- `staleTime` für die Bootstrap-Queries setzen. Andere Queries im Projekt nutzen dafür
+  `Number.POSITIVE_INFINITY` (`server-sync.tsx:161`, `session.tsx:804`).
+- Den Query-Key von `/provider` vom `directory` lösen. Gemessen sind die Antworten
+  byte-identisch; vor der Umstellung prüfen, ob eine projektspezifische `cfg.provider` das
+  ändern kann.
 
 ### 4. Projekte im Hintergrund nachladen
 
@@ -154,9 +184,11 @@ dem Home-Verzeichnis aufbauen.
 
 ## Offene Punkte
 
-- Warum ein einzelner `/provider`-Aufbau initial 1,65 s braucht, ist nicht aufgeschlüsselt.
-  Die Katalogtransformation (`fromModelsDevProvider` über 213 Provider) kostet gemessen nur
-  51 ms, das Lesen und Parsen der 4,5 MB großen `models.json` 28 ms.
+- `/api/reference` ist mit 7,8 s über 7 Aufrufe der zweitgrößte Posten. Die Ursache der
+  fehlenden Zwischenspeicherung ist dieselbe (kein `staleTime`), der serverseitige Aufwand
+  je Aufruf ist aber nicht aufgeschlüsselt.
+- Warum `toPublicInfo` über 213 Provider 336–423 ms braucht, ist nicht im Detail
+  untersucht — die Funktion wird beim Umsetzen von Maßnahme 2 ohnehin angefasst.
 - ~~Die Lücke zwischen dem letzten `booting location services` und `init count=26`~~ —
   geklärt: keine eigene Phase. Der Event-Loop ist in dieser Zeit mit der Serialisierung der
   `/provider`-Antworten belegt, weshalb der Skill-Init erst verzögert drankommt. Die

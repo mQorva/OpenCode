@@ -57,13 +57,11 @@ Khác biệt dễ thấy so với bản gốc là thanh bên bên trái. Ở b�
 - Chuột phải mở menu ngữ cảnh của dự án và phiên; không có nút ba chấm.
 - Màu và biểu tượng đặt trong cài đặt dự án hiển thị trong danh sách.
 - Chiều rộng kéo được và được ghi nhớ. Nút bật/tắt vẫn nằm trên thanh tiêu đề, kể cả khi không mở dự án nào.
-- Dòng phiên không hiển thị thời gian; tiêu đề dài chạy qua một lần khi rê chuột.
 - Phiên mới bắt đầu mà chưa gán dự án. Chỉ danh sách quyết định dự án — ô soạn thảo không có bộ chọn dự án thứ hai.
 
 **Chuyển đổi**: Settings → General → «Sidebar layout». Tắt đi thì bố cục tab của bản gốc quay lại.
 
 Máy chủ, phiên, dự án, tệp, terminal và cài đặt vẫn là các tính năng OpenCode không thay đổi; thanh bên chỉ trình bày chúng theo cách khác. Những khác biệt còn lại của phiên bản này — app ID riêng, thư mục dữ liệu tách biệt và lược đồ phiên bản riêng — được ghi trong [MQORVA.md](MQORVA.md), danh sách thay đổi nằm trong [CHANGELOG.mqorva.md](CHANGELOG.mqorva.md).
-
 
 ---
 

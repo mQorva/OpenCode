@@ -57,13 +57,11 @@ La différence visible avec l'original est le panneau latéral gauche. Dans l'or
 - Le clic droit ouvre les menus contextuels de projet et de session ; il n'y a pas de boutons à trois points.
 - La couleur et l'icône définies dans les paramètres du projet apparaissent dans la liste.
 - La largeur est ajustable et conservée. Le bouton de bascule reste accessible dans la barre de titre, même sans projet ouvert.
-- Les lignes de session n'affichent pas d'horodatage ; les titres longs défilent une fois au survol.
 - Une nouvelle session démarre sans projet. Le projet est déterminé par la seule liste : le composeur n'affiche pas de second sélecteur de projet.
 
 **Basculer** : Settings → General → « Sidebar layout ». Désactivé, la disposition en onglets de l'original revient.
 
 Le serveur, les sessions, les projets, les fichiers, le terminal et les paramètres restent des fonctions OpenCode inchangées ; le panneau latéral ne fait que les présenter autrement. Les autres différences de cette édition — identifiant d'application propre, répertoires de données séparés, schéma de version propre — sont documentées dans [MQORVA.md](MQORVA.md), et la liste des changements dans [CHANGELOG.mqorva.md](CHANGELOG.mqorva.md).
-
 
 ---
 

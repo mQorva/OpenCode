@@ -57,13 +57,11 @@ Vidljiva razlika u odnosu na original je bočna traka s lijeve strane. U origina
 - Desni klik otvara kontekstne menije projekta i sesije; nema dugmadi s tri tačke.
 - Boja i ikona iz postavki projekta prikazuju se u listi.
 - Širina se može povlačiti i pamti se. Prekidač ostaje dostupan u naslovnoj traci, i bez otvorenog projekta.
-- Redovi sesija nemaju vremensku oznaku; dugi naslovi se jednom pomjere pri prelasku mišem.
 - Nova sesija počinje bez dodijeljenog projekta. Projekat određuje samo lista – polje za unos ne prikazuje drugi birač projekta.
 
 **Prebacivanje**: Settings → General → „Sidebar layout”. Isključeno, vraća se izvorni raspored s karticama.
 
 Server, sesije, projekti, datoteke, terminal i postavke ostaju nepromijenjene OpenCode funkcije; bočna traka ih samo drugačije prikazuje. Ostale razlike ovog izdanja – vlastiti ID aplikacije, odvojeni direktoriji podataka i vlastita shema verzija – opisane su u [MQORVA.md](MQORVA.md), a lista izmjena u [CHANGELOG.mqorva.md](CHANGELOG.mqorva.md).
-
 
 ---
 

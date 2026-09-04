@@ -57,13 +57,11 @@ Den synlige forskel fra originalen er sidepanelet til venstre. I originalen ligg
 - Højre museknap åbner kontekstmenuerne for projekt og session; der er ingen tre-prikker-knapper.
 - Projektfarve og -ikon fra projektindstillingerne vises i listen.
 - Bredden kan trækkes og bliver gemt. Skifteknappen forbliver tilgængelig i titellinjen, også uden et åbent projekt.
-- Sessionsrækker viser ingen tidsangivelse; lange titler ruller én gang, når musen holdes over.
 - En ny session starter uden projekt. Projektet bestemmes alene af listen – komponisten viser ingen ekstra projektvælger.
 
 **Skift**: Settings → General → »Sidebar layout«. Slået fra vender originalens fanelayout tilbage.
 
 Server, sessioner, projekter, filer, terminal og indstillinger er fortsat uændrede OpenCode-funktioner; sidepanelet præsenterer dem blot anderledes. De øvrige forskelle i denne udgave – eget app-id, adskilte datamapper og eget versionsskema – er beskrevet i [MQORVA.md](MQORVA.md), ændringslisten i [CHANGELOG.mqorva.md](CHANGELOG.mqorva.md).
-
 
 ---
 

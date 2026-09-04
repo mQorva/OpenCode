@@ -57,13 +57,11 @@ La differenza visibile rispetto all'originale è la barra laterale a sinistra. N
 - Il tasto destro apre i menu contestuali di progetto e sessione; non ci sono pulsanti a tre punti.
 - Colore e icona definiti nelle impostazioni del progetto compaiono nell'elenco.
 - La larghezza è regolabile e viene salvata. L'interruttore resta raggiungibile nella barra del titolo, anche senza progetti aperti.
-- Le righe delle sessioni non riportano l'orario; i titoli lunghi scorrono una volta al passaggio del mouse.
 - Una nuova sessione parte senza progetto assegnato. Il progetto lo determina solo l'elenco: il composer non mostra un secondo selettore di progetto.
 
 **Passare da un layout all'altro**: Settings → General → «Sidebar layout». Disattivandolo torna il layout a schede dell'originale.
 
 Server, sessioni, progetti, file, terminale e impostazioni restano funzioni OpenCode invariate; la barra laterale le presenta soltanto in modo diverso. Le altre differenze di questa edizione — ID applicazione proprio, directory dati separate, schema di versione proprio — sono documentate in [MQORVA.md](MQORVA.md), l'elenco delle modifiche in [CHANGELOG.mqorva.md](CHANGELOG.mqorva.md).
-
 
 ---
 

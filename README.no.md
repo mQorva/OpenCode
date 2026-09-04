@@ -57,13 +57,11 @@ Den synlige forskjellen fra originalen er sidepanelet til venstre. I originalen 
 - Høyre museknapp åpner kontekstmenyene for prosjekt og økt; det finnes ingen trepunktsknapper.
 - Prosjektfarge og -ikon fra prosjektinnstillingene vises i listen.
 - Bredden kan dras og lagres. Bryteren er fortsatt tilgjengelig i tittellinjen, også uten et åpent prosjekt.
-- Øktradene viser ingen tidsangivelse; lange titler ruller én gang når du holder pekeren over.
 - En ny økt starter uten prosjekt. Prosjektet bestemmes bare av listen – komponisten viser ingen ekstra prosjektvelger.
 
 **Bytte**: Settings → General → «Sidebar layout». Slått av kommer originalens faneoppsett tilbake.
 
 Server, økter, prosjekter, filer, terminal og innstillinger er fortsatt uendrede OpenCode-funksjoner; sidepanelet presenterer dem bare annerledes. De øvrige forskjellene i denne utgaven – egen app-ID, atskilte datakataloger og eget versjonsskjema – er dokumentert i [MQORVA.md](MQORVA.md), endringslisten i [CHANGELOG.mqorva.md](CHANGELOG.mqorva.md).
-
 
 ---
 

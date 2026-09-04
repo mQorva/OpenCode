@@ -57,13 +57,11 @@ Der sichtbare Unterschied zum Original ist das linke Seitenpanel. Im Original li
 - Die rechte Maustaste öffnet die Kontextmenüs von Projekt und Sitzung; Dreipunkt-Knöpfe gibt es nicht.
 - Projektfarbe und -symbol aus den Projekteinstellungen erscheinen in der Liste.
 - Die Breite ist ziehbar und wird gespeichert. Der Umschalter bleibt in der Titelleiste erreichbar, auch ohne geöffnetes Projekt.
-- Die Sitzungszeilen tragen keine Zeitangabe; lange Titel wandern beim Zeigen einmal durch.
 - Eine neue Sitzung startet ohne Projektzuordnung. Das Projekt bestimmt allein die Liste – der Composer zeigt keinen zweiten Projektwähler.
 
 **Umschalten**: Einstellungen → Allgemein → „Seitenleisten-Layout“. Ausgeschaltet erscheint wieder das Tab-Layout des Originals.
 
 Server, Sitzungen, Projekte, Dateien, Terminal und Einstellungen bleiben unveränderte OpenCode-Funktionen; das Seitenpanel bedient sie nur anders. Die weiteren Unterschiede der Edition – eigene App-ID, getrennte Datenverzeichnisse, eigenes Versionsschema – stehen in [MQORVA.md](MQORVA.md), die Änderungsliste in [CHANGELOG.mqorva.md](CHANGELOG.mqorva.md).
-
 
 ---
 

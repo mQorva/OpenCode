@@ -57,13 +57,11 @@ Widoczna różnica względem oryginału to panel boczny po lewej. W oryginale ot
 - Prawy przycisk myszy otwiera menu kontekstowe projektu i sesji; nie ma przycisków z trzema kropkami.
 - Kolor i ikona z ustawień projektu pojawiają się na liście.
 - Szerokość można przeciągać i jest zapamiętywana. Przełącznik pozostaje dostępny na pasku tytułu, także bez otwartego projektu.
-- Wiersze sesji nie zawierają znacznika czasu; długie tytuły przewijają się raz po najechaniu kursorem.
 - Nowa sesja startuje bez przypisanego projektu. O projekcie decyduje wyłącznie lista – kompozytor nie pokazuje drugiego selektora projektu.
 
 **Przełączanie**: Settings → General → „Sidebar layout”. Po wyłączeniu wraca układ z kartami znany z oryginału.
 
 Serwer, sesje, projekty, pliki, terminal i ustawienia pozostają niezmienionymi funkcjami OpenCode; panel boczny jedynie inaczej je prezentuje. Pozostałe różnice tej edycji – własny identyfikator aplikacji, oddzielne katalogi danych i własny schemat wersji – opisano w [MQORVA.md](MQORVA.md), a listę zmian w [CHANGELOG.mqorva.md](CHANGELOG.mqorva.md).
-
 
 ---
 

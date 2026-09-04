@@ -57,13 +57,11 @@ The visible difference from upstream is the sidebar on the left. Upstream keeps 
 - The right mouse button opens the project and session context menus; there are no three-dot buttons.
 - Project color and icon from the project settings show up in the list.
 - The width is draggable and persisted. The toggle stays reachable in the title bar, even with no project open.
-- Session rows carry no timestamp; long titles scroll once on hover.
 - A new session starts with no project assigned. The list alone determines the project — the composer shows no second project picker.
 
 **Switching**: Settings → General → "Sidebar layout". Turn it off and the upstream tab layout comes back.
 
 Server, sessions, projects, files, terminal and settings remain unmodified OpenCode features; the sidebar only presents them differently. The remaining differences of this edition — its own app ID, separate data directories, its own version scheme — are documented in [MQORVA.md](MQORVA.md), the change list in [CHANGELOG.mqorva.md](CHANGELOG.mqorva.md).
-
 
 ---
 
