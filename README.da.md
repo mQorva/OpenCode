@@ -64,7 +64,6 @@ Den synlige forskel fra originalen er sidepanelet til venstre. I originalen ligg
 
 Server, sessioner, projekter, filer, terminal og indstillinger er fortsat uændrede OpenCode-funktioner; sidepanelet præsenterer dem blot anderledes. De øvrige forskelle i denne udgave – eget app-id, adskilte datamapper og eget versionsskema – er beskrevet i [MQORVA.md](MQORVA.md), ændringslisten i [CHANGELOG.mqorva.md](CHANGELOG.mqorva.md).
 
-<sub>Skærmbillede med tysk brugerflade; projektnavnet er erstattet.</sub>
 
 ---
 

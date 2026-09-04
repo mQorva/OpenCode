@@ -64,7 +64,6 @@ The visible difference from upstream is the sidebar on the left. Upstream keeps 
 
 Server, sessions, projects, files, terminal and settings remain unmodified OpenCode features; the sidebar only presents them differently. The remaining differences of this edition — its own app ID, separate data directories, its own version scheme — are documented in [MQORVA.md](MQORVA.md), the change list in [CHANGELOG.mqorva.md](CHANGELOG.mqorva.md).
 
-<sub>Screenshot taken with the German UI; the project name is replaced.</sub>
 
 ---
 

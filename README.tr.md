@@ -64,7 +64,6 @@
 
 Sunucu, oturumlar, projeler, dosyalar, terminal ve ayarlar değiştirilmemiş OpenCode işlevleri olarak kalır; kenar paneli bunları yalnızca farklı sunar. Bu sürümün diğer farkları — kendi uygulama kimliği, ayrı veri dizinleri ve kendi sürüm şeması — [MQORVA.md](MQORVA.md) dosyasında, değişiklik listesi ise [CHANGELOG.mqorva.md](CHANGELOG.mqorva.md) dosyasında belgelenmiştir.
 
-<sub>Ekran görüntüsü Almanca arayüzle alınmıştır; proje adı değiştirilmiştir.</sub>
 
 ---
 

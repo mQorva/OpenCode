@@ -64,7 +64,6 @@
 
 服务器、会话、项目、文件、终端和设置仍是未经改动的 OpenCode 功能，侧边栏只是换了一种呈现方式。本版本的其他差异（独立的应用 ID、独立的数据目录、独立的版本方案）记录在 [MQORVA.md](MQORVA.md)，变更列表见 [CHANGELOG.mqorva.md](CHANGELOG.mqorva.md)。
 
-<sub>截图使用德语界面，项目名称已替换。</sub>
 
 ---
 

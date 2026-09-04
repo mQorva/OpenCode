@@ -64,7 +64,6 @@ Khác biệt dễ thấy so với bản gốc là thanh bên bên trái. Ở b�
 
 Máy chủ, phiên, dự án, tệp, terminal và cài đặt vẫn là các tính năng OpenCode không thay đổi; thanh bên chỉ trình bày chúng theo cách khác. Những khác biệt còn lại của phiên bản này — app ID riêng, thư mục dữ liệu tách biệt và lược đồ phiên bản riêng — được ghi trong [MQORVA.md](MQORVA.md), danh sách thay đổi nằm trong [CHANGELOG.mqorva.md](CHANGELOG.mqorva.md).
 
-<sub>Ảnh chụp với giao diện tiếng Đức; tên dự án đã được thay thế.</sub>
 
 ---
 

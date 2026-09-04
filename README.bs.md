@@ -64,7 +64,6 @@ Vidljiva razlika u odnosu na original je bočna traka s lijeve strane. U origina
 
 Server, sesije, projekti, datoteke, terminal i postavke ostaju nepromijenjene OpenCode funkcije; bočna traka ih samo drugačije prikazuje. Ostale razlike ovog izdanja – vlastiti ID aplikacije, odvojeni direktoriji podataka i vlastita shema verzija – opisane su u [MQORVA.md](MQORVA.md), a lista izmjena u [CHANGELOG.mqorva.md](CHANGELOG.mqorva.md).
 
-<sub>Snimak s njemačkim sučeljem; naziv projekta je zamijenjen.</sub>
 
 ---
 

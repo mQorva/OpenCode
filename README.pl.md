@@ -64,7 +64,6 @@ Widoczna różnica względem oryginału to panel boczny po lewej. W oryginale ot
 
 Serwer, sesje, projekty, pliki, terminal i ustawienia pozostają niezmienionymi funkcjami OpenCode; panel boczny jedynie inaczej je prezentuje. Pozostałe różnice tej edycji – własny identyfikator aplikacji, oddzielne katalogi danych i własny schemat wersji – opisano w [MQORVA.md](MQORVA.md), a listę zmian w [CHANGELOG.mqorva.md](CHANGELOG.mqorva.md).
 
-<sub>Zrzut ekranu z niemieckim interfejsem; nazwa projektu została zastąpiona.</sub>
 
 ---
 

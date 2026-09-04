@@ -64,7 +64,6 @@ La différence visible avec l'original est le panneau latéral gauche. Dans l'or
 
 Le serveur, les sessions, les projets, les fichiers, le terminal et les paramètres restent des fonctions OpenCode inchangées ; le panneau latéral ne fait que les présenter autrement. Les autres différences de cette édition — identifiant d'application propre, répertoires de données séparés, schéma de version propre — sont documentées dans [MQORVA.md](MQORVA.md), et la liste des changements dans [CHANGELOG.mqorva.md](CHANGELOG.mqorva.md).
 
-<sub>Capture avec l'interface en allemand ; le nom du projet a été remplacé.</sub>
 
 ---
 

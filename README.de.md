@@ -64,7 +64,6 @@ Der sichtbare Unterschied zum Original ist das linke Seitenpanel. Im Original li
 
 Server, Sitzungen, Projekte, Dateien, Terminal und Einstellungen bleiben unveränderte OpenCode-Funktionen; das Seitenpanel bedient sie nur anders. Die weiteren Unterschiede der Edition – eigene App-ID, getrennte Datenverzeichnisse, eigenes Versionsschema – stehen in [MQORVA.md](MQORVA.md), die Änderungsliste in [CHANGELOG.mqorva.md](CHANGELOG.mqorva.md).
 
-<sub>Screenshot mit deutscher Oberfläche; der Projektname ist ersetzt.</sub>
 
 ---
 

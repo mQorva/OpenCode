@@ -64,7 +64,6 @@ La diferencia visible frente al original es la barra lateral izquierda. En el or
 
 El servidor, las sesiones, los proyectos, los archivos, el terminal y los ajustes siguen siendo funciones de OpenCode sin modificar; la barra lateral solo las presenta de otra forma. Las demás diferencias de esta edición —identificador de aplicación propio, directorios de datos separados y esquema de versiones propio— están documentadas en [MQORVA.md](MQORVA.md), y la lista de cambios en [CHANGELOG.mqorva.md](CHANGELOG.mqorva.md).
 
-<sub>Captura con la interfaz en alemán; el nombre del proyecto está sustituido.</sub>
 
 ---
 
