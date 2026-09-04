@@ -39,6 +39,35 @@
   <a href="README.vi.md">Tiếng Việt</a>
 </p>
 
+---
+
+## mQorva Edition – 侧边栏
+
+> 本仓库是 [anomalyco/opencode](https://github.com/anomalyco/opencode) 的分支（fork），并非由 OpenCode 团队开发，也与其没有任何关联。本节以下均为原始 README。
+
+![mQorva Edition 的侧边栏](docs/mqorva-sidebar.png)
+
+与原版最明显的差别是左侧的侧边栏。原版把打开的会话放在标题栏的标签页里；这里会话常驻左侧列表，并按项目分组。
+
+**侧边栏有哪些不同**
+
+- 会话按项目分组，上方是「Pinned」和「Sessions」两个分区，后者收纳所有不属于任何已打开项目的条目。
+- 拖放即指派：把会话拖到项目上即归入该项目，拖入「Pinned」即置顶，在同一分区内拖动则调整顺序。
+- 搜索覆盖全部分区，隐藏空分组，无匹配时给出提示。
+- 右键打开项目和会话的上下文菜单，没有三点按钮。
+- 项目设置中的项目颜色和图标会显示在列表里。
+- 宽度可拖动并会被保存；即使没有打开项目，标题栏中的开关也始终可用。
+- 会话行不显示时间；标题过长时，悬停会滚动一次。
+- 新会话开始时不绑定项目，项目仅由列表决定——输入区不再出现第二个项目选择器。
+
+**切换方式**：Settings → General → 「Sidebar layout」。关闭后即回到原版的标签页布局。
+
+服务器、会话、项目、文件、终端和设置仍是未经改动的 OpenCode 功能，侧边栏只是换了一种呈现方式。本版本的其他差异（独立的应用 ID、独立的数据目录、独立的版本方案）记录在 [MQORVA.md](MQORVA.md)，变更列表见 [CHANGELOG.mqorva.md](CHANGELOG.mqorva.md)。
+
+<sub>截图使用德语界面，项目名称已替换。</sub>
+
+---
+
 [![OpenCode Terminal UI](packages/web/src/assets/lander/screenshot.png)](https://opencode.ai)
 
 ---

@@ -39,6 +39,35 @@
   <a href="README.vi.md">Tiếng Việt</a>
 </p>
 
+---
+
+## mQorva Edition – bočna traka
+
+> Ovaj repozitorij je fork projekta [anomalyco/opencode](https://github.com/anomalyco/opencode). Ne razvija ga OpenCode tim i ni na koji način nije povezan s njim. Sve ispod ovog odjeljka je izvorni README.
+
+![Bočna traka mQorva Edition](docs/mqorva-sidebar.png)
+
+Vidljiva razlika u odnosu na original je bočna traka s lijeve strane. U originalu su otvorene sesije kartice u naslovnoj traci; ovdje trajno stoje u listi lijevo, grupisane po projektu.
+
+**Šta bočna traka radi drugačije**
+
+- Sesije su grupisane po projektu. Iznad njih su blokovi „Pinned” i „Sessions” – potonji prikuplja sve stavke koje ne pripadaju nijednom otvorenom projektu.
+- Prevlačenje dodjeljuje: sesija spuštena na projekat pripada mu, spuštena u „Pinned” se zakači, a unutar bloka mijenja redoslijed.
+- Pretraga obuhvata sve blokove, sakriva prazne grupe i javlja kada nema rezultata.
+- Desni klik otvara kontekstne menije projekta i sesije; nema dugmadi s tri tačke.
+- Boja i ikona iz postavki projekta prikazuju se u listi.
+- Širina se može povlačiti i pamti se. Prekidač ostaje dostupan u naslovnoj traci, i bez otvorenog projekta.
+- Redovi sesija nemaju vremensku oznaku; dugi naslovi se jednom pomjere pri prelasku mišem.
+- Nova sesija počinje bez dodijeljenog projekta. Projekat određuje samo lista – polje za unos ne prikazuje drugi birač projekta.
+
+**Prebacivanje**: Settings → General → „Sidebar layout”. Isključeno, vraća se izvorni raspored s karticama.
+
+Server, sesije, projekti, datoteke, terminal i postavke ostaju nepromijenjene OpenCode funkcije; bočna traka ih samo drugačije prikazuje. Ostale razlike ovog izdanja – vlastiti ID aplikacije, odvojeni direktoriji podataka i vlastita shema verzija – opisane su u [MQORVA.md](MQORVA.md), a lista izmjena u [CHANGELOG.mqorva.md](CHANGELOG.mqorva.md).
+
+<sub>Snimak s njemačkim sučeljem; naziv projekta je zamijenjen.</sub>
+
+---
+
 [![OpenCode Terminal UI](packages/web/src/assets/lander/screenshot.png)](https://opencode.ai)
 
 ---

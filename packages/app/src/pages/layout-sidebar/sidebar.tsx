@@ -207,9 +207,7 @@ function ProjectGroup(props: {
   onCopySessionTitle: (entry: SidebarSession) => void
   onCopySessionID: (entry: SidebarSession) => void
   onCopySessionProject: () => void
-  onArchive: (entry: SidebarSession) => void
   onDelete: (entry: SidebarSession) => void
-  canArchive: boolean
   canDrop: (source: string, target: string) => boolean
   /** Whether a dragged key is an unassigned draft — the only thing a project can take in. */
   isDraft: (key: string) => boolean
@@ -363,7 +361,6 @@ function ProjectGroup(props: {
                   onRename={(title) => props.onRename(entry, title)}
                   onMarkUnread={() => props.onMarkUnread(entry)}
                   onTogglePin={() => props.onTogglePin(entry)}
-                  onArchive={props.canArchive ? () => props.onArchive(entry) : undefined}
                   onDelete={() => props.onDelete(entry)}
                   onCopyTitle={() => props.onCopySessionTitle(entry)}
                   onCopyID={() => props.onCopySessionID(entry)}
@@ -512,28 +509,6 @@ export function Sidebar(props: { data: SidebarData }) {
         setStore("session", (session) => session.id === entry.session.id, "title", previous)
         showToast({ title: language.t("common.requestFailed"), description: errorMessage(error, "") })
         return false
-      })
-  }
-
-  const archiveSession = async (entry: SidebarSession) => {
-    if ((await serverSDK().protocol) !== "v1") return
-    const [, setStore] = serverSync().child(entry.directory, { bootstrap: true })
-    await serverSDK()
-      .client.session.update({
-        sessionID: entry.session.id,
-        directory: entry.directory,
-        time: { archived: Date.now() },
-      })
-      .then(() => {
-        setStore(
-          produce((draft) => {
-            draft.session = draft.session.filter((session) => session.id !== entry.session.id)
-          }),
-        )
-        tabs.removeSessionTab({ server: entry.server, sessionId: entry.session.id })
-      })
-      .catch((error) => {
-        showToast({ title: language.t("common.requestFailed"), description: errorMessage(error, "") })
       })
   }
 
@@ -860,7 +835,6 @@ export function Sidebar(props: { data: SidebarData }) {
                           onRename={(title) => renameSession(entry, title)}
                           onMarkUnread={() => markUnread(entry)}
                           onTogglePin={() => toggle(entry)}
-                          onArchive={protocol() === "v1" ? () => archiveSession(entry) : undefined}
                           onDelete={() => confirmDelete(entry)}
                           onCopyTitle={() => copy(entry.session.title || language.t("sidebarLayout.untitled"))}
                           onCopyID={() => copy(entry.session.id)}
@@ -891,7 +865,6 @@ export function Sidebar(props: { data: SidebarData }) {
                           onRename={(title) => renameSession(entry, title)}
                           onMarkUnread={() => markUnread(entry)}
                           onTogglePin={() => toggle(entry)}
-                          onArchive={protocol() === "v1" ? () => archiveSession(entry) : undefined}
                           onDelete={() => confirmDelete(entry)}
                           onCopyTitle={() => copy(entry.session.title || language.t("sidebarLayout.untitled"))}
                           onCopyID={() => copy(entry.session.id)}
@@ -966,9 +939,7 @@ export function Sidebar(props: { data: SidebarData }) {
                         }
                         onCopySessionID={(entry) => copy(entry.session.id)}
                         onCopySessionProject={() => copy(displayName(group.project))}
-                        onArchive={archiveSession}
                         onDelete={confirmDelete}
-                        canArchive={protocol() === "v1"}
                         canDrop={canDropSession}
                         projectWorktrees={projectWorktrees}
                       />

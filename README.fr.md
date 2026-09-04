@@ -39,6 +39,35 @@
   <a href="README.vi.md">Tiếng Việt</a>
 </p>
 
+---
+
+## mQorva Edition – le panneau latéral
+
+> Ce dépôt est un fork de [anomalyco/opencode](https://github.com/anomalyco/opencode). Il n'est pas développé par l'équipe OpenCode et n'a aucun lien avec elle. Tout ce qui suit cette section est le README d'origine.
+
+![Panneau latéral de la mQorva Edition](docs/mqorva-sidebar.png)
+
+La différence visible avec l'original est le panneau latéral gauche. Dans l'original, les sessions ouvertes sont des onglets dans la barre de titre ; ici elles restent en permanence dans une liste à gauche, groupées par projet.
+
+**Ce que le panneau latéral fait différemment**
+
+- Les sessions sont groupées par projet. Au-dessus se trouvent les blocs « Pinned » et « Sessions » ; ce dernier accueille toutes les entrées qui n'appartiennent à aucun projet ouvert.
+- Le glisser-déposer affecte : déposer une session sur un projet la rattache, la déposer dans « Pinned » l'épingle, et la déplacer dans un bloc la réordonne.
+- La recherche couvre tous les blocs, masque les groupes vides et signale l'absence de résultat.
+- Le clic droit ouvre les menus contextuels de projet et de session ; il n'y a pas de boutons à trois points.
+- La couleur et l'icône définies dans les paramètres du projet apparaissent dans la liste.
+- La largeur est ajustable et conservée. Le bouton de bascule reste accessible dans la barre de titre, même sans projet ouvert.
+- Les lignes de session n'affichent pas d'horodatage ; les titres longs défilent une fois au survol.
+- Une nouvelle session démarre sans projet. Le projet est déterminé par la seule liste : le composeur n'affiche pas de second sélecteur de projet.
+
+**Basculer** : Settings → General → « Sidebar layout ». Désactivé, la disposition en onglets de l'original revient.
+
+Le serveur, les sessions, les projets, les fichiers, le terminal et les paramètres restent des fonctions OpenCode inchangées ; le panneau latéral ne fait que les présenter autrement. Les autres différences de cette édition — identifiant d'application propre, répertoires de données séparés, schéma de version propre — sont documentées dans [MQORVA.md](MQORVA.md), et la liste des changements dans [CHANGELOG.mqorva.md](CHANGELOG.mqorva.md).
+
+<sub>Capture avec l'interface en allemand ; le nom du projet a été remplacé.</sub>
+
+---
+
 [![OpenCode Terminal UI](packages/web/src/assets/lander/screenshot.png)](https://opencode.ai)
 
 ---

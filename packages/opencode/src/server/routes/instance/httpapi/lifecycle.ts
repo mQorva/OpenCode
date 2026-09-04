@@ -40,10 +40,17 @@ export const markInstanceForReload = (ctx: InstanceContext, next: InstanceStore.
     )
   })
 
+const trace = process.env["OPENCODE_LOG_REQUESTS"] ? Date.now() : undefined
+
 export const disposeMiddleware: HttpMiddleware.HttpMiddleware = (effect) =>
   Effect.gen(function* () {
+    const started = Date.now()
     const response = yield* effect
     const request = yield* HttpServerRequest.HttpServerRequest
+    if (trace !== undefined)
+      process.stderr.write(
+        `REQ +${started - trace} ${Date.now() - started}ms ${request.method} ${request.url} dir=${request.headers["x-opencode-directory"] ?? ""}` + String.fromCharCode(10),
+      )
     const marked = disposeAfterResponse.get(request.source)
     if (!marked) return response
     disposeAfterResponse.delete(request.source)

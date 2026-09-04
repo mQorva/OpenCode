@@ -39,6 +39,35 @@
   <a href="README.vi.md">Tiếng Việt</a>
 </p>
 
+---
+
+## mQorva Edition – panel boczny
+
+> To repozytorium jest forkiem [anomalyco/opencode](https://github.com/anomalyco/opencode). Nie jest tworzone przez zespół OpenCode i nie jest z nim w żaden sposób powiązane. Wszystko poniżej tej sekcji to oryginalny README.
+
+![Panel boczny mQorva Edition](docs/mqorva-sidebar.png)
+
+Widoczna różnica względem oryginału to panel boczny po lewej. W oryginale otwarte sesje są kartami na pasku tytułu; tutaj stale znajdują się na liście po lewej, pogrupowane według projektu.
+
+**Co panel boczny robi inaczej**
+
+- Sesje są pogrupowane według projektów. Powyżej znajdują się bloki „Pinned” i „Sessions” – ten drugi zbiera wszystkie wpisy nienależące do żadnego otwartego projektu.
+- Przeciąganie przypisuje: upuszczenie sesji na projekt przypisuje ją do niego, upuszczenie w „Pinned” przypina ją, a przesunięcie w obrębie bloku zmienia kolejność.
+- Wyszukiwanie obejmuje wszystkie bloki, ukrywa puste grupy i informuje o braku wyników.
+- Prawy przycisk myszy otwiera menu kontekstowe projektu i sesji; nie ma przycisków z trzema kropkami.
+- Kolor i ikona z ustawień projektu pojawiają się na liście.
+- Szerokość można przeciągać i jest zapamiętywana. Przełącznik pozostaje dostępny na pasku tytułu, także bez otwartego projektu.
+- Wiersze sesji nie zawierają znacznika czasu; długie tytuły przewijają się raz po najechaniu kursorem.
+- Nowa sesja startuje bez przypisanego projektu. O projekcie decyduje wyłącznie lista – kompozytor nie pokazuje drugiego selektora projektu.
+
+**Przełączanie**: Settings → General → „Sidebar layout”. Po wyłączeniu wraca układ z kartami znany z oryginału.
+
+Serwer, sesje, projekty, pliki, terminal i ustawienia pozostają niezmienionymi funkcjami OpenCode; panel boczny jedynie inaczej je prezentuje. Pozostałe różnice tej edycji – własny identyfikator aplikacji, oddzielne katalogi danych i własny schemat wersji – opisano w [MQORVA.md](MQORVA.md), a listę zmian w [CHANGELOG.mqorva.md](CHANGELOG.mqorva.md).
+
+<sub>Zrzut ekranu z niemieckim interfejsem; nazwa projektu została zastąpiona.</sub>
+
+---
+
 [![OpenCode Terminal UI](packages/web/src/assets/lander/screenshot.png)](https://opencode.ai)
 
 ---

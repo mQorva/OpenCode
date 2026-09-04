@@ -39,6 +39,35 @@
   <a href="README.vi.md">Tiếng Việt</a>
 </p>
 
+---
+
+## mQorva Edition – la barra laterale
+
+> Questo repository è un fork di [anomalyco/opencode](https://github.com/anomalyco/opencode). Non è sviluppato dal team di OpenCode e non è in alcun modo collegato a esso. Tutto ciò che segue questa sezione è il README originale.
+
+![Barra laterale della mQorva Edition](docs/mqorva-sidebar.png)
+
+La differenza visibile rispetto all'originale è la barra laterale a sinistra. Nell'originale le sessioni aperte sono schede nella barra del titolo; qui restano stabilmente in un elenco a sinistra, raggruppate per progetto.
+
+**Cosa fa di diverso la barra laterale**
+
+- Le sessioni sono raggruppate per progetto. Sopra si trovano i blocchi «Pinned» e «Sessions»; quest'ultimo raccoglie tutte le voci che non appartengono a nessun progetto aperto.
+- Il trascinamento assegna: rilasciare una sessione su un progetto la assegna, rilasciarla in «Pinned» la fissa, spostarla all'interno di un blocco la riordina.
+- La ricerca copre tutti i blocchi, nasconde i gruppi vuoti e segnala l'assenza di risultati.
+- Il tasto destro apre i menu contestuali di progetto e sessione; non ci sono pulsanti a tre punti.
+- Colore e icona definiti nelle impostazioni del progetto compaiono nell'elenco.
+- La larghezza è regolabile e viene salvata. L'interruttore resta raggiungibile nella barra del titolo, anche senza progetti aperti.
+- Le righe delle sessioni non riportano l'orario; i titoli lunghi scorrono una volta al passaggio del mouse.
+- Una nuova sessione parte senza progetto assegnato. Il progetto lo determina solo l'elenco: il composer non mostra un secondo selettore di progetto.
+
+**Passare da un layout all'altro**: Settings → General → «Sidebar layout». Disattivandolo torna il layout a schede dell'originale.
+
+Server, sessioni, progetti, file, terminale e impostazioni restano funzioni OpenCode invariate; la barra laterale le presenta soltanto in modo diverso. Le altre differenze di questa edizione — ID applicazione proprio, directory dati separate, schema di versione proprio — sono documentate in [MQORVA.md](MQORVA.md), l'elenco delle modifiche in [CHANGELOG.mqorva.md](CHANGELOG.mqorva.md).
+
+<sub>Schermata con interfaccia in tedesco; il nome del progetto è stato sostituito.</sub>
+
+---
+
 [![OpenCode Terminal UI](packages/web/src/assets/lander/screenshot.png)](https://opencode.ai)
 
 ---

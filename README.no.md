@@ -39,6 +39,35 @@
   <a href="README.vi.md">Tiếng Việt</a>
 </p>
 
+---
+
+## mQorva Edition – sidepanelet
+
+> Dette repositoriet er en fork av [anomalyco/opencode](https://github.com/anomalyco/opencode). Det er ikke laget av OpenCode-teamet og har ingen tilknytning til dem. Alt under denne delen er den opprinnelige README-en.
+
+![Sidepanelet i mQorva Edition](docs/mqorva-sidebar.png)
+
+Den synlige forskjellen fra originalen er sidepanelet til venstre. I originalen ligger åpne økter som faner i tittellinjen; her står de permanent i en liste til venstre, gruppert etter prosjekt.
+
+**Dette gjør sidepanelet annerledes**
+
+- Øktene er gruppert etter prosjekt. Over dem ligger blokkene «Pinned» og «Sessions» – sistnevnte samler alle oppføringer som ikke hører til et åpent prosjekt.
+- Dra og slipp tilordner: en økt sluppet på et prosjekt knyttes til det, sluppet i «Pinned» festes den, og innenfor en blokk endres rekkefølgen.
+- Søket dekker alle blokker, skjuler tomme grupper og melder fra når ingenting treffer.
+- Høyre museknapp åpner kontekstmenyene for prosjekt og økt; det finnes ingen trepunktsknapper.
+- Prosjektfarge og -ikon fra prosjektinnstillingene vises i listen.
+- Bredden kan dras og lagres. Bryteren er fortsatt tilgjengelig i tittellinjen, også uten et åpent prosjekt.
+- Øktradene viser ingen tidsangivelse; lange titler ruller én gang når du holder pekeren over.
+- En ny økt starter uten prosjekt. Prosjektet bestemmes bare av listen – komponisten viser ingen ekstra prosjektvelger.
+
+**Bytte**: Settings → General → «Sidebar layout». Slått av kommer originalens faneoppsett tilbake.
+
+Server, økter, prosjekter, filer, terminal og innstillinger er fortsatt uendrede OpenCode-funksjoner; sidepanelet presenterer dem bare annerledes. De øvrige forskjellene i denne utgaven – egen app-ID, atskilte datakataloger og eget versjonsskjema – er dokumentert i [MQORVA.md](MQORVA.md), endringslisten i [CHANGELOG.mqorva.md](CHANGELOG.mqorva.md).
+
+<sub>Skjermbilde med tysk grensesnitt; prosjektnavnet er erstattet.</sub>
+
+---
+
 [![OpenCode Terminal UI](packages/web/src/assets/lander/screenshot.png)](https://opencode.ai)
 
 ---

@@ -817,18 +817,13 @@ export default function LegacyLayout(props: ParentProps) {
     }
   }
 
-  async function archiveSession(session: Session) {
-    if ((await serverSDK().protocol) !== "v1") return
+  async function deleteSession(session: Session) {
     const [store, setStore] = serverSync().child(session.directory)
     const sessions = store.session ?? []
     const index = sessions.findIndex((s) => s.id === session.id)
     const nextSession = sessions[index + 1] ?? sessions[index - 1]
 
-    await serverSDK().client.session.update({
-      sessionID: session.id,
-      directory: session.directory,
-      time: { archived: Date.now() },
-    })
+    await serverSDK().api.session.remove({ sessionID: session.id, directory: session.directory })
     setStore(
       produce((draft) => {
         const match = Binary.search(draft.session, session.id, (s) => s.id)
@@ -842,6 +837,35 @@ export default function LegacyLayout(props: ParentProps) {
         navigate(`/${params.dir}/session`)
       }
     }
+  }
+
+  function confirmDeleteSession(session: Session) {
+    void dialog.show(() => (
+      <Dialog title={language.t("session.delete.title")} fit>
+        <div class="flex flex-col gap-4 pl-6 pr-2.5 pb-3">
+          <span class="text-14-regular text-text-strong">
+            {language.t("session.delete.confirm", {
+              name: session.title || language.t("command.session.new"),
+            })}
+          </span>
+          <div class="flex justify-end gap-2">
+            <Button variant="ghost" size="large" onClick={() => dialog.close()}>
+              {language.t("common.cancel")}
+            </Button>
+            <Button
+              variant="primary"
+              size="large"
+              onClick={() => {
+                dialog.close()
+                void deleteSession(session)
+              }}
+            >
+              {language.t("session.delete.button")}
+            </Button>
+          </div>
+        </div>
+      </Dialog>
+    ))
   }
 
   // Appearance, language, settings, server and provider commands are not layout-bound and live in
@@ -1716,7 +1740,7 @@ export default function LegacyLayout(props: ParentProps) {
     sidebarHovering,
     clearHoverProjectSoon,
     prefetchSession,
-    archiveSession,
+    deleteSession: confirmDeleteSession,
     workspaceName,
     renameWorkspace,
     editorOpen,
@@ -1762,7 +1786,7 @@ export default function LegacyLayout(props: ParentProps) {
       sidebarExpanded,
       clearHoverProjectSoon,
       prefetchSession,
-      archiveSession,
+      deleteSession: confirmDeleteSession,
     },
   }
 

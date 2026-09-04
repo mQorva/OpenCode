@@ -39,6 +39,35 @@
   <a href="README.vi.md">Tiếng Việt</a>
 </p>
 
+---
+
+## mQorva Edition – das Seitenpanel
+
+> Dieses Repository ist ein Fork von [anomalyco/opencode](https://github.com/anomalyco/opencode). Es wird nicht vom OpenCode-Team gebaut und steht in keiner Verbindung dazu. Alles unterhalb dieses Abschnitts ist die README des Originals.
+
+![Seitenpanel der mQorva Edition](docs/mqorva-sidebar.png)
+
+Der sichtbare Unterschied zum Original ist das linke Seitenpanel. Im Original liegen die offenen Sitzungen als Tabs in der Titelleiste; hier stehen sie dauerhaft in einer Liste am linken Rand, gruppiert nach Projekt.
+
+**Was das Seitenpanel anders macht**
+
+- Sitzungen sind nach Projekt gruppiert. Darüber liegen die Blöcke „angeheftet“ und „Sitzungen“ – Letzterer nimmt alle Einträge auf, die zu keinem geöffneten Projekt gehören.
+- Drag & Drop ordnet zu: eine Sitzung auf ein Projekt ziehen weist sie zu, Ziehen in „angeheftet“ heftet sie an, innerhalb eines Blocks wird umsortiert.
+- Die Suche erfasst alle Blöcke, blendet leere Gruppen aus und meldet fehlende Treffer.
+- Die rechte Maustaste öffnet die Kontextmenüs von Projekt und Sitzung; Dreipunkt-Knöpfe gibt es nicht.
+- Projektfarbe und -symbol aus den Projekteinstellungen erscheinen in der Liste.
+- Die Breite ist ziehbar und wird gespeichert. Der Umschalter bleibt in der Titelleiste erreichbar, auch ohne geöffnetes Projekt.
+- Die Sitzungszeilen tragen keine Zeitangabe; lange Titel wandern beim Zeigen einmal durch.
+- Eine neue Sitzung startet ohne Projektzuordnung. Das Projekt bestimmt allein die Liste – der Composer zeigt keinen zweiten Projektwähler.
+
+**Umschalten**: Einstellungen → Allgemein → „Seitenleisten-Layout“. Ausgeschaltet erscheint wieder das Tab-Layout des Originals.
+
+Server, Sitzungen, Projekte, Dateien, Terminal und Einstellungen bleiben unveränderte OpenCode-Funktionen; das Seitenpanel bedient sie nur anders. Die weiteren Unterschiede der Edition – eigene App-ID, getrennte Datenverzeichnisse, eigenes Versionsschema – stehen in [MQORVA.md](MQORVA.md), die Änderungsliste in [CHANGELOG.mqorva.md](CHANGELOG.mqorva.md).
+
+<sub>Screenshot mit deutscher Oberfläche; der Projektname ist ersetzt.</sub>
+
+---
+
 [![OpenCode Terminal UI](packages/web/src/assets/lander/screenshot.png)](https://opencode.ai)
 
 ---

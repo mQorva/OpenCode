@@ -1,6 +1,6 @@
 import { createEffect, createSignal, Show, type Accessor } from "solid-js"
 import { createDraggable, createDroppable, useDragDropContext } from "@thisbeyond/solid-dnd"
-import { Icon, IconButton, MenuV2, Spinner, TooltipV2, useLanguage } from "./upstream"
+import { Icon, MenuV2, Spinner, TooltipV2, useLanguage } from "./upstream"
 import { SidebarMarquee } from "./marquee"
 import type { SidebarSession } from "./sessions"
 import { isNewChat } from "@/utils/session-title"
@@ -23,7 +23,6 @@ function SessionMenuItems(props: {
   onRename: () => void
   onMarkUnread: () => void
   onTogglePin: () => void
-  onArchive?: () => void
   onDelete: () => void
   onCopyTitle: () => void
   onCopyID: () => void
@@ -40,9 +39,6 @@ function SessionMenuItems(props: {
           {language.t("sidebarLayout.unpin")}
         </Show>
       </MenuV2.Item>
-      <Show when={props.onArchive}>
-        <MenuV2.Item onSelect={props.onArchive}>{language.t("common.archive")}</MenuV2.Item>
-      </Show>
       <MenuV2.Separator />
       <MenuV2.Item onSelect={props.onCopyTitle}>{language.t("sidebarLayout.copyTitle")}</MenuV2.Item>
       <MenuV2.Item onSelect={props.onCopyID}>{language.t("sidebarLayout.copyID")}</MenuV2.Item>
@@ -67,7 +63,6 @@ export function SessionItem(props: {
   onRename: (title: string) => Promise<boolean>
   onMarkUnread: () => void
   onTogglePin: () => void
-  onArchive?: () => void
   onDelete: () => void
   onCopyTitle: () => void
   onCopyID: () => void
@@ -194,18 +189,6 @@ export function SessionItem(props: {
                 <PinIcon filled={props.pinned} />
               </button>
             </TooltipV2>
-            <Show when={props.onArchive}>
-              <TooltipV2 value={language.t("common.archive")} placement="top">
-                <IconButton
-                  icon="archive"
-                  iconSize="small"
-                  variant="ghost"
-                  class="!size-7 shrink-0 rounded-md text-icon-base"
-                  onClick={props.onArchive}
-                  aria-label={language.t("common.archive")}
-                />
-              </TooltipV2>
-            </Show>
           </div>
 
           <Show when={props.attention()}>
@@ -264,7 +247,6 @@ export function SessionItem(props: {
             onRename={beginRename}
             onMarkUnread={props.onMarkUnread}
             onTogglePin={props.onTogglePin}
-            onArchive={props.onArchive}
             onDelete={props.onDelete}
             onCopyTitle={props.onCopyTitle}
             onCopyID={props.onCopyID}

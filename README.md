@@ -39,6 +39,35 @@
   <a href="README.vi.md">Tiếng Việt</a>
 </p>
 
+---
+
+## mQorva Edition – the sidebar
+
+> This repository is a fork of [anomalyco/opencode](https://github.com/anomalyco/opencode). It is not built by the OpenCode team and is not affiliated with them in any way. Everything below this section is the upstream README.
+
+![mQorva Edition sidebar](docs/mqorva-sidebar.png)
+
+The visible difference from upstream is the sidebar on the left. Upstream keeps open sessions as tabs in the title bar; here they live permanently in a list on the left, grouped by project.
+
+**What the sidebar does differently**
+
+- Sessions are grouped by project. Above them sit the "Pinned" and "Sessions" blocks — the latter holds every entry that does not belong to an open project.
+- Drag & drop assigns: dragging a session onto a project assigns it, dragging it into "Pinned" pins it, and dragging within a block reorders.
+- Search covers all blocks, hides empty groups and reports when nothing matches.
+- The right mouse button opens the project and session context menus; there are no three-dot buttons.
+- Project color and icon from the project settings show up in the list.
+- The width is draggable and persisted. The toggle stays reachable in the title bar, even with no project open.
+- Session rows carry no timestamp; long titles scroll once on hover.
+- A new session starts with no project assigned. The list alone determines the project — the composer shows no second project picker.
+
+**Switching**: Settings → General → "Sidebar layout". Turn it off and the upstream tab layout comes back.
+
+Server, sessions, projects, files, terminal and settings remain unmodified OpenCode features; the sidebar only presents them differently. The remaining differences of this edition — its own app ID, separate data directories, its own version scheme — are documented in [MQORVA.md](MQORVA.md), the change list in [CHANGELOG.mqorva.md](CHANGELOG.mqorva.md).
+
+<sub>Screenshot taken with the German UI; the project name is replaced.</sub>
+
+---
+
 [![OpenCode Terminal UI](packages/web/src/assets/lander/screenshot.png)](https://opencode.ai)
 
 ---

@@ -39,6 +39,35 @@
   <a href="README.vi.md">Tiếng Việt</a>
 </p>
 
+---
+
+## mQorva Edition – thanh bên
+
+> Kho này là một bản fork của [anomalyco/opencode](https://github.com/anomalyco/opencode). Nó không do đội ngũ OpenCode phát triển và không có liên hệ nào với họ. Mọi nội dung bên dưới phần này là README gốc.
+
+![Thanh bên của mQorva Edition](docs/mqorva-sidebar.png)
+
+Khác biệt dễ thấy so với bản gốc là thanh bên bên trái. Ở bản gốc, các phiên đang mở nằm dưới dạng tab trên thanh tiêu đề; ở đây chúng luôn nằm trong một danh sách bên trái, được nhóm theo dự án.
+
+**Thanh bên làm gì khác đi**
+
+- Các phiên được nhóm theo dự án. Phía trên là các khối «Pinned» và «Sessions» — khối sau chứa mọi mục không thuộc dự án nào đang mở.
+- Kéo thả để gán: thả một phiên lên dự án sẽ gán phiên vào dự án đó, thả vào «Pinned» sẽ ghim, còn kéo trong cùng một khối sẽ đổi thứ tự.
+- Tìm kiếm bao trùm mọi khối, ẩn các nhóm rỗng và báo khi không có kết quả.
+- Chuột phải mở menu ngữ cảnh của dự án và phiên; không có nút ba chấm.
+- Màu và biểu tượng đặt trong cài đặt dự án hiển thị trong danh sách.
+- Chiều rộng kéo được và được ghi nhớ. Nút bật/tắt vẫn nằm trên thanh tiêu đề, kể cả khi không mở dự án nào.
+- Dòng phiên không hiển thị thời gian; tiêu đề dài chạy qua một lần khi rê chuột.
+- Phiên mới bắt đầu mà chưa gán dự án. Chỉ danh sách quyết định dự án — ô soạn thảo không có bộ chọn dự án thứ hai.
+
+**Chuyển đổi**: Settings → General → «Sidebar layout». Tắt đi thì bố cục tab của bản gốc quay lại.
+
+Máy chủ, phiên, dự án, tệp, terminal và cài đặt vẫn là các tính năng OpenCode không thay đổi; thanh bên chỉ trình bày chúng theo cách khác. Những khác biệt còn lại của phiên bản này — app ID riêng, thư mục dữ liệu tách biệt và lược đồ phiên bản riêng — được ghi trong [MQORVA.md](MQORVA.md), danh sách thay đổi nằm trong [CHANGELOG.mqorva.md](CHANGELOG.mqorva.md).
+
+<sub>Ảnh chụp với giao diện tiếng Đức; tên dự án đã được thay thế.</sub>
+
+---
+
 [![OpenCode Terminal UI](packages/web/src/assets/lander/screenshot.png)](https://opencode.ai)
 
 ---

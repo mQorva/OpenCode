@@ -39,6 +39,35 @@
   <a href="README.vi.md">Tiếng Việt</a>
 </p>
 
+---
+
+## mQorva Edition – kenar paneli
+
+> Bu depo, [anomalyco/opencode](https://github.com/anomalyco/opencode) projesinin bir fork'udur. OpenCode ekibi tarafından geliştirilmemektedir ve onlarla hiçbir bağlantısı yoktur. Bu bölümün altındaki her şey özgün README'dir.
+
+![mQorva Edition kenar paneli](docs/mqorva-sidebar.png)
+
+Özgün sürümden görünür fark, soldaki kenar panelidir. Özgün sürümde açık oturumlar başlık çubuğunda sekme olarak durur; burada ise sürekli olarak solda bir listede, projeye göre gruplanmış hâlde bulunur.
+
+**Kenar paneli neyi farklı yapıyor**
+
+- Oturumlar projeye göre gruplanır. Üstte «Pinned» ve «Sessions» blokları yer alır; ikincisi açık hiçbir projeye ait olmayan tüm kayıtları toplar.
+- Sürükle bırak atama yapar: bir oturumu proje üzerine bırakmak onu o projeye bağlar, «Pinned» içine bırakmak sabitler, blok içinde taşımak sıralamayı değiştirir.
+- Arama tüm blokları kapsar, boş grupları gizler ve sonuç bulunmadığında bunu bildirir.
+- Sağ tıklama proje ve oturum bağlam menülerini açar; üç nokta düğmesi yoktur.
+- Proje ayarlarındaki proje rengi ve simgesi listede görünür.
+- Genişlik sürüklenebilir ve kaydedilir. Geçiş düğmesi, açık proje olmasa bile başlık çubuğunda erişilebilir kalır.
+- Oturum satırlarında zaman bilgisi yoktur; uzun başlıklar imleç üzerine gelince bir kez kayar.
+- Yeni oturum projesiz başlar. Projeyi yalnızca liste belirler — yazma alanında ikinci bir proje seçici yoktur.
+
+**Değiştirme**: Settings → General → «Sidebar layout». Kapatıldığında özgün sürümün sekmeli düzeni geri gelir.
+
+Sunucu, oturumlar, projeler, dosyalar, terminal ve ayarlar değiştirilmemiş OpenCode işlevleri olarak kalır; kenar paneli bunları yalnızca farklı sunar. Bu sürümün diğer farkları — kendi uygulama kimliği, ayrı veri dizinleri ve kendi sürüm şeması — [MQORVA.md](MQORVA.md) dosyasında, değişiklik listesi ise [CHANGELOG.mqorva.md](CHANGELOG.mqorva.md) dosyasında belgelenmiştir.
+
+<sub>Ekran görüntüsü Almanca arayüzle alınmıştır; proje adı değiştirilmiştir.</sub>
+
+---
+
 [![OpenCode Terminal UI](packages/web/src/assets/lander/screenshot.png)](https://opencode.ai)
 
 ---

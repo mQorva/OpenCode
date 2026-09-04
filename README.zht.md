@@ -39,6 +39,35 @@
   <a href="README.vi.md">Tiếng Việt</a>
 </p>
 
+---
+
+## mQorva Edition – 側邊欄
+
+> 本儲存庫是 [anomalyco/opencode](https://github.com/anomalyco/opencode) 的分支（fork），並非由 OpenCode 團隊開發，也與其沒有任何關聯。本節以下皆為原始 README。
+
+![mQorva Edition 的側邊欄](docs/mqorva-sidebar.png)
+
+與原版最明顯的差別是左側的側邊欄。原版把開啟的工作階段放在標題列的分頁中；這裡則常駐於左側清單，並依專案分組。
+
+**側邊欄有哪些不同**
+
+- 工作階段依專案分組，上方是「Pinned」與「Sessions」兩個區塊，後者收納所有不屬於任何已開啟專案的項目。
+- 拖放即指派：把工作階段拖到專案上即歸入該專案，拖入「Pinned」即釘選，在同一區塊內拖動則調整順序。
+- 搜尋涵蓋所有區塊，隱藏空群組，沒有相符項目時會提示。
+- 右鍵開啟專案與工作階段的內容功能表，沒有三點按鈕。
+- 專案設定中的顏色與圖示會顯示在清單中。
+- 寬度可拖曳並會被保存；即使沒有開啟專案，標題列中的切換鈕仍可使用。
+- 工作階段列不顯示時間；標題過長時，滑鼠移入會捲動一次。
+- 新的工作階段開始時未綁定專案，專案僅由清單決定——輸入區不再出現第二個專案選擇器。
+
+**切換方式**：Settings → General → 「Sidebar layout」。關閉後即回到原版的分頁配置。
+
+伺服器、工作階段、專案、檔案、終端機與設定仍是未經更動的 OpenCode 功能，側邊欄只是換一種呈現方式。本版本的其他差異（獨立的應用程式 ID、獨立的資料目錄、獨立的版本方案）記錄於 [MQORVA.md](MQORVA.md)，變更清單見 [CHANGELOG.mqorva.md](CHANGELOG.mqorva.md)。
+
+<sub>螢幕截圖使用德文介面，專案名稱已替換。</sub>
+
+---
+
 [![OpenCode Terminal UI](packages/web/src/assets/lander/screenshot.png)](https://opencode.ai)
 
 ---

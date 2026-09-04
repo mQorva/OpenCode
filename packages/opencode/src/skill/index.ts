@@ -145,6 +145,7 @@ const scan = Effect.fnUntraced(function* (
   pattern: string,
   opts?: { dot?: boolean; scope?: string },
 ) {
+  const started = Date.now()
   const matches = yield* Effect.tryPromise({
     try: () =>
       Glob.scan(pattern, {
@@ -163,6 +164,10 @@ const scan = Effect.fnUntraced(function* (
       )
     }),
   )
+
+  if (process.env["OPENCODE_LOG_REQUESTS"])
+    process.stderr.write(`SKILLSCAN ${Date.now() - started}ms ${matches.length} hits ${pattern} in ${root}
+`)
 
   for (const match of matches) {
     state.matches.add(match)

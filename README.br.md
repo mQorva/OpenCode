@@ -39,6 +39,35 @@
   <a href="README.vi.md">Tiếng Việt</a>
 </p>
 
+---
+
+## mQorva Edition – a barra lateral
+
+> Este repositório é um fork de [anomalyco/opencode](https://github.com/anomalyco/opencode). Não é desenvolvido pela equipe do OpenCode e não tem qualquer vínculo com ela. Tudo abaixo desta seção é o README original.
+
+![Barra lateral da mQorva Edition](docs/mqorva-sidebar.png)
+
+A diferença visível em relação ao original é a barra lateral à esquerda. No original, as sessões abertas ficam como abas na barra de título; aqui elas permanecem em uma lista à esquerda, agrupadas por projeto.
+
+**O que a barra lateral faz de diferente**
+
+- As sessões são agrupadas por projeto. Acima ficam os blocos «Pinned» e «Sessions»; este último reúne todas as entradas que não pertencem a nenhum projeto aberto.
+- Arrastar e soltar atribui: soltar uma sessão sobre um projeto a vincula, soltá-la em «Pinned» a fixa e movê-la dentro de um bloco a reordena.
+- A busca abrange todos os blocos, oculta grupos vazios e avisa quando não há resultados.
+- O botão direito abre os menus de contexto de projeto e de sessão; não há botões de três pontos.
+- A cor e o ícone definidos nas configurações do projeto aparecem na lista.
+- A largura é ajustável e fica salva. O botão de alternância continua acessível na barra de título, mesmo sem projeto aberto.
+- As linhas de sessão não exibem horário; títulos longos deslizam uma vez ao passar o cursor.
+- Uma sessão nova começa sem projeto atribuído. O projeto é definido apenas pela lista — o compositor não mostra um segundo seletor de projeto.
+
+**Alternar**: Settings → General → «Sidebar layout». Desligado, o layout de abas do original volta.
+
+Servidor, sessões, projetos, arquivos, terminal e configurações continuam sendo funções do OpenCode sem alteração; a barra lateral apenas as apresenta de outro jeito. As demais diferenças desta edição — ID de aplicativo próprio, diretórios de dados separados e esquema de versão próprio — estão em [MQORVA.md](MQORVA.md), e a lista de mudanças em [CHANGELOG.mqorva.md](CHANGELOG.mqorva.md).
+
+<sub>Captura com a interface em alemão; o nome do projeto foi substituído.</sub>
+
+---
+
 [![OpenCode Terminal UI](packages/web/src/assets/lander/screenshot.png)](https://opencode.ai)
 
 ---

@@ -53,7 +53,14 @@ export const layer = Layer.effect(
     return LocationMiddleware.of((effect) =>
       Effect.gen(function* () {
         const request = yield* HttpServerRequest.HttpServerRequest
-        return yield* effect.pipe(Effect.provide(locations.get(ref(request))))
+        const location = ref(request)
+        if (process.env["OPENCODE_LOG_REQUESTS"])
+          yield* Effect.logInfo("http request", {
+            method: request.method,
+            url: request.url,
+            directory: location.directory,
+          })
+        return yield* effect.pipe(Effect.provide(locations.get(location)))
       }),
     )
   }),

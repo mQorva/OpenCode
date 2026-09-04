@@ -17,7 +17,6 @@ import { useSessionTabAvatarState } from "@/pages/layout/project-avatar-state"
 import { pathKey } from "@/utils/path-key"
 import { showToast } from "@/utils/toast"
 import { Binary } from "@opencode-ai/core/util/binary"
-import { archiveHomeSession } from "../home-session-archive"
 import type { HomeController } from "./home-controller"
 
 const HOME_SESSION_LIMIT = 64
@@ -174,37 +173,6 @@ export function createHomeSessionsController(home: HomeController) {
         void startTransition(() => {
           const tab = tabs.addSessionTab({ server: ServerConnection.key(conn), sessionId: session.id })
           tabs.select(tab)
-        })
-      },
-      archive: async (session: Session) => {
-        const conn = home.server.focused()
-        const ctx = home.server.focusedContext()
-        if (!conn || !ctx) return
-        const [, setStore] = ctx.sync.child(session.directory)
-        if ((await ctx.sdk.protocol) !== "v1") return
-        await archiveHomeSession({
-          server: ServerConnection.key(conn),
-          session,
-          archive: (sessionID) =>
-            ctx.sdk.client.session.update({
-              sessionID,
-              directory: session.directory,
-              time: { archived: Date.now() },
-            }),
-          remove: () => {
-            setStore(
-              produce((draft) => {
-                const match = Binary.search(draft.session, session.id, (item) => item.id)
-                if (match.found) draft.session.splice(match.index, 1)
-              }),
-            )
-            homeSessions().remove(session.id)
-          },
-          onError: (cause) =>
-            showToast({
-              title: language.t("common.requestFailed"),
-              description: errorMessage(cause, language.t("common.requestFailed")),
-            }),
         })
       },
     },

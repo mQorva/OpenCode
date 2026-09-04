@@ -19,7 +19,6 @@ import {
   type OpenSessionOptions,
 } from "./home-sessions-controller"
 
-const SHOW_HOME_SESSION_ARCHIVE = false
 const HOME_SECTION_LABEL = "text-v2-text-text-muted [font-weight:440]"
 const HOME_SESSION_SEARCH_RESULTS_ID = "home-session-search-results"
 
@@ -53,7 +52,6 @@ export type HomeSessionsViewProps = {
   isOpenTab: (record: HomeSessionRecord) => boolean
   onCreateSession: () => void
   onOpenSession: (session: Session, options?: OpenSessionOptions) => void
-  onArchiveSession: (session: Session) => Promise<void>
   onSetHoverTarget: (element: HTMLElement) => void
   onSetThumbTrack: (element: HTMLDivElement) => void
   onSetContent: (element: HTMLDivElement) => void
@@ -461,29 +459,6 @@ function HomeSessionRow(props: HomeSessionsViewProps & { record: HomeSessionReco
           <HomeSessionProjectName name={props.record.projectName} />
         </Show>
       </button>
-      <Show when={SHOW_HOME_SESSION_ARCHIVE}>
-        <div
-          class={`
-            hover-reveal absolute right-1.5 top-1/2 flex -translate-y-1/2 items-center gap-1
-            group-hover/session:opacity-100 focus-within:opacity-100
-          `}
-        >
-          <TooltipV2 class="flex shrink-0 items-center" placement="bottom" value={props.language.t("common.archive")}>
-            <IconButtonV2
-              data-action="home-session-archive"
-              variant="ghost-muted"
-              size="large"
-              icon={<IconV2 name="archive" />}
-              aria-label={props.language.t("common.archive")}
-              onClick={(event) => {
-                event.preventDefault()
-                event.stopPropagation()
-                void props.onArchiveSession(props.record.session)
-              }}
-            />
-          </TooltipV2>
-        </div>
-      </Show>
     </div>
   )
 }
