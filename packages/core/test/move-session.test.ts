@@ -38,14 +38,14 @@ function abs(input: string) {
   return AbsolutePath.make(input)
 }
 
-async function initRepo(directory: string) {
+async function initRepo(directory: string, seed = "initial") {
   await $`git init`.cwd(directory).quiet()
   await $`git config core.autocrlf false`.cwd(directory).quiet()
   await $`git config core.fsmonitor false`.cwd(directory).quiet()
   await $`git config commit.gpgsign false`.cwd(directory).quiet()
   await $`git config user.email test@opencode.test`.cwd(directory).quiet()
   await $`git config user.name Test`.cwd(directory).quiet()
-  await fs.writeFile(path.join(directory, "tracked.txt"), "initial\n")
+  await fs.writeFile(path.join(directory, "tracked.txt"), `${seed}\n`)
   await $`git add tracked.txt`.cwd(directory).quiet()
   await $`git commit -m root`.cwd(directory).quiet()
 }
@@ -232,4 +232,115 @@ describe("MoveSession", () => {
       expect(yield* Effect.promise(() => fs.readFile(path.join(source, "untracked.txt"), "utf8"))).toBe("unrelated\n")
     }),
   )
+  it.live("refuses a move into another project unless it is asked for", () =>
+    Effect.gen(function* () {
+      const fixture = yield* twoProjects("ses_move_refuse")
+
+      const error = yield* Effect.flip(
+        MoveSession.Service.use((service) =>
+          service.moveSession({ sessionID: fixture.sessionID, destination: { directory: fixture.other } }),
+        ),
+      )
+
+      expect(error).toBeInstanceOf(MoveSession.DestinationProjectMismatchError)
+      expect(yield* fixture.row()).toEqual({ directory: fixture.source, project_id: fixture.projectID })
+    }),
+  )
+
+  it.live("moves into another project and carries the project along", () =>
+    Effect.gen(function* () {
+      const fixture = yield* twoProjects("ses_move_cross")
+
+      yield* MoveSession.Service.use((service) =>
+        service.moveSession({
+          sessionID: fixture.sessionID,
+          destination: { directory: fixture.other },
+          allowProjectChange: true,
+        }),
+      )
+
+      expect(yield* fixture.row()).toEqual({ directory: fixture.other, project_id: fixture.otherProjectID })
+    }),
+  )
+
+  it.live("refuses to carry uncommitted changes into another project", () =>
+    Effect.gen(function* () {
+      const fixture = yield* twoProjects("ses_move_cross_changes")
+      yield* Effect.promise(() => fs.writeFile(path.join(fixture.source, "tracked.txt"), "changed\n"))
+
+      const error = yield* Effect.flip(
+        MoveSession.Service.use((service) =>
+          service.moveSession({
+            sessionID: fixture.sessionID,
+            destination: { directory: fixture.other },
+            allowProjectChange: true,
+            moveChanges: true,
+          }),
+        ),
+      )
+
+      expect(error).toBeInstanceOf(MoveSession.ChangesAcrossProjectsError)
+      // The source keeps its work: a refused move must not discard anything.
+      expect(yield* Effect.promise(() => fs.readFile(path.join(fixture.source, "tracked.txt"), "utf8"))).toBe(
+        "changed\n",
+      )
+      expect(yield* fixture.row()).toEqual({ directory: fixture.source, project_id: fixture.projectID })
+    }),
+  )
 })
+
+// Two unrelated repositories, so the destination resolves to a different project rather than a
+// worktree of the same one.
+function twoProjects(id: string) {
+  return Effect.gen(function* () {
+    const root = yield* Effect.acquireRelease(
+      Effect.promise(() => tmpdir()),
+      (dir) => Effect.promise(() => dir[Symbol.asyncDispose]()),
+    )
+    const otherRoot = yield* Effect.acquireRelease(
+      Effect.promise(() => tmpdir()),
+      (dir) => Effect.promise(() => dir[Symbol.asyncDispose]()),
+    )
+    yield* Effect.promise(() => initRepo(root.path))
+    yield* Effect.promise(() => initRepo(otherRoot.path, "other"))
+    const source = abs(yield* Effect.promise(() => fs.realpath(root.path)))
+    const other = abs(yield* Effect.promise(() => fs.realpath(otherRoot.path)))
+
+    const projectID = (yield* Project.Service.use((service) => service.resolve(source))).id
+    const otherProjectID = (yield* Project.Service.use((service) => service.resolve(other))).id
+    expect(otherProjectID).not.toBe(projectID)
+
+    const sessionID = SessionV2.ID.make(id)
+    const { db } = yield* Database.Service
+    // Only the source project is recorded. Nothing has ever run in the destination, which is the
+    // normal case for a session moving into a project for the first time.
+    yield* db
+      .insert(ProjectTable)
+      .values({ id: projectID, worktree: source, sandboxes: [], time_created: 1, time_updated: 1 })
+      .run()
+      .pipe(Effect.orDie)
+    yield* db
+      .insert(SessionTable)
+      .values({
+        id: sessionID,
+        project_id: projectID,
+        slug: id,
+        directory: source,
+        title: id,
+        version: "test",
+        time_created: 1,
+        time_updated: 1,
+      })
+      .run()
+      .pipe(Effect.orDie)
+
+    const row = () =>
+      db
+        .select({ directory: SessionTable.directory, project_id: SessionTable.project_id })
+        .from(SessionTable)
+        .where(eq(SessionTable.id, sessionID))
+        .get()
+
+    return { source, other, projectID, otherProjectID, sessionID, row }
+  })
+}

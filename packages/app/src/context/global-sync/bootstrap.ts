@@ -24,6 +24,7 @@ import type {
   SessionApi,
 } from "@opencode-ai/client/promise"
 import { showToast } from "@/utils/toast"
+import { pathKey } from "@/utils/path-key"
 import { getFilename } from "@opencode-ai/core/util/path"
 import { retry } from "@opencode-ai/core/util/retry"
 import { batch } from "solid-js"
@@ -105,9 +106,16 @@ function showErrors(input: {
   })
 }
 
+// Bootstrap queries are requested by several consumers at once during startup (global
+// bootstrap, per-project bootstrap, child store, composer controls). Without a staleTime
+// every entry counts as stale immediately and each consumer refetches: /provider was
+// measured at 27 requests per start, each transferring the full 5.8 MB catalog.
+const BOOTSTRAP_STALE_TIME = 30_000
+
 export const loadGlobalConfigQuery = (scope: ServerScope, sdk: OpencodeClient, protocol?: Promise<ServerProtocol>) =>
   queryOptions({
     queryKey: [scope, "config"],
+    staleTime: BOOTSTRAP_STALE_TIME,
     queryFn: async () => {
       if ((await protocol) !== "v1") return {}
       return retry(() => sdk.global.config.get().then((x) => x.data!))
@@ -127,6 +135,7 @@ type VcsApi = ServerApi["vcs"]
 export const loadProjectsQuery = (scope: ServerScope, api: ProjectApi) =>
   queryOptions({
     queryKey: [scope, "project"],
+    staleTime: BOOTSTRAP_STALE_TIME,
     queryFn: () =>
       retry(() =>
         api.list().then((projects) => {
@@ -139,6 +148,41 @@ export const loadProjectsQuery = (scope: ServerScope, api: ProjectApi) =>
         }),
       ),
   })
+
+const CATALOG_WARM_DELAY = 3000
+
+/**
+ * Fills the provider query from the connected-only response first and pulls the full
+ * models.dev catalog afterwards.
+ *
+ * Every consumer shares the `[scope, directory, "providers"]` key, so both steps write to it
+ * directly via `setQueryData`. Going through `fetchQuery` for the second step would rewrite
+ * the stored query options — a `staleTime` override there leaves the entry permanently stale
+ * and every consumer refetches the full 5.8 MB again.
+ */
+function loadProvidersProgressively(input: {
+  queryClient: QueryClient
+  scope: ServerScope
+  directory: string | null
+  sdk: CatalogApi
+  legacy: OpencodeClient
+  protocol?: Promise<ServerProtocol>
+  warmCatalog?: boolean
+}) {
+  const query = loadProvidersQuery(input.scope, input.directory, input.sdk, input.legacy, input.protocol)
+  return input.queryClient.fetchQuery(query).then(() => {
+    // Only the global entry warms the catalog: it is byte-identical for every directory, so
+    // warming per directory would pull the same ~5.8 MB once per project. Written through
+    // setQueryData — fetchQuery with a staleTime override would rewrite the stored options
+    // and leave the entry permanently stale.
+    if (!input.warmCatalog) return
+    setTimeout(() => {
+      void fetchProviders(input.directory, input.sdk, input.legacy, input.protocol, false)
+        .then((full) => input.queryClient.setQueryData(query.queryKey, full))
+        .catch(() => undefined)
+    }, CATALOG_WARM_DELAY)
+  })
+}
 
 export async function bootstrapGlobal(input: {
   serverSDK: OpencodeClient
@@ -154,9 +198,15 @@ export async function bootstrapGlobal(input: {
   const slow = [
     () => input.queryClient.fetchQuery(loadGlobalConfigQuery(input.scope, input.serverSDK, input.protocol)),
     () =>
-      input.queryClient.fetchQuery(
-        loadProvidersQuery(input.scope, null, input.serverAPI, input.serverSDK, input.protocol),
-      ),
+      loadProvidersProgressively({
+        queryClient: input.queryClient,
+        scope: input.scope,
+        directory: null,
+        sdk: input.serverAPI,
+        legacy: input.serverSDK,
+        protocol: input.protocol,
+        warmCatalog: true,
+      }),
     () => input.queryClient.fetchQuery(loadPathQuery(input.scope, null, input.serverSDK, input.protocol)),
     () =>
       input.queryClient
@@ -218,29 +268,54 @@ function warmSessions(input: {
   ).then(() => undefined)
 }
 
+/**
+ * Defaults to the connected providers only (~288 KB). The full models.dev catalog — 213
+ * providers, 7500+ models, ~5.8 MB — is what the model picker needs, and it arrives through
+ * `loadProvidersProgressively`, which writes it into the same cache entry a few seconds after
+ * startup.
+ *
+ * The default matters: every consumer shares this query key, and one that mounts before the
+ * bootstrap has written its result fetches on its own. With `full` as the default that lone
+ * consumer pulled the entire catalog and undid the saving.
+ */
+// Consumers reach these queries through `PathKey` (backslashes normalised to slashes) while
+// the bootstrap passes raw directories. Without normalising here the same directory lands
+// under two cache entries, so every consumer refetches what the bootstrap already loaded.
+const directoryKeyPart = (directory: string | null) => (directory === null ? null : pathKey(directory))
+
+const fetchProviders = (
+  directory: string | null,
+  sdk: CatalogApi,
+  legacy?: OpencodeClient,
+  protocol?: Promise<ServerProtocol>,
+  connectedOnly?: boolean,
+) =>
+  retry(async () => {
+    if ((await protocol) === "v1" && legacy) {
+      const result = await legacy.provider.list(connectedOnly ? { connected: true } : undefined)
+      return normalizeProviderList(result.data!)
+    }
+    const location = directory ? { location: { directory } } : undefined
+    const [providers, models, defaultModel] = await Promise.all([
+      sdk.provider.list(location),
+      sdk.model.list(location),
+      sdk.model.default(location),
+    ])
+    return normalizeProviderList(providers.data, models.data, defaultModel.data)
+  })
+
 export const loadProvidersQuery = (
   scope: ServerScope,
   directory: string | null,
   sdk: CatalogApi,
   legacy?: OpencodeClient,
   protocol?: Promise<ServerProtocol>,
+  connectedOnly = true,
 ) =>
   queryOptions({
-    queryKey: [scope, directory, "providers"],
-    queryFn: () =>
-      retry(async () => {
-        if ((await protocol) === "v1" && legacy) {
-          const result = await legacy.provider.list()
-          return normalizeProviderList(result.data!)
-        }
-        const location = directory ? { location: { directory } } : undefined
-        const [providers, models, defaultModel] = await Promise.all([
-          sdk.provider.list(location),
-          sdk.model.list(location),
-          sdk.model.default(location),
-        ])
-        return normalizeProviderList(providers.data, models.data, defaultModel.data)
-      }),
+    queryKey: [scope, directoryKeyPart(directory), "providers"],
+    staleTime: Number.POSITIVE_INFINITY,
+    queryFn: () => fetchProviders(directory, sdk, legacy, protocol, connectedOnly),
   })
 
 type AgentListApi = {
@@ -263,7 +338,8 @@ export const loadAgentsQuery = (
   protocol?: Promise<ServerProtocol>,
 ) =>
   queryOptions({
-    queryKey: [scope, directory, "agents"],
+    queryKey: [scope, directoryKeyPart(directory), "agents"],
+    staleTime: BOOTSTRAP_STALE_TIME,
     queryFn: () =>
       retry(async () => {
         if ((await protocol) === "v1" && legacy) return normalizeAgentList((await legacy.app.agents()).data ?? [])
@@ -302,7 +378,8 @@ export const loadPathQuery = (
   protocol?: Promise<ServerProtocol>,
 ) =>
   queryOptions<Path>({
-    queryKey: [scope, directory, "path"],
+    queryKey: [scope, directoryKeyPart(directory), "path"],
+    staleTime: BOOTSTRAP_STALE_TIME,
     queryFn: async () => {
       if ((await protocol) !== "v1")
         return { state: "", config: "", worktree: "", directory: directory ?? "", home: "" }
@@ -318,7 +395,8 @@ export const loadReferencesQuery = (
   protocol?: Promise<ServerProtocol>,
 ) =>
   queryOptions<ReferenceInfo[]>({
-    queryKey: [scope, directory, "references"] as const,
+    queryKey: [scope, directoryKeyPart(directory), "references"] as const,
+    staleTime: BOOTSTRAP_STALE_TIME,
     queryFn: () =>
       retry(async () => {
         if ((await protocol) === "v1" && legacy) return (await legacy.v2.reference.list()).data?.data ?? []
@@ -525,16 +603,21 @@ export async function bootstrapDirectory(input: {
             loadMcpResourcesQuery(input.scope, input.directory, input.api.mcp, input.sdk, input.protocol),
           )),
       () =>
-        input.queryClient
-          .fetchQuery(loadProvidersQuery(input.scope, input.directory, input.api, input.sdk, input.protocol))
-          .catch((err) => {
-            const project = getFilename(input.directory)
-            showToast({
-              variant: "error",
-              title: input.translate("toast.project.reloadFailed.title", { project }),
-              description: formatServerError(err, input.translate),
-            })
-          }),
+        loadProvidersProgressively({
+          queryClient: input.queryClient,
+          scope: input.scope,
+          directory: input.directory,
+          sdk: input.api,
+          legacy: input.sdk,
+          protocol: input.protocol,
+        }).catch((err) => {
+          const project = getFilename(input.directory)
+          showToast({
+            variant: "error",
+            title: input.translate("toast.project.reloadFailed.title", { project }),
+            description: formatServerError(err, input.translate),
+          })
+        }),
     ].filter(Boolean) as (() => Promise<any>)[]
 
     await waitForPaint()

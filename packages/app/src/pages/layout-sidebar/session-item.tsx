@@ -1,6 +1,6 @@
 import { createEffect, createSignal, Show, type Accessor } from "solid-js"
 import { createDraggable, createDroppable, useDragDropContext } from "@thisbeyond/solid-dnd"
-import { Icon, MenuV2, Spinner, TooltipV2, useLanguage } from "./upstream"
+import { Icon, IconButton, MenuV2, Spinner, TooltipV2, useLanguage } from "./upstream"
 import { SidebarMarquee } from "./marquee"
 import type { SidebarSession } from "./sessions"
 import { isNewChat } from "@/utils/session-title"
@@ -188,6 +188,16 @@ export function SessionItem(props: {
               >
                 <PinIcon filled={props.pinned} />
               </button>
+            </TooltipV2>
+            <TooltipV2 value={language.t("common.delete")} placement="top">
+              <IconButton
+                icon="trash"
+                iconSize="small"
+                variant="ghost"
+                class="!size-7 shrink-0 rounded-md text-icon-base"
+                onClick={props.onDelete}
+                aria-label={language.t("common.delete")}
+              />
             </TooltipV2>
           </div>
 

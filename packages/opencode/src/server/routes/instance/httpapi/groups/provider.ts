@@ -5,11 +5,20 @@ import { Schema } from "effect"
 import { HttpApi, HttpApiEndpoint, HttpApiGroup, OpenApi } from "effect/unstable/httpapi"
 import { Authorization } from "../middleware/authorization"
 import { InstanceContextMiddleware } from "../middleware/instance-context"
-import { WorkspaceRoutingMiddleware, WorkspaceRoutingQuery } from "../middleware/workspace-routing"
+import { WorkspaceRoutingMiddleware, WorkspaceRoutingQuery, WorkspaceRoutingQueryFields } from "../middleware/workspace-routing"
+import { QueryBoolean } from "./query"
 import { described } from "./metadata"
 import { ProviderV2 } from "@opencode-ai/core/provider"
 
 const root = "/provider"
+
+// The full catalog is ~5.8 MB of models.dev data that only the model picker needs. Clients
+// that just render the current model can ask for the connected providers alone and pull the
+// rest in the background. Defaults to the full list so existing clients are unaffected.
+const ProviderListQuery = Schema.Struct({
+  ...WorkspaceRoutingQueryFields,
+  connected: Schema.optional(QueryBoolean),
+})
 
 const ProviderAuthErrorName = Schema.Union([
   Schema.Literal("BadRequest"),
@@ -36,7 +45,7 @@ export const ProviderApi = HttpApi.make("provider")
     HttpApiGroup.make("provider")
       .add(
         HttpApiEndpoint.get("list", root, {
-          query: WorkspaceRoutingQuery,
+          query: ProviderListQuery,
           success: described(Provider.ListResult, "List of providers"),
         }).annotateMerge(
           OpenApi.annotations({

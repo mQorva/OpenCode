@@ -248,6 +248,9 @@ const layer = Layer.effectDiscard(
             directory: event.data.location.directory,
             path: event.data.subdirectory,
             workspace_id: event.data.location.workspaceID ? WorkspaceV2.ID.make(event.data.location.workspaceID) : null,
+            // Absent for a move inside the same project, where the column already holds the
+            // right value and must not be cleared.
+            ...(event.data.projectID ? { project_id: event.data.projectID } : {}),
             time_updated: DateTime.toEpochMillis(event.data.timestamp),
           })
           .where(eq(SessionTable.id, event.data.sessionID))

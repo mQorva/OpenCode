@@ -3,9 +3,11 @@ export * as MoveSession from "./move-session"
 import { Context, DateTime, Effect, Layer, Schema } from "effect"
 import { makeGlobalNode } from "../effect/app-node"
 import { EventV2 } from "../event"
+import { Database } from "../database/database"
 import { Git } from "../git"
 import { Location } from "../location"
 import { ProjectV2 } from "../project"
+import { ProjectTable } from "../project/sql"
 import { SessionV2 } from "../session"
 import { SessionEvent } from "../session/event"
 import { SessionSchema } from "../session/schema"
@@ -22,6 +24,9 @@ export const Input = Schema.Struct({
   sessionID: SessionSchema.ID,
   destination: Destination,
   moveChanges: Schema.optional(Schema.Boolean),
+  // Moving to a foreign project is a different operation from switching worktrees inside one:
+  // snapshots stay behind and uncommitted work cannot follow. The caller has to ask for it.
+  allowProjectChange: Schema.optional(Schema.Boolean),
 }).annotate({ identifier: "MoveSession.Input" })
 export type Input = typeof Input.Type
 
@@ -36,6 +41,13 @@ export class DestinationProjectMismatchError extends Schema.TaggedErrorClass<Des
 export class ApplyChangesError extends Schema.TaggedErrorClass<ApplyChangesError>()("MoveSession.ApplyChangesError", {
   message: Schema.String,
 }) {}
+
+export class ChangesAcrossProjectsError extends Schema.TaggedErrorClass<ChangesAcrossProjectsError>()(
+  "MoveSession.ChangesAcrossProjectsError",
+  {
+    message: Schema.String,
+  },
+) {}
 
 export class CaptureChangesError extends Schema.TaggedErrorClass<CaptureChangesError>()(
   "MoveSession.CaptureChangesError",
@@ -56,6 +68,7 @@ export class ResetSourceChangesError extends Schema.TaggedErrorClass<ResetSource
 export type Error =
   | SessionV2.NotFoundError
   | DestinationProjectMismatchError
+  | ChangesAcrossProjectsError
   | CaptureChangesError
   | ApplyChangesError
   | ResetSourceChangesError
@@ -73,6 +86,7 @@ const layer = Layer.effect(
     const events = yield* EventV2.Service
     const project = yield* ProjectV2.Service
     const sessions = yield* SessionStore.Service
+    const { db } = yield* Database.Service
 
     const moveSession = Effect.fn("MoveSession.moveSession")(function* (input: Input) {
       const current = yield* sessions.get(input.sessionID)
@@ -82,8 +96,16 @@ const layer = Layer.effect(
 
       const source = yield* project.resolve(current.location.directory)
       const destination = yield* project.resolve(directory)
-      if (current.projectID !== destination.id) {
+      const changesProject = current.projectID !== destination.id
+      if (changesProject && !input.allowProjectChange) {
         return yield* new DestinationProjectMismatchError({ expected: current.projectID, actual: destination.id })
+      }
+      // A patch captured in one repository has no meaning in another, so refuse rather than
+      // apply it somewhere it was never written against.
+      if (changesProject && input.moveChanges) {
+        return yield* new ChangesAcrossProjectsError({
+          message: "Uncommitted changes cannot be carried into another project",
+        })
       }
 
       const moveChanges = input.moveChanges && source.directory !== destination.directory
@@ -103,10 +125,27 @@ const layer = Layer.effect(
           .pipe(Effect.mapError((error) => new ApplyChangesError({ message: error.message })))
       }
 
+      // Sessions reference their project by foreign key, and the destination project may never
+      // have been recorded — nothing has run there yet. Register it before the session points at it.
+      if (changesProject) {
+        yield* db
+          .insert(ProjectTable)
+          .values({
+            id: destination.id,
+            worktree: destination.directory,
+            vcs: destination.vcs?.type,
+            sandboxes: [],
+          })
+          .onConflictDoNothing()
+          .run()
+          .pipe(Effect.orDie)
+      }
+
       yield* events.publish(SessionEvent.Moved, {
         sessionID: input.sessionID,
         location: Location.Ref.make({ directory }),
         subdirectory: RelativePath.make(path.relative(destination.directory, directory).replaceAll("\\", "/")),
+        projectID: changesProject ? destination.id : undefined,
         timestamp: yield* DateTime.now,
       })
 
@@ -144,5 +183,5 @@ const layer = Layer.effect(
 export const node = makeGlobalNode({
   service: Service,
   layer,
-  deps: [Git.node, EventV2.node, ProjectV2.node, SessionStore.node],
+  deps: [Database.node, Git.node, EventV2.node, ProjectV2.node, SessionStore.node],
 })

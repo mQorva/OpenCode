@@ -256,6 +256,9 @@
                   },
                   "moveChanges": {
                     "type": "boolean"
+                  },
+                  "allowProjectChange": {
+                    "type": "boolean"
                   }
                 },
                 "required": ["sessionID", "destination"],
@@ -4988,6 +4991,22 @@
               "type": "string"
             },
             "required": false
+          },
+          {
+            "name": "connected",
+            "in": "query",
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "boolean"
+                },
+                {
+                  "type": "string",
+                  "enum": ["true", "false"]
+                }
+              ]
+            },
+            "required": false
           }
         ],
         "responses": {
@@ -5492,6 +5511,9 @@
                   "permission": {
                     "$ref": "#/components/schemas/PermissionRuleset"
                   },
+                  "permissionLevel": {
+                    "$ref": "#/components/schemas/PermissionLevel"
+                  },
                   "workspaceID": {
                     "type": "string",
                     "pattern": "^wrk"
@@ -5818,6 +5840,9 @@
                   },
                   "permission": {
                     "$ref": "#/components/schemas/PermissionRuleset"
+                  },
+                  "permissionLevel": {
+                    "$ref": "#/components/schemas/PermissionLevel"
                   },
                   "time": {
                     "type": "object",
@@ -15743,6 +15768,10 @@
           "$ref": "#/components/schemas/PermissionRule"
         }
       },
+      "PermissionLevel": {
+        "type": "string",
+        "enum": ["ask", "workspace", "full"]
+      },
       "Session": {
         "type": "object",
         "properties": {
@@ -15886,6 +15915,9 @@
           },
           "permission": {
             "$ref": "#/components/schemas/PermissionRuleset"
+          },
+          "permissionLevel": {
+            "$ref": "#/components/schemas/PermissionLevel"
           },
           "revert": {
             "type": "object",
@@ -17805,6 +17837,9 @@
                         "$ref": "#/components/schemas/LocationRef"
                       },
                       "subdirectory": {
+                        "type": "string"
+                      },
+                      "projectID": {
                         "type": "string"
                       }
                     },
@@ -22173,6 +22208,9 @@
           "permission": {
             "$ref": "#/components/schemas/PermissionRuleset"
           },
+          "permissionLevel": {
+            "$ref": "#/components/schemas/PermissionLevel"
+          },
           "revert": {
             "type": "object",
             "properties": {
@@ -25435,6 +25473,9 @@
                   },
                   "subdirectory": {
                     "type": "string"
+                  },
+                  "projectID": {
+                    "type": "string"
                   }
                 },
                 "required": ["timestamp", "sessionID", "location"],
@@ -28147,6 +28188,9 @@
                 "$ref": "#/components/schemas/LocationRef"
               },
               "subdirectory": {
+                "type": "string"
+              },
+              "projectID": {
                 "type": "string"
               }
             },
@@ -34225,6 +34269,9 @@
                 "$ref": "#/components/schemas/LocationRef"
               },
               "subdirectory": {
+                "type": "string"
+              },
+              "projectID": {
                 "type": "string"
               }
             },

@@ -39,23 +39,57 @@ export const providerHandlers = HttpApiBuilder.group(InstanceHttpApi, "provider"
     const svc = yield* ProviderAuth.Service
     const authStore = yield* Auth.Service
 
-    const list = Effect.fn("ProviderHttpApi.list")(function* () {
-      const config = yield* cfg.get()
-      const all = yield* ModelsDev.Service.use((s) => s.get())
-      const disabled = new Set(config.disabled_providers ?? [])
-      const enabled = config.enabled_providers ? new Set(config.enabled_providers) : undefined
-      const filtered: Record<string, (typeof all)[string]> = {}
-      for (const [key, value] of Object.entries(all)) {
-        if ((enabled ? enabled.has(key) : true) && !disabled.has(key)) filtered[key] = value
-      }
+    // The models.dev catalog holds 213 providers with 7500+ models and is identical for every
+    // directory. Rebuilding it per request costs ~500ms — `toPublicInfo` alone validates every
+    // model with `Schema.is` — and startup asks for the list repeatedly. Keep the transformed
+    // catalog keyed on the models.dev snapshot identity and the provider filter; connected
+    // providers stay live because they carry auth state.
+    let catalog:
+      | {
+          source: Record<string, ModelsDev.Provider>
+          filter: string
+          entries: Record<string, Provider.Info>
+          publicInfo: Record<string, Provider.Info>
+        }
+      | undefined
+
+    const list = Effect.fn("ProviderHttpApi.list")(function* (ctx: { query: { connected?: boolean } }) {
       const connected = yield* provider.list()
       const credentials = yield* authStore.all().pipe(Effect.orDie)
-      const providers = Object.assign(
-        mapValues(filtered, (item) => Provider.fromModelsDevProvider(item)),
-        connected,
-      )
+
+      // `connected=true` skips the catalog entirely — the caller only wants what is usable
+      // right now and pulls the rest separately.
+      if (ctx.query.connected) {
+        const providers = { ...connected }
+        return {
+          all: Object.values(providers).map(Provider.toPublicInfo),
+          default: Provider.defaultModelIDs(providers),
+          connected: Object.keys(providers).filter((id) => id in connected || credentials[id]),
+        }
+      }
+
+      const config = yield* cfg.get()
+      const all = yield* ModelsDev.Service.use((s) => s.get())
+      const filter = JSON.stringify([config.enabled_providers ?? null, config.disabled_providers ?? null])
+      if (!catalog || catalog.source !== all || catalog.filter !== filter) {
+        const disabled = new Set(config.disabled_providers ?? [])
+        const enabled = config.enabled_providers ? new Set(config.enabled_providers) : undefined
+        const entries = mapValues(
+          Object.fromEntries(
+            Object.entries(all).filter(([key]) => (enabled ? enabled.has(key) : true) && !disabled.has(key)),
+          ),
+          (item) => Provider.fromModelsDevProvider(item),
+        )
+        catalog = { source: all, filter, entries, publicInfo: mapValues(entries, Provider.toPublicInfo) }
+      }
+      const providers = Object.assign({ ...catalog.entries }, connected)
+      // Connected providers carry live auth state and overwrite the catalog entry, so they
+      // must not be served from the cached public info.
+      const publicInfo = catalog.publicInfo
       return {
-        all: Object.values(providers).map(Provider.toPublicInfo),
+        all: Object.entries(providers).map(([id, item]) =>
+          id in connected ? Provider.toPublicInfo(item) : (publicInfo[id] ?? Provider.toPublicInfo(item)),
+        ),
         default: Provider.defaultModelIDs(providers),
         connected: Object.keys(providers).filter((id) => id in connected || credentials[id]),
       }

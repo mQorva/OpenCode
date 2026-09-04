@@ -147,6 +147,7 @@ export const loadMcpResourcesQuery = (
 export const loadLspQuery = (scope: ServerScope, directory: string, sdk: OpencodeClient) =>
   queryOptions({
     queryKey: [scope, directory, "lsp"] as const,
+    staleTime: 30_000,
     queryFn: () => sdk.lsp.status().then((r) => r.data ?? []),
   })
 

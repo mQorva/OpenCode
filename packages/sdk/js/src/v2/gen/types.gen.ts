@@ -849,6 +849,7 @@ export type GlobalEvent = {
           sessionID: string
           location: LocationRef
           subdirectory?: string
+          projectID?: string
         }
       }
     | {
@@ -3352,6 +3353,7 @@ export type SyncEventSessionNextMoved = {
       sessionID: string
       location: LocationRef
       subdirectory?: string
+      projectID?: string
     }
   }
 }
@@ -4226,6 +4228,7 @@ export type SessionNextMoved = {
     sessionID: string
     location: LocationRef
     subdirectory?: string
+    projectID?: string
   }
 }
 
@@ -6285,6 +6288,7 @@ export type EventSessionNextMoved = {
     sessionID: string
     location: LocationRef
     subdirectory?: string
+    projectID?: string
   }
 }
 
@@ -7204,6 +7208,7 @@ export type ExperimentalControlPlaneMoveSessionData = {
     sessionID: string
     destination: MoveSessionDestination
     moveChanges?: boolean
+    allowProjectChange?: boolean
   }
   path?: never
   query?: never
@@ -9311,6 +9316,7 @@ export type ProviderListData = {
   query?: {
     directory?: string
     workspace?: string
+    connected?: boolean | "true" | "false"
   }
   url: "/provider"
 }

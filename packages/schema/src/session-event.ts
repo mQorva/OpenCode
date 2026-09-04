@@ -10,6 +10,7 @@ import { DateTimeUtcFromMillis, NonNegativeInt, RelativePath } from "./schema"
 import { FileAttachment, Prompt } from "./prompt"
 import { SessionID } from "./session-id"
 import { Location } from "./location"
+import { ProjectID } from "./project-id"
 import { SessionMessage } from "./session-message"
 import { Revert } from "./revert"
 
@@ -80,6 +81,9 @@ export const Moved = Event.define({
     ...Base,
     location: Location.Ref,
     subdirectory: RelativePath.pipe(optional),
+    // Only set when the destination belongs to another project. Same-project moves omit it so
+    // older events, which never carried a project, keep replaying unchanged.
+    projectID: ProjectID.pipe(optional),
   },
 })
 export type Moved = typeof Moved.Type

@@ -10,6 +10,7 @@ import {
   useDragDropContext,
   type DragEventHandler,
 } from "@thisbeyond/solid-dnd"
+import { Binary } from "@opencode-ai/core/util/binary"
 import { SessionItem } from "./session-item"
 import { SidebarMarquee } from "./marquee"
 import "./sidebar.css"
@@ -209,8 +210,8 @@ function ProjectGroup(props: {
   onCopySessionProject: () => void
   onDelete: (entry: SidebarSession) => void
   canDrop: (source: string, target: string) => boolean
-  /** Whether a dragged key is an unassigned draft — the only thing a project can take in. */
-  isDraft: (key: string) => boolean
+  /** Whether a dragged key may land on a project — an unassigned draft, or an idle session. */
+  acceptsProjectDrop: (key: string) => boolean
   /** All project worktrees, used to recognise project-on-project drags. */
   projectWorktrees: () => Set<string>
 }) {
@@ -218,17 +219,18 @@ function ProjectGroup(props: {
   const droppable = createDroppable(props.group.project.worktree)
   const draggable = createDraggable(props.group.project.worktree)
   const dnd = useDragDropContext()
-  // A started session is bound to the directory it runs in and cannot change project, so only a
-  // draft may land here. Projects also accept other projects, so the user can reorder the list.
-  // Without this the group lit up for every drag and promised a move that never happened.
+  // Drafts and idle sessions can both change project; a session mid-turn cannot, because its
+  // work is bound to the directory it runs in. Projects also accept other projects, so the user
+  // can reorder the list. Without this the group lit up for every drag and promised a move that
+  // never happened.
   const activeDragKey = () => {
     const active = dnd?.[0].active.draggable?.id
     if (active === undefined || active === null) return
     return String(active)
   }
-  const draftDropActive = () => {
+  const projectDropActive = () => {
     const key = activeDragKey()
-    return !!key && droppable.isActiveDroppable && props.isDraft(key)
+    return !!key && droppable.isActiveDroppable && props.acceptsProjectDrop(key)
   }
   const projectDropPosition = () => {
     const key = activeDragKey()
@@ -256,7 +258,7 @@ function ProjectGroup(props: {
       use:droppable={droppable}
       classList={{
         "flex flex-col gap-0.5 rounded-md": true,
-        "bg-v2-background-bg-layer-02/20": draftDropActive(),
+        "bg-v2-background-bg-layer-02/20": projectDropActive(),
         "opacity-40": draggable.isActiveDraggable,
       }}
     >
@@ -640,6 +642,58 @@ export function Sidebar(props: { data: SidebarData }) {
 
   const isDraftKey = (key: string) => tabs.store.some((item) => item.type === "draft" && item.draftID === key)
 
+  /** The session behind a drag key, if the key names one rather than a draft or a project. */
+  const sessionOfKey = (key: string) =>
+    [...groups().flatMap((group) => group.sessions), ...allChatSessions()].find(
+      (entry) => sessionPinKey(entry) === key,
+    )
+
+  const acceptsProjectDrop = (key: string) => {
+    if (isDraftKey(key)) return true
+    const entry = sessionOfKey(key)
+    return !!entry && !sessionWorking(entry)
+  }
+
+  /**
+   * Relocate a started session. The server keeps the transcript as it is and only rewrites where
+   * the session runs, so the history stays honest about the directory it was produced in.
+   *
+   * The move is not announced on the event stream, so both directory stores are rebooked here
+   * rather than waiting for an update that never arrives.
+   */
+  const moveSessionToProject = async (entry: SidebarSession, worktree: string) => {
+    if (entry.directory === worktree) return
+    const moved = await serverSDK()
+      .client.experimental.controlPlane.moveSession(
+        { sessionID: entry.session.id, destination: { directory: worktree }, allowProjectChange: true },
+        { throwOnError: true },
+      )
+      .then(() => true)
+      .catch((error: unknown) => {
+        showToast({ title: language.t("common.requestFailed"), description: errorMessage(error, "") })
+        return false
+      })
+    if (!moved) return
+
+    // Only this session moves — the server leaves child sessions where they are, so removing the
+    // whole tree here would hide sessions that still live in the old project.
+    const [, setSource] = serverSync().child(entry.directory, { bootstrap: true })
+    setSource(
+      produce((draft) => {
+        draft.session = draft.session.filter((session) => session.id !== entry.session.id)
+      }),
+    )
+    const [target, setTarget] = serverSync().child(worktree, { bootstrap: true })
+    const relocated = { ...entry.session, directory: worktree }
+    const position = Binary.search(target.session ?? [], relocated.id, (session) => session.id)
+    if (position.found) return
+    setTarget(
+      produce((draft) => {
+        draft.session.splice(position.index, 0, relocated)
+      }),
+    )
+  }
+
   const canDropSession = (source: string, target: string) => {
     if (source === target) return false
     const block = blockOf(source)
@@ -677,7 +731,6 @@ export function Sidebar(props: { data: SidebarData }) {
       return
     }
 
-    // A draft has no working directory yet, so it is the only entry that can change project.
     const tab = tabs.store.find((item) => item.type === "draft" && item.draftID === from)
     if (tab) {
       const target = worktreeOf(to)
@@ -693,9 +746,13 @@ export function Sidebar(props: { data: SidebarData }) {
       return
     }
 
-    // A started session belongs to the directory it runs in, so a project group is not a target
-    // for it — dropping there does nothing. Unpinning lives in the row's own menu.
-    if (projectWorktrees().has(to)) return
+    // Dropping a started session on a project moves it there. A session mid-turn keeps state in
+    // the instance of its current directory, so it stays put until the turn ends.
+    if (projectWorktrees().has(to)) {
+      const entry = sessionOfKey(from)
+      if (entry && !sessionWorking(entry)) void moveSessionToProject(entry, to)
+      return
+    }
 
     const block = blockOf(from)
     if (!block || block !== blockOf(to)) return
@@ -893,7 +950,7 @@ export function Sidebar(props: { data: SidebarData }) {
                     {(group) => (
                       <ProjectGroup
                         group={group}
-                        isDraft={isDraftKey}
+                        acceptsProjectDrop={acceptsProjectDrop}
                         drafts={needle() ? [] : draftsForProject([...tabs.store], group.project.worktree)}
                         collapsed={collapsed.includes(group.project.worktree)}
                         sessionsExpanded={expandedSessions().includes(group.project.worktree)}

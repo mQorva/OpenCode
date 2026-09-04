@@ -31,6 +31,8 @@ function message(error: MoveSession.Error) {
   if (error instanceof SessionV2.NotFoundError) return `Session not found: ${error.sessionID}`
   if (error instanceof MoveSession.DestinationProjectMismatchError)
     return "Destination directory belongs to another project"
+  if (error instanceof MoveSession.ChangesAcrossProjectsError)
+    return "Uncommitted changes cannot be carried into another project. Move without them, or commit them first."
   if (error instanceof MoveSession.ApplyChangesError)
     return `Unable to apply your changes in the destination directory. The files may conflict with existing changes.`
   return error.message
