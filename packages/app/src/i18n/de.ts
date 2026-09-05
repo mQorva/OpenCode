@@ -812,6 +812,7 @@ export const dict = {
   "sidebarLayout.noSessions": "keine Sitzungen",
   "sidebarLayout.showMore": "mehr anzeigen",
   "sidebarLayout.untitled": "Sitzung ohne Titel",
+  "sidebarLayout.sessionMissing": "nicht gefunden",
   "sidebarLayout.draft": "neue Sitzung",
   "sidebarLayout.addProject": "Projekt hinzufügen",
   "sidebarLayout.projectSettings": "Projekteinstellungen",

@@ -49,6 +49,18 @@ function SessionMenuItems(props: {
   )
 }
 
+type SessionAttention = "permission" | "question" | "missing"
+
+const attentionLabel = (value: SessionAttention) =>
+  value === "permission"
+    ? "notification.permission.title"
+    : value === "question"
+      ? "notification.question.title"
+      : "session.error.notFound.description"
+
+const attentionIcon = (value: SessionAttention) =>
+  value === "permission" ? "checklist" : value === "question" ? "bubble-5" : "warning"
+
 export function SessionItem(props: {
   entry: SidebarSession
   /** Key used for dragging and as a drop target; omitted where reordering makes no sense. */
@@ -56,7 +68,7 @@ export function SessionItem(props: {
   active: boolean
   pinned: boolean
   unread: boolean
-  attention: Accessor<"permission" | "question" | undefined>
+  attention: Accessor<"permission" | "question" | "missing" | undefined>
   working: Accessor<boolean>
   indent?: boolean
   onSelect: () => void
@@ -71,6 +83,7 @@ export function SessionItem(props: {
 }) {
   const language = useLanguage()
   const title = () => {
+    if (props.entry.missing) return language.t("sidebarLayout.sessionMissing")
     const value = props.entry.session.title?.trim()
     if (isNewChat(value)) return language.t("sidebarLayout.newChat")
     return value || language.t("sidebarLayout.untitled")
@@ -203,19 +216,14 @@ export function SessionItem(props: {
 
           <Show when={props.attention()}>
             {(attention) => (
-              <TooltipV2
-                value={language.t(
-                  attention() === "permission" ? "notification.permission.title" : "notification.question.title",
-                )}
-                placement="top"
-              >
+              <TooltipV2 value={language.t(attentionLabel(attention()))} placement="top">
                 <span
-                  class="shrink-0 px-1 flex items-center text-icon-warning-base"
-                  aria-label={language.t(
-                    attention() === "permission" ? "notification.permission.title" : "notification.question.title",
-                  )}
+                  class={`shrink-0 px-1 flex items-center ${
+                    attention() === "missing" ? "text-icon-critical-base" : "text-icon-warning-base"
+                  }`}
+                  aria-label={language.t(attentionLabel(attention()))}
                 >
-                  <Icon name={attention() === "permission" ? "checklist" : "bubble-5"} size="small" />
+                  <Icon name={attentionIcon(attention())} size="small" />
                 </span>
               </TooltipV2>
             )}

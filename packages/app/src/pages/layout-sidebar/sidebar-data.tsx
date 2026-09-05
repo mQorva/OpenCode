@@ -1,5 +1,6 @@
-import { createMemo, createResource } from "solid-js"
+import { createMemo, createResource, createSignal } from "solid-js"
 import { createStore } from "solid-js/store"
+import { isSessionNotFoundError } from "@/utils/server-errors"
 import {
   applyOrder,
   CHATS_ORDER_KEY,
@@ -48,6 +49,9 @@ export function createSidebarData() {
   const [protocol] = createResource(() => serverSDK().protocol)
   const route = createMemo(() => layout.route())
 
+  /** Session ID of the current route once the server has answered that it does not know it. */
+  const [missingSessionID, setMissingSessionID] = createSignal<string>()
+
   const [activeSession] = createResource(
     () => {
       const value = route()
@@ -59,13 +63,40 @@ export function createSidebarData() {
     // client, a stale handoff, a reset database. This resource sits outside the session route's
     // error boundary, so an unhandled rejection here reaches the global boundary and replaces
     // the whole window with "something went wrong". `titlebar.tsx` guards the same call the
-    // same way; the sidebar simply renders without an active session.
+    // same way; the sidebar lists a marked placeholder instead of an active session.
     ({ sessionID, sdk }) =>
       sdk.api.session
         .get({ sessionID })
-        .then(normalizeSessionInfo)
-        .catch(() => undefined),
+        .then((value) => {
+          setMissingSessionID((current) => (current === sessionID ? undefined : current))
+          return normalizeSessionInfo(value)
+        })
+        .catch((error) => {
+          // Only a definite "no such session" counts. A connection that is merely down would
+          // otherwise mark every session as gone.
+          setMissingSessionID(isSessionNotFoundError(error, sessionID) ? sessionID : undefined)
+          return undefined
+        }),
   )
+
+  /**
+   * The placeholder entry for a route whose session the server does not know. Without it the
+   * sidebar would list nothing at all for the session currently on screen, and the only hint that
+   * something is wrong would be the empty page next to it.
+   */
+  const missingEntry = createMemo<SidebarSession | undefined>(() => {
+    const value = route()
+    if (value.type !== "session") return
+    const id = missingSessionID()
+    if (!id || id !== value.sessionId) return
+    const directory = serverSync().data.path.directory || serverSync().data.path.home || ""
+    return {
+      session: { id, directory, time: {} } as Session,
+      server: value.server ?? server.key,
+      directory,
+      missing: true,
+    }
+  })
 
   const groups = createMemo<SidebarProject[]>(() =>
     layout.projects.list().map((project) => {
@@ -160,7 +191,12 @@ export function createSidebarData() {
       sessions.unshift({ session: current, server: server.key, directory: current.directory })
     }
     const rest = sessions.filter((entry) => !pinned.includes(sessionPinKey(entry)))
-    return applyOrder(rest, order[CHATS_ORDER_KEY])
+    const ordered = applyOrder(rest, order[CHATS_ORDER_KEY])
+    const missing = missingEntry()
+    if (missing && !ordered.some((entry) => entry.session.id === missing.session.id)) {
+      return [missing, ...ordered]
+    }
+    return ordered
   })
 
   /** Groups with each project's own drag order applied — the shape the sidebar renders. */
@@ -182,6 +218,7 @@ export function createSidebarData() {
 
   return {
     activeSession,
+    missingSessionID,
     chatSessions,
     flat,
     groups,

@@ -44,7 +44,6 @@ import { showToast } from "@/utils/toast"
 import { base64Encode, checksum } from "@opencode-ai/core/util/encode"
 import { useLocation, useNavigate, useParams, useSearchParams } from "@solidjs/router"
 import { NewSessionView, SessionHeader } from "@/components/session"
-import { AppStartupOverlay } from "@/components/app-startup-overlay"
 import { ErrorPage } from "@/pages/error"
 import { CommentsProvider, useComments } from "@/context/comments"
 import { useCommand } from "@/context/command"
@@ -112,6 +111,7 @@ import { diffs as list } from "@/utils/diffs"
 import { Persist, persisted } from "@/utils/persist"
 import { extractPromptFromParts } from "@/utils/prompt"
 import { formatServerError, isLocalSessionNotFoundError, isSessionNotFoundError } from "@/utils/server-errors"
+import { isRestoredStartupRoute, markInternalNavigation } from "@/utils/initial-route"
 import { legacySessionHref, requireServerKey, sessionHref } from "@/utils/session-route"
 import { useUsageExceededDialogs } from "./session/usage-exceeded-dialogs"
 import { createSessionOwnership } from "./session/session-ownership"
@@ -174,32 +174,20 @@ export function TargetSessionRouteContent() {
   const params = useParams<{ serverKey: string; id: string }>()
   const serverSync = useServerSync()
   const directory = createMemo(() => serverSync().session.lineage.peek(params.id)?.session.directory)
-  const startup = createMemo(() => {
-    const value = directory()
-    if (!value) return { ready: false, progress: 10 }
-    const store = serverSync().child(value, { bootstrap: true })[0]
-    const storeReady = store.status !== "loading"
-    const projectReady = !serverSync().project.initializing(value)
-    return {
-      ready: storeReady && projectReady,
-      progress: 25 + (storeReady ? 50 : 0) + (projectReady ? 25 : 0),
-    }
-  })
+
   return (
     <>
       {/* Settings must keep the target-server SDK, sync, and models context and remain registered
           when session content falls back to the route error boundary. */}
       <TargetServerScopedProviders directory={directory} sessionID={() => params.id}>
         <TargetSessionSettingsCommand />
+        {/* No progress overlay of its own. It waited for the session's directory, so a session that
+            cannot be resolved at all — deleted, wrong server, reset database — left it up forever,
+            covering the "session not found" page including its way out. The window-wide startup
+            overlay in `app.tsx` already covers the launch, and switching sessions falls back to the
+            workspace skeleton below. */}
         <SessionRouteErrorBoundary sessionID={params.id} serverKey={requireServerKey(params.serverKey)} padded>
           <ResolvedTargetSessionRoute />
-          {/* Inside the boundary on purpose. `startup()` waits for the session's directory, so a
-              session that cannot be resolved at all — deleted, wrong server, reset database —
-              leaves `ready` false forever. Outside the boundary this overlay then covered the
-              "session not found" page including its way out, and the window was stuck. */}
-          <Show when={!startup().ready}>
-            <AppStartupOverlay progress={startup().progress} />
-          </Show>
         </SessionRouteErrorBoundary>
       </TargetServerScopedProviders>
     </>
@@ -238,6 +226,7 @@ function SessionErrorFallback(props: { error: unknown; sessionID?: string; serve
   const language = useLanguage()
   const server = useServer()
   const tabs = useTabs()
+  const navigate = useNavigate()
   const displayServer = createMemo(() => {
     const key = props.serverKey ?? server.key
     const conn = server.list.find((item) => ServerConnection.key(item) === key)
@@ -247,7 +236,20 @@ function SessionErrorFallback(props: { error: unknown; sessionID?: string; serve
     if (!props.sessionID) return
     tabs.removeSessionTab({ server: props.serverKey ?? server.key, sessionId: props.sessionID })
   }
-  if (isCurrentSessionNotFoundError(props.error, props.sessionID)) {
+  const notFound = isCurrentSessionNotFoundError(props.error, props.sessionID)
+  // A session route restored at startup was never chosen by the user. If its target is gone, there
+  // is nothing to report — the deletion already happened, and the stale pointer is our own. Drop it
+  // and open the home page instead. The message below stays for sessions the user actually opened,
+  // where "gone" is news. `isRestoredStartupRoute` flips on this very navigation, so this runs once.
+  if (notFound && isRestoredStartupRoute()) {
+    onMount(() => {
+      closeTab()
+      markInternalNavigation()
+      navigate("/", { replace: true })
+    })
+    return null
+  }
+  if (notFound) {
     return (
       <div class="flex-1 min-h-0 overflow-hidden">
         <div class="h-full px-6 pb-42 -mt-4 flex flex-col items-center justify-center text-center gap-4">

@@ -140,6 +140,73 @@ ist der falsche Weg — man vergisst immer einen, und jeder neue persistierte Zu
 Problem zurück. Robust ist nur, dass ein 404 auf eine Session die Oberfläche nicht sprengt.
 Dann ist gleichgültig, woher ein veralteter Verweis stammt.
 
+## Gefunden: woher die Session beim Start kommt
+
+Gesucht wurde jeder Setter einer Session-Route. Ergebnis: es gibt genau **einen**.
+
+- `desktop/src/renderer/index.tsx:107` — `DesktopMemoryRouter` liest
+  `opencode.desktop.window.<id>.last-active-url` aus dem Local Storage und setzt sie über
+  `history.set`, geprüft wird nur, ob sie mit `/` beginnt.
+- `context/layout.tsx` leitet `route()` allein aus `location.pathname` ab; es gibt keine zweite
+  Quelle.
+- `pages/layout.tsx:488` (`autoselecting` → `navigateToProject` → `lastProjectSession`) navigiert
+  ebenfalls automatisch, gehört aber zum **alten** Tab-Layout und läuft im Sidebar-Layout nicht.
+- `pages/layout-sidebar/shell.tsx` navigiert nur auf Tastendruck (`stepSession`, `stepProject`).
+- `toggleHome` in `context/tabs.tsx:373` springt zum zuletzt gemerkten Tab zurück — nur per Klick
+  in der Titelleiste.
+
+Damit ist die Frage beantwortet: Die App startet mit der zuletzt angezeigten URL, ungeprüft. Ein
+wiederholtes „Zurücksetzen" der Route war nie nötig; es gab nichts, was sie erneut gesetzt hätte.
+
+## Umgesetzt: eine wiederhergestellte Route meldet nichts
+
+`utils/initial-route.ts` merkt sich, ob seit dem Öffnen des Fensters überhaupt navigiert wurde —
+ein Modul-Flag, monoton, nicht reaktiv. `context/layout.tsx` setzt es bei der ersten Änderung von
+`location.pathname`.
+
+`pages/session.tsx` unterscheidet damit im Fehler-Fallback zwei Fälle:
+
+- **Beim Start wiederhergestellt** und die Session existiert nicht mehr: der Verweis wird entfernt
+  und still auf `/` navigiert. Keine Meldung — die Session ist fort, das ist keine Nachricht.
+- **Vom Nutzer geöffnet**: die vorhandene Seite „Diese Sitzung wurde nicht gefunden" mit
+  „Verweis entfernen" bleibt.
+
+Der Zweig läuft genau einmal: die eigene Navigation setzt das Flag.
+
+## Umgesetzt: Markierung statt Leerstelle
+
+`SidebarSession` trägt ein Feld `missing`. `sidebar-data.tsx` setzt es, sobald der Server auf die
+Session der aktuellen Route mit „gibt es nicht" antwortet — nur bei einem eindeutigen 404, ein
+ausgefallener Server markiert nichts. Der Eintrag wird den unzugeordneten Chats vorangestellt, weil
+die Seitenleiste sonst gar nichts zu der Sitzung zeigt, die gerade auf dem Bildschirm steht.
+
+`session-item.tsx` kennt damit einen dritten `attention`-Zustand neben `permission` und `question`:
+rot (`text-icon-critical-base`) statt orange, Warnsymbol, Titel „nicht gefunden", der Tooltip
+erklärt den Grund. Ein Löschen auf so einem Eintrag fragt den Server nicht mehr — es gibt dort
+nichts zu löschen — sondern entfernt nur noch die Verweise.
+
+## Umgesetzt: Start auf einer Sitzung statt auf einer leeren Seite
+
+Das Tab-Layout tut das seit jeher über `lastProjectSession` (`pages/layout.tsx:488`); das
+Sidebar-Layout hatte kein Gegenstück. `layout-sidebar/shell.tsx` hat jetzt eines — und braucht dafür
+keinen eigenen Speicher, weil die Seitenleiste ohnehin nach Aktivität sortiert: ihr erster Eintrag
+*ist* die zuletzt benutzte Sitzung.
+
+Es greift nur beim Start und nur, wenn keine Sitzung in der Route steht — ein frisches Fenster,
+oder eines, dessen wiederhergestellte Sitzung es nicht mehr gibt. Wer selbst zur Startseite geht,
+bleibt dort.
+
+Damit das zusammenspielt, unterscheidet `utils/initial-route.ts` zwei Arten von Navigation: die des
+Nutzers und die der App. Das Verwerfen einer toten Route ist letztere und beendet die
+Startbehandlung nicht — sonst hätte sie den Nutzer auf der leeren Startseite abgesetzt.
+
+## Entfernt: das Overlay im Sessionbereich
+
+`pages/session.tsx` hatte einen eigenen Fortschritts-Overlay, der auf das Verzeichnis der Sitzung
+wartete. Er blieb bei einer nicht auflösbaren Sitzung dauerhaft stehen und war auch sonst
+überflüssig: das fensterweite Overlay in `app.tsx` deckt den Start ab, ein Sitzungswechsel fällt
+auf das Workspace-Skelett zurück. Ersatzlos gestrichen.
+
 ## Zielbild
 
 Eine tote Session ist ein **normaler Zustand**, kein Absturz:

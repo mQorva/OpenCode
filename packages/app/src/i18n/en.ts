@@ -975,6 +975,7 @@ export const dict = {
   "sidebarLayout.noSessions": "No sessions",
   "sidebarLayout.showMore": "Show more",
   "sidebarLayout.untitled": "Untitled session",
+  "sidebarLayout.sessionMissing": "Not found",
   "sidebarLayout.draft": "New session",
   "sidebarLayout.addProject": "Add project",
   "sidebarLayout.projectSettings": "Project settings",

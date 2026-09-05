@@ -1,6 +1,7 @@
 import { createEffect, createSignal, on, Show, Suspense, type ParentProps } from "solid-js"
 import { createStore } from "solid-js/store"
 import { WorkspaceSkeleton } from "@/components/workspace-skeleton"
+import { isRestoredStartupRoute } from "@/utils/initial-route"
 import { createLayoutCommands } from "../layout-commands"
 import { createProjectStartController } from "./project-start"
 import { stepIndex, stepIndexSkipping } from "./sessions"
@@ -75,6 +76,32 @@ export default function SidebarLayout(props: ParentProps) {
     const target = entries[stepIndex(entries.length, at, offset)]
     if (target) navigateSession(target)
   }
+
+  /**
+   * Start on a session instead of an empty page.
+   *
+   * The window restores its last URL, so this only comes up when there is none — a fresh window —
+   * or when the restored session no longer exists and its route was dropped. The tab layout has
+   * done this for a long time via `lastProjectSession` (`pages/layout.tsx`); the sidebar needs no
+   * extra store for it, because it already orders by activity: its first entry *is* the session
+   * that was used last.
+   *
+   * Runs at most once per window, and never after the user has navigated themselves — someone who
+   * deliberately goes to the home page stays there.
+   */
+  let autoselected = false
+  createEffect(() => {
+    if (autoselected) return
+    if (!isRestoredStartupRoute()) return
+    if (layout.route().type !== "home") return
+    // Waiting for both keeps the choice off a half-filled list, which would open whichever session
+    // happened to load first rather than the most recent one.
+    if (!tabs.ready() || !layout.ready()) return
+    const first = data.flat().find((entry) => !entry.missing)
+    if (!first) return
+    autoselected = true
+    navigateSession(first)
+  })
 
   /**
    * Projects follow the sidebar's project order. A project is represented by its topmost session,

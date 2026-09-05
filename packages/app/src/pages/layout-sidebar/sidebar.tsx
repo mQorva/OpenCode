@@ -196,7 +196,7 @@ function ProjectGroup(props: {
   onMarkUnread: (entry: SidebarSession) => void
   onTogglePin: (entry: SidebarSession) => void
   sessionWorking: (entry: SidebarSession) => boolean
-  sessionAttention: (entry: SidebarSession) => "permission" | "question" | undefined
+  sessionAttention: (entry: SidebarSession) => "permission" | "question" | "missing" | undefined
   onNewChat: () => void
   onEditProject: () => void
   onCopyProjectName: () => void
@@ -474,6 +474,7 @@ export function Sidebar(props: { data: SidebarData }) {
   const isUnread = (entry: SidebarSession) => unread.includes(sessionPinKey(entry))
   const sessionWorking = (entry: SidebarSession) => serverSync().session.data.session_working(entry.session.id)
   const sessionAttention = (entry: SidebarSession) => {
+    if (entry.missing) return "missing" as const
     const directory = entry.session.directory
     const [store] = serverSync().child(directory, { bootstrap: false })
     const request = sessionPermissionRequest(
@@ -516,6 +517,13 @@ export function Sidebar(props: { data: SidebarData }) {
   }
 
   const deleteSession = async (entry: SidebarSession) => {
+    // A missing session has nothing left to delete on the server — asking would only yield the
+    // same 404 that put it in this state. Dropping every reference to it is the whole job.
+    if (entry.missing) {
+      tabs.removeSessions({ directory: entry.directory, server: entry.server, sessionIDs: [entry.session.id] })
+      notifySessionTabsRemoved({ server: entry.server, directory: entry.directory, sessionIDs: [entry.session.id] })
+      return true
+    }
     const [store, setStore] = serverSync().child(entry.directory, { bootstrap: true })
     const removed = sessionTreeIDs(store.session ?? [], entry.session.id)
     const deleted = await serverSDK()

@@ -14,6 +14,7 @@ import { Persist, persisted, removePersisted } from "@/utils/persist"
 import { pathKey } from "@/utils/path-key"
 import { decode64 } from "@/utils/base64"
 import { same } from "@/utils/same"
+import { trackRouteNavigation } from "@/utils/initial-route"
 import { createScrollPersistence, type SessionScroll } from "./layout-scroll"
 import { createPathHelpers } from "./file/path"
 import type { ProjectAvatarVariant } from "@opencode-ai/ui/v2/project-avatar-v2"
@@ -167,6 +168,7 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
     const tabs = useTabs()
     const platform = usePlatform()
     const location = useLocation()
+    trackRouteNavigation(() => location.pathname)
     const route = createMemo(() => {
       const value = currentRoute(location.pathname, location.search)
       if (value.type === "home") return value

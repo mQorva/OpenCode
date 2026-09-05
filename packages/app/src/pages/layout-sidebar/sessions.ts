@@ -14,6 +14,12 @@ export type SidebarSession = {
   session: Session
   server: ServerConnection.Key
   directory: string
+  /**
+   * The route points at this session but the server does not know it — deleted elsewhere, a
+   * different database, a server that is not the one it was created on. The entry is a placeholder
+   * so the sidebar can say so instead of silently listing nothing.
+   */
+  missing?: boolean
 }
 
 export type SidebarProject = {
