@@ -1,48 +1,32 @@
 import { useNavigate } from "@solidjs/router"
 import { createEffect, Show } from "solid-js"
-import { useLanguage, useLayout, useServer, useServerSync, useSettings, useTabs } from "./upstream"
+import { useLanguage, useSettings, useTabs } from "./upstream"
 import { tabHref } from "@/context/tabs"
 
 /**
  * The sidebar layout has no separate start page: the sidebar already lists every project and
  * session, and it carries "open project". Landing on "/" therefore goes straight back into the
- * work — the most recent session, or a fresh unassigned draft.
+ * most recent session.
  *
- * Only when there is no project at all does anything render here, and then just a pointer at the
- * sidebar.
+ * With nothing to return to, this points at the sidebar rather than opening a chat: a chat needs
+ * a project, and picking one is the user's choice, not something to guess at.
  */
 export function SidebarHome() {
   const language = useLanguage()
-  const layout = useLayout()
-  const server = useServer()
-  const serverSync = useServerSync()
   const tabs = useTabs()
   const navigate = useNavigate()
-
-  // Guarded so a repeat visit to "/" cannot spawn a second draft while the first is still
-  // being created and navigated to.
-  let creating = false
 
   createEffect(() => {
     if (!tabs.ready()) return
 
     const recent = tabs.store.findLast((tab) => tab.type === "session") ?? tabs.store[0]
-    if (recent) {
-      tabs.select(recent)
-      navigate(tabHref(recent), { replace: true })
-      return
-    }
-
-    if (creating) return
-    const path = serverSync().data.path
-    const directory = path.directory || path.home
-    if (!directory) return
-    creating = true
-    void tabs.newDraft({ server: server.key, directory, unassigned: true })
+    if (!recent) return
+    tabs.select(recent)
+    navigate(tabHref(recent), { replace: true })
   })
 
   return (
-    <Show when={layout.projects.list().length === 0}>
+    <Show when={tabs.store.length === 0}>
       <div class="flex-1 w-full min-h-0 flex flex-col items-center justify-center gap-2 px-6 text-center">
         <div class="text-[13px] font-[530] leading-4 tracking-[-0.04px] text-text-base">
           {language.t("sidebarLayout.empty.title")}

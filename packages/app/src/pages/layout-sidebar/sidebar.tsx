@@ -34,6 +34,7 @@ import {
   type SidebarProject,
   type SidebarSession,
 } from "./sessions"
+import { notifySessionTabsRemoved } from "@/components/titlebar-session-events"
 import { createProjectStartController } from "./project-start"
 import type { SidebarData } from "./sidebar-data"
 import {
@@ -531,6 +532,10 @@ export function Sidebar(props: { data: SidebarData }) {
       }),
     )
     tabs.removeSessions({ directory: entry.directory, server: entry.server, sessionIDs: removed })
+    // Tells everything else holding a reference — the handoff in the layout context, the
+    // titlebar — that these sessions are gone. Without it a deleted session kept living in
+    // persisted state and broke the next start.
+    notifySessionTabsRemoved({ server: entry.server, directory: entry.directory, sessionIDs: removed })
     return true
   }
 
@@ -564,22 +569,11 @@ export function Sidebar(props: { data: SidebarData }) {
     ))
   }
 
-  // A new chat starts without a project: it lands in the unassigned chats block and can be
-  // dragged into a project afterwards. Until then its directory is the server's own location,
-  // so submitting a prompt still works.
-  const newChat = () => {
-    const path = serverSync().data.path
-    const directory = path.directory || path.home || layout.projects.list()[0]?.worktree
-    if (!directory) return
-    void tabs.newDraft({ server: server.key, directory, unassigned: true })
-  }
-
   const newProjectChat = (project: LocalProject) => {
     void tabs.newDraft({ server: server.key, directory: project.worktree, worktree: project.worktree })
   }
 
   const { addProject, createProjectSession } = createProjectStartController({ home })
-
 
   const editProject = (project: LocalProject) => {
     const conn = server.current
@@ -644,9 +638,7 @@ export function Sidebar(props: { data: SidebarData }) {
 
   /** The session behind a drag key, if the key names one rather than a draft or a project. */
   const sessionOfKey = (key: string) =>
-    [...groups().flatMap((group) => group.sessions), ...allChatSessions()].find(
-      (entry) => sessionPinKey(entry) === key,
-    )
+    [...groups().flatMap((group) => group.sessions), ...allChatSessions()].find((entry) => sessionPinKey(entry) === key)
 
   const acceptsProjectDrop = (key: string) => {
     if (isDraftKey(key)) return true
@@ -663,7 +655,7 @@ export function Sidebar(props: { data: SidebarData }) {
    * immediately; the event arriving afterwards resolves to the same state.
    */
   const moveSessionToProject = async (entry: SidebarSession, worktree: string) => {
-    if (entry.directory === worktree) return
+    if (entry.directory === worktree) return false
     const moved = await serverSDK()
       .client.experimental.controlPlane.moveSession(
         { sessionID: entry.session.id, destination: { directory: worktree }, allowProjectChange: true },
@@ -674,7 +666,7 @@ export function Sidebar(props: { data: SidebarData }) {
         showToast({ title: language.t("common.requestFailed"), description: errorMessage(error, "") })
         return false
       })
-    if (!moved) return
+    if (!moved) return false
 
     // Only this session moves — the server leaves child sessions where they are, so removing the
     // whole tree here would hide sessions that still live in the old project.
@@ -687,18 +679,26 @@ export function Sidebar(props: { data: SidebarData }) {
     const [target, setTarget] = serverSync().child(worktree, { bootstrap: true })
     const relocated = { ...entry.session, directory: worktree }
     const position = Binary.search(target.session ?? [], relocated.id, (session) => session.id)
-    if (position.found) return
+    if (position.found) return true
     setTarget(
       produce((draft) => {
         draft.session.splice(position.index, 0, relocated)
       }),
     )
+    return true
   }
 
   const canDropSession = (source: string, target: string) => {
     if (source === target) return false
     const block = blockOf(source)
-    return !!block && block === blockOf(target)
+    if (!block) return false
+    const targetBlock = blockOf(target)
+    if (!targetBlock) return false
+    if (block === targetBlock) return true
+    // Dropping onto a row of another project moves the session there and puts it in that spot,
+    // so the same insertion line has to appear as it does within a project.
+    const entry = sessionOfKey(source)
+    return !!entry && !sessionWorking(entry) && !!worktreeOf(target)
   }
 
   const dragLabel = (key: string) => {
@@ -756,7 +756,23 @@ export function Sidebar(props: { data: SidebarData }) {
     }
 
     const block = blockOf(from)
-    if (!block || block !== blockOf(to)) return
+    const targetBlock = blockOf(to)
+    if (!block || !targetBlock) return
+
+    // A row in another project: move the session over, then place it where it was dropped.
+    if (block !== targetBlock) {
+      const worktree = worktreeOf(to)
+      const entry = sessionOfKey(from)
+      if (!worktree || !entry || sessionWorking(entry)) return
+      void moveSessionToProject(entry, worktree).then((moved) => {
+        if (!moved) return
+        const keys = keysOf(targetBlock)
+        // The session is in the target block by now; reorder needs it in the list to place it.
+        setOrder(targetBlock, reorder(keys.includes(from) ? keys : [...keys, from], from, to))
+      })
+      return
+    }
+
     const next = reorder(keysOf(block), from, to)
     if (block === PINNED_ORDER_KEY) {
       setPinned(next)
@@ -829,17 +845,6 @@ export function Sidebar(props: { data: SidebarData }) {
           </Show>
         </div>
       </Show>
-
-      <div class="shrink-0 px-2 pb-3">
-        <button
-          type="button"
-          onClick={() => newChat()}
-          class="w-full h-9 flex items-center gap-2 rounded-lg px-2 text-[13px] font-[440] leading-4 tracking-[-0.04px] text-text-base hover:bg-v2-background-bg-layer-02/60 hover:text-text-strong"
-        >
-          <Icon name="speech-bubble" size="small" class="text-icon-base" />
-          <span class="flex-1 text-left truncate">{language.t("sidebarLayout.newChat")}</span>
-        </button>
-      </div>
 
       <DragDropProvider onDragEnd={onDragEnd} collisionDetector={closestCenter}>
         <DragDropSensors />

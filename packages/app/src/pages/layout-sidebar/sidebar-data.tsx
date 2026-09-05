@@ -55,7 +55,16 @@ export function createSidebarData() {
       const conn = global.servers.list().find((item) => ServerConnection.key(item) === (value.server ?? server.key))
       return conn ? { sessionID: value.sessionId, sdk: global.ensureServerCtx(conn).sdk } : undefined
     },
-    ({ sessionID, sdk }) => sdk.api.session.get({ sessionID }).then(normalizeSessionInfo),
+    // A route can point at a session that no longer exists — deleted here or by another
+    // client, a stale handoff, a reset database. This resource sits outside the session route's
+    // error boundary, so an unhandled rejection here reaches the global boundary and replaces
+    // the whole window with "something went wrong". `titlebar.tsx` guards the same call the
+    // same way; the sidebar simply renders without an active session.
+    ({ sessionID, sdk }) =>
+      sdk.api.session
+        .get({ sessionID })
+        .then(normalizeSessionInfo)
+        .catch(() => undefined),
   )
 
   const groups = createMemo<SidebarProject[]>(() =>

@@ -10,6 +10,7 @@ import {
   Show,
   Match,
   Switch,
+  catchError,
   createMemo,
   createEffect,
   createComputed,
@@ -192,11 +193,15 @@ export function TargetSessionRouteContent() {
         <TargetSessionSettingsCommand />
         <SessionRouteErrorBoundary sessionID={params.id} serverKey={requireServerKey(params.serverKey)} padded>
           <ResolvedTargetSessionRoute />
+          {/* Inside the boundary on purpose. `startup()` waits for the session's directory, so a
+              session that cannot be resolved at all — deleted, wrong server, reset database —
+              leaves `ready` false forever. Outside the boundary this overlay then covered the
+              "session not found" page including its way out, and the window was stuck. */}
+          <Show when={!startup().ready}>
+            <AppStartupOverlay progress={startup().progress} />
+          </Show>
         </SessionRouteErrorBoundary>
       </TargetServerScopedProviders>
-      <Show when={!startup().ready}>
-        <AppStartupOverlay progress={startup().progress} />
-      </Show>
     </>
   )
 }
@@ -285,7 +290,14 @@ function ResolvedTargetSessionRoute() {
   const targetDirectory = () => directory()!
 
   createEffect(() => {
-    const session = current()
+    // `current()` throws when the session cannot be resolved. During render the enclosing
+    // SessionRouteErrorBoundary catches that and shows the scoped "not found" page; from
+    // inside an effect the throw bypasses it and reaches the global boundary, which replaces
+    // the whole window with "something went wrong" — for a chat that was merely deleted.
+    const session = catchError(
+      () => current(),
+      () => undefined,
+    )
     if (!session) return
     tabs.addSessionTab({
       server: serverKey(),

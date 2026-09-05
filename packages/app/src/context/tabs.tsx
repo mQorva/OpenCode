@@ -307,8 +307,13 @@ export const { use: useTabs, provider: TabsProvider } = createSimpleContext({
           setStore(
             produce((tabs) => {
               const sessionIDs = new Set(input.sessionIDs)
+              // `params.dir` only exists on the legacy `/:dir/session/:id` route. The sidebar
+              // layout navigates to `/server/:serverKey/session/:id`, so requiring it here left
+              // `currentHref` undefined, `removedCurrent` false, and the follow-up navigation
+              // below unreached — the deleted session stayed in the address bar and the view
+              // kept trying to load it. `tabHref` builds from server and session id alone.
               const currentHref =
-                targetServer === server.key && params.dir && params.id
+                targetServer === server.key && params.id
                   ? tabHref({
                       type: "session",
                       server: targetServer,
@@ -342,7 +347,13 @@ export const { use: useTabs, provider: TabsProvider } = createSimpleContext({
               else navigate("/")
             }),
           )
-          if (recent.key && removed.includes(recent.key)) setRecentKey(undefined)
+          // `removed` only lists sessions that still had an open tab. The recent pointer is
+          // persisted separately and outlives its tab, so matching against `removed` left it
+          // aimed at a deleted session — which the next start then tried to restore.
+          const recentHref = recent.key?.split(String.fromCharCode(10))[1]
+          const recentDeleted =
+            !!recentHref && input.sessionIDs.some((sessionId) => recentHref.endsWith(`/session/${sessionId}`))
+          if (recentDeleted || (recent.key && removed.includes(recent.key))) setRecentKey(undefined)
         })
         for (const key of removed) memory.remove(key)
         for (const key of removed) removeInfo(key)

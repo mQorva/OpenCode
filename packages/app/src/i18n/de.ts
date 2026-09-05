@@ -603,8 +603,8 @@ export const dict = {
   "session.panel.reviewAndFiles": "Überprüfung und Dateien",
   "session.error.notFound": "Diese Sitzung wurde nicht gefunden",
   "session.error.notFound.description":
-    "Dieser Tab verweist auf eine Sitzung, die auf diesem Server nicht mehr existiert.",
-  "session.error.notFound.closeTab": "Tab schließen",
+    "Der Verweis zeigt auf eine Sitzung, die auf diesem Server nicht mehr existiert.",
+  "session.error.notFound.closeTab": "Verweis entfernen",
   "session.error.serverConnection": "Verbindung zu diesem Server nicht möglich",
   "session.review.filesChanged": "geänderte Dateien: {{count}}",
   "session.review.change.one": "Änderung",

@@ -28,6 +28,7 @@ import {
   createRenderEffect,
   createResource,
   createSignal,
+  catchError,
   ErrorBoundary,
   For,
   type JSX,
@@ -158,7 +159,14 @@ function LegacyTargetSessionRedirect() {
   )
 
   createEffect(() => {
-    const directory = current()?.session.directory
+    // `current()` throws when the session cannot be resolved. During render the enclosing
+    // SessionRouteErrorBoundary catches that and shows the scoped "not found" page; from
+    // inside an effect the throw bypasses it and reaches the global boundary, which replaces
+    // the whole window with "something went wrong" — for a chat that was merely deleted.
+    const directory = catchError(
+      () => current()?.session.directory,
+      () => undefined,
+    )
     if (!directory) return
     navigate(legacySessionHref(directory, params.id), { replace: true })
   })
@@ -395,10 +403,7 @@ function NewAppLayoutContent(props: ParentProps<{ layoutMode: "sidebar" | "tabs"
       ...new Set(
         layout.projects
           .list()
-          .flatMap((project) => [
-            project.worktree,
-            ...(project.expanded ? (project.sandboxes ?? []) : []),
-          ]),
+          .flatMap((project) => [project.worktree, ...(project.expanded ? (project.sandboxes ?? []) : [])]),
       ),
     ]
     const stores = directories.map((directory) => ({
