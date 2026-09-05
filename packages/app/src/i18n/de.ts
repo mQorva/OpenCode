@@ -844,6 +844,8 @@ export const dict = {
   "sidebarLayout.reviewPanel": "Seitenbereich ein-/ausblenden",
   "sidebarLayout.empty.title": "kein Projekt geöffnet",
   "sidebarLayout.empty.description": "Öffnen Sie links ein Projekt, um zu beginnen.",
+  "sidebarLayout.empty.noSession.title": "keine Sitzung geöffnet",
+  "sidebarLayout.empty.noSession.description": "Starten Sie eine Sitzung über ein Projekt in der Seitenleiste.",
   "sidebarLayout.pin": "anheften",
   "sidebarLayout.unpin": "lösen",
   "settings.general.row.sidebarLayout.title": "Seitenleisten-Layout",

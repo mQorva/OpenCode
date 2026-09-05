@@ -46,6 +46,20 @@ type RecentTab = {
 export { draftHref, tabHref, tabKey } from "./tab-key"
 import { draftHref, tabHref, tabKey } from "./tab-key"
 
+/**
+ * Does the recent-tab pointer aim at one of these sessions?
+ *
+ * `removed` only lists sessions that still had an open tab. This pointer is persisted on its own
+ * and outlives the tab, so it has to be matched against the deleted ids directly — otherwise it
+ * keeps aiming at a session that is gone, and the next start tries to restore it.
+ */
+export function recentKeyPointsAtSession(recentKey: string | undefined, sessionIDs: string[]) {
+  if (!recentKey) return false
+  // The key ends in the tab href, so matching the tail is enough — and it avoids splitting
+  // on the separator, which the server key itself already contains.
+  return sessionIDs.some((sessionID) => recentKey.endsWith(`/session/${sessionID}`))
+}
+
 export function sessionHasOpenTab(tabs: Tab[], server: ServerConnection.Key, session: Session) {
   return tabs.some((tab) => tab.type === "session" && tab.server === server && tab.sessionId === session.id)
 }
@@ -347,13 +361,8 @@ export const { use: useTabs, provider: TabsProvider } = createSimpleContext({
               else navigate("/")
             }),
           )
-          // `removed` only lists sessions that still had an open tab. The recent pointer is
-          // persisted separately and outlives its tab, so matching against `removed` left it
-          // aimed at a deleted session — which the next start then tried to restore.
-          const recentHref = recent.key?.split(String.fromCharCode(10))[1]
-          const recentDeleted =
-            !!recentHref && input.sessionIDs.some((sessionId) => recentHref.endsWith(`/session/${sessionId}`))
-          if (recentDeleted || (recent.key && removed.includes(recent.key))) setRecentKey(undefined)
+          if (recentKeyPointsAtSession(recent.key, input.sessionIDs) || (recent.key && removed.includes(recent.key)))
+            setRecentKey(undefined)
         })
         for (const key of removed) memory.remove(key)
         for (const key of removed) removeInfo(key)

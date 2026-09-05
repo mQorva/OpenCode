@@ -174,23 +174,15 @@ export function TargetSessionRouteContent() {
   const params = useParams<{ serverKey: string; id: string }>()
   const serverSync = useServerSync()
   const directory = createMemo(() => serverSync().session.lineage.peek(params.id)?.session.directory)
-
   return (
-    <>
-      {/* Settings must keep the target-server SDK, sync, and models context and remain registered
-          when session content falls back to the route error boundary. */}
-      <TargetServerScopedProviders directory={directory} sessionID={() => params.id}>
-        <TargetSessionSettingsCommand />
-        {/* No progress overlay of its own. It waited for the session's directory, so a session that
-            cannot be resolved at all — deleted, wrong server, reset database — left it up forever,
-            covering the "session not found" page including its way out. The window-wide startup
-            overlay in `app.tsx` already covers the launch, and switching sessions falls back to the
-            workspace skeleton below. */}
-        <SessionRouteErrorBoundary sessionID={params.id} serverKey={requireServerKey(params.serverKey)} padded>
-          <ResolvedTargetSessionRoute />
-        </SessionRouteErrorBoundary>
-      </TargetServerScopedProviders>
-    </>
+    // Settings must keep the target-server SDK, sync, and models context and remain registered
+    // when session content falls back to the route error boundary.
+    <TargetServerScopedProviders directory={directory} sessionID={() => params.id}>
+      <TargetSessionSettingsCommand />
+      <SessionRouteErrorBoundary sessionID={params.id} serverKey={requireServerKey(params.serverKey)} padded>
+        <ResolvedTargetSessionRoute />
+      </SessionRouteErrorBoundary>
+    </TargetServerScopedProviders>
   )
 }
 

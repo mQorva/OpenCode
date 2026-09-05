@@ -379,26 +379,23 @@ function LegacyServerScopedShell(props: ServerScopedShellProps) {
   )
 }
 
+// No startup overlay. It was added while the window sat empty for a long time after launch; since
+// the bootstrap work was cut down that reason is gone, and what remained was a screen that withheld
+// an app which was already usable. The progress it showed could not be honest either: the measured
+// steps are coarse — the directory stores alone accounted for 40 of 100 points and finished almost
+// together — so the bar stalled and then jumped. `components/app-startup-overlay.tsx` is still
+// there, unused, should the wait ever come back.
 function NewAppLayout(props: ParentProps<{ serverScoped?: JSX.Element }>) {
   const settings = useSettings()
   return (
     <SelectedServerProviders>
       <ServerScopedProviders serverScoped={props.serverScoped}>
-        <NewAppLayoutContent layoutMode={settings.general.layoutMode()}>{props.children}</NewAppLayoutContent>
+        <Dynamic component={settings.general.layoutMode() === "sidebar" ? SidebarLayout : NewLayout}>
+          {props.children}
+        </Dynamic>
       </ServerScopedProviders>
     </SelectedServerProviders>
   )
-}
-
-function NewAppLayoutContent(props: ParentProps<{ layoutMode: "sidebar" | "tabs" }>) {
-  // No startup overlay. It was added while the window sat empty for a long time after launch;
-  // since the bootstrap work was cut down that reason is gone, and what remained was a screen that
-  // withheld an app which was already usable. The progress it showed could not be honest either:
-  // the measured steps are coarse — the directory stores alone accounted for 40 of 100 points and
-  // finished almost together — so the bar stalled and then jumped.
-  //
-  // `components/app-startup-overlay.tsx` is still there, unused, should the wait ever come back.
-  return <Dynamic component={props.layoutMode === "sidebar" ? SidebarLayout : NewLayout}>{props.children}</Dynamic>
 }
 
 // Drafts share their workspace with the terminal, files, and prompt context. A new chat can

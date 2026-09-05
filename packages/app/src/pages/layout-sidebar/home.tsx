@@ -1,6 +1,6 @@
 import { useNavigate } from "@solidjs/router"
 import { createEffect, Show } from "solid-js"
-import { useLanguage, useSettings, useTabs } from "./upstream"
+import { useLanguage, useLayout, useSettings, useTabs } from "./upstream"
 import { tabHref } from "@/context/tabs"
 
 /**
@@ -13,7 +13,12 @@ import { tabHref } from "@/context/tabs"
  */
 export function SidebarHome() {
   const language = useLanguage()
+  const layout = useLayout()
   const tabs = useTabs()
+
+  // Without a project the user has to open one; with projects listed, the next step is starting a
+  // session from one of them.
+  const hasProjects = () => layout.projects.list().length > 0
   const navigate = useNavigate()
 
   createEffect(() => {
@@ -29,10 +34,12 @@ export function SidebarHome() {
     <Show when={tabs.store.length === 0}>
       <div class="flex-1 w-full min-h-0 flex flex-col items-center justify-center gap-2 px-6 text-center">
         <div class="text-[13px] font-[530] leading-4 tracking-[-0.04px] text-text-base">
-          {language.t("sidebarLayout.empty.title")}
+          {hasProjects() ? language.t("sidebarLayout.empty.noSession.title") : language.t("sidebarLayout.empty.title")}
         </div>
         <div class="text-[13px] font-[440] leading-4 tracking-[-0.04px] text-text-weak">
-          {language.t("sidebarLayout.empty.description")}
+          {hasProjects()
+            ? language.t("sidebarLayout.empty.noSession.description")
+            : language.t("sidebarLayout.empty.description")}
         </div>
       </div>
     </Show>

@@ -136,6 +136,10 @@ describe("bootstrapDirectory", () => {
       protocol: Promise.resolve("v1"),
     })
 
+    expect(store.status).toBe("partial")
+
+    await new Promise((resolve) => setTimeout(resolve, 80))
+
     expect(store.status).toBe("complete")
     expect(legacyConfigReads).toEqual(["directory"])
     expect(mcpReads.sort()).toEqual(["command", "resource", "status"])
@@ -170,6 +174,10 @@ describe("bootstrapDirectory", () => {
       queryClient: new QueryClient(),
       protocol: Promise.resolve("v2"),
     })
+
+    expect(store.status).toBe("partial")
+
+    await new Promise((resolve) => setTimeout(resolve, 80))
 
     expect(store.status).toBe("complete")
   })
@@ -226,6 +234,55 @@ describe("query keys", () => {
     expect([...loadPathQuery(ServerScope.local, "/repo", client).queryKey]).toEqual(["local", "/repo", "path"])
     expect([...loadPathQuery(remote, "/repo", client).queryKey]).toEqual(["https://debian.example", "/repo", "path"])
     expect([...loadProvidersQuery(remote, null, api).queryKey]).toEqual(["https://debian.example", null, "providers"])
+  })
+
+  test("maps both spellings of a Windows directory onto one entry", () => {
+    const client = {} as Parameters<typeof loadPathQuery>[2]
+    const api = {} as CatalogApi
+    const agents = {} as Parameters<typeof loadAgentsQuery>[2]
+
+    // Consumers reach these queries through `PathKey`, which normalises backslashes to slashes,
+    // while the bootstrap passes the raw directory. Unnormalised, the same directory lands under
+    // two cache entries and every consumer refetches what the bootstrap already loaded.
+    const backslash = "C:\\repo\\app"
+    const slash = "C:/repo/app"
+
+    expect([...loadPathQuery(ServerScope.local, backslash, client).queryKey]).toEqual([
+      ...loadPathQuery(ServerScope.local, slash, client).queryKey,
+    ])
+    expect([...loadProvidersQuery(ServerScope.local, backslash, api).queryKey]).toEqual([
+      ...loadProvidersQuery(ServerScope.local, slash, api).queryKey,
+    ])
+    expect([...loadAgentsQuery(ServerScope.local, backslash, agents).queryKey]).toEqual([
+      ...loadAgentsQuery(ServerScope.local, slash, agents).queryKey,
+    ])
+    expect([...loadReferencesQuery(ServerScope.local, backslash, {} as never).queryKey]).toEqual([
+      ...loadReferencesQuery(ServerScope.local, slash, {} as never).queryKey,
+    ])
+  })
+
+  test("asks for the connected providers only unless the full catalog is requested", async () => {
+    const calls: unknown[] = []
+    const legacy = {
+      provider: {
+        list: async (input: unknown) => {
+          calls.push(input)
+          return { data: { all: [], connected: [], default: {} } }
+        },
+      },
+    } as unknown as Parameters<typeof loadProvidersQuery>[3]
+    const api = {} as CatalogApi
+    const protocol = Promise.resolve("v1" as const) as Parameters<typeof loadProvidersQuery>[4]
+
+    // The default matters: every consumer shares this query key, and one that mounts before the
+    // bootstrap wrote its result fetches on its own. Defaulting to the full catalog made that lone
+    // consumer pull several megabytes and undid the saving.
+    await new QueryClient().fetchQuery(loadProvidersQuery(ServerScope.local, "/repo", api, legacy, protocol))
+    await new QueryClient().fetchQuery(
+      loadProvidersQuery(ServerScope.local, "/repo", api, legacy, protocol, false),
+    )
+
+    expect(calls).toEqual([{ connected: true }, undefined])
   })
 
   test("loads the current provider and model catalog", async () => {

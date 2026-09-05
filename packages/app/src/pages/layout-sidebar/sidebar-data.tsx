@@ -98,6 +98,19 @@ export function createSidebarData() {
     }
   })
 
+  /**
+   * The active session, but only while the route still points at it. The resource keeps its last
+   * value after the route moves on, and a deleted session would otherwise be re-added below from
+   * that stale value — visible until the next reload, and turning into a "not found" placeholder
+   * once clicked.
+   */
+  const routeSession = createMemo(() => {
+    const value = route()
+    if (value.type !== "session") return
+    const current = activeSession()
+    return current && current.id === value.sessionId ? current : undefined
+  })
+
   const groups = createMemo<SidebarProject[]>(() =>
     layout.projects.list().map((project) => {
       const directories = [
@@ -112,7 +125,7 @@ export function createSidebarData() {
           directory: session.directory ?? directory,
         }))
       })
-      const current = activeSession()
+      const current = routeSession()
       if (
         current &&
         !current.parentID &&
@@ -180,7 +193,7 @@ export function createSidebarData() {
     // Index and stores each sorted only their own rows, so the merged list needs one pass.
     sessions.sort((left, right) => compareSessionTime(left.session, right.session))
 
-    const current = activeSession()
+    const current = routeSession()
     if (
       current &&
       !current.parentID &&

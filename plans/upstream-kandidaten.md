@@ -261,7 +261,7 @@ die querschnittlichen Pflichten, die unabhängig vom konkreten Paket gelten:
 | 24 | **D** — `feat(core): generate initial v2 session titles` | `packages/core/src/session/info.ts`, `packages/core/src/session/runner/llm.ts`, `packages/core/src/session/runner/model.ts`, `packages/core/test/session-runner.test.ts` | Architektur vorab mit Upstream klären; V1-Event-Projektion und allgemeine Modellauflösung vom eigentlichen Titeljob trennen. Stand `9405502779`: erkennt zusätzlich Upstreams datierte Standardtitel, respektiert die Agent-/Provider-Tokenkonfiguration statt `maxTokens: 64` zu erzwingen und besitzt keinen lokalen 30-Sekunden-Timeout mehr |
 | 25 | **C mit Design-Review** — `feat(session-ui): show calendar-aware message timestamps` | `packages/session-ui/src/components/message-part.tsx`, `packages/session-ui/src/components/message-part.css` | fokussierte Tests für Tagesgrenzen und Locale ergänzen; UI-Änderung zuerst als Issue abstimmen |
 | 26 | **D, abhängig von #22** — pausierbare Follow-up-Queue | `packages/app/src/pages/session.tsx`, `packages/app/src/pages/session/composer/session-followup-dock.tsx`, `packages/app/src/i18n/en.ts`, `packages/app/src/i18n/de.ts` | erst nach Entscheidung zu #22; Queue-Logik, UI und Fork-Dock-Design sauber trennen und testen |
-| 27 | **D mit Design-Review** — Startoverlay mit echtem Bereitschaftsfortschritt und Workspace-Skeleton | `packages/app/src/app.tsx`, `packages/app/src/components/app-startup-overlay.tsx`, `packages/app/src/components/app-startup-overlay.css`, `packages/app/src/components/workspace-skeleton.tsx`, `packages/app/src/components/workspace-skeleton.css`, `packages/app/src/pages/layout-new.tsx`, ausgewählte Hunks aus `packages/app/src/pages/session.tsx`, `packages/app/src/i18n/en.ts`, `packages/app/src/i18n/de.ts` | als `workspace-readiness-ui`; layoutunabhängigen Bereitschaftsvertrag aus Fork-Shell und Zielsession-Auflösung lösen; UI-Screenshots und Start-/Reload-Tests erforderlich |
+| 27 | **hinfällig (05.09.2026)** — Startoverlay mit Bereitschaftsfortschritt | `packages/app/src/app.tsx`, `packages/app/src/components/app-startup-overlay.*` | Das Overlay ist im Fork entfernt. Es entstand, als das Fenster nach dem Start lange leer blieb; nach Kandidat #35 ist dieser Grund fort. Ehrlichen Fortschritt konnte es ohnehin nicht zeigen — die Messpunkte sind grob, allein die Verzeichnis-Stores waren 40 von 100 Punkten und wurden fast gleichzeitig fertig, der Balken stand bei ~70 und sprang dann. Das `WorkspaceSkeleton` bleibt als eigenständiger Kandidat bestehen, das Overlay nicht |
 | 28 | **D mit Design-Review** — der neu gebaute mQorva-Seitenleisten-Arbeitsbereich mit Projektgruppen, separaten Chats, Anheften, Suche und verschiebbaren Entwürfen | `packages/app/src/app.tsx`, `packages/app/src/context/settings.tsx`, `packages/app/src/context/layout.tsx`, `packages/app/src/components/settings-v2/general.tsx`, `packages/app/src/components/titlebar.tsx`, `packages/app/src/pages/layout-sidebar/*`, `packages/app/src/pages/new-session.tsx`, `packages/app/src/pages/new-session/new-session-view.tsx`, `packages/app/src/context/tabs.tsx` (nur additives `unassigned`), `packages/app/src/context/tab-migration.ts` (nur dieses Merkmal), `packages/app/src/i18n/en.ts`, `packages/app/src/i18n/de.ts` | bleibt ein eigenständiges mQorva-Feature und ist **nicht identisch** mit Upstreams vertikalen Tabs. Tab-Zustand, Auswahl, Navigation, Schließen und Sortierung bleiben Upstream-Verträge; die Sidebar liest sie nur und ersetzt im gewählten Layout ihre horizontale Darstellung |
 | 29 | **C mit Design-Review** — schnelle Navigation zwischen Nutzereingaben in langen Sitzungen | `packages/app/src/pages/session/timeline/message-rail.tsx`, `packages/app/src/pages/session/timeline/message-rail.css`, `packages/app/src/pages/session/timeline/message-rail-text.ts`, `packages/app/src/pages/session/timeline/message-rail-text.test.ts`, ausgewählte Hunks aus `message-timeline.tsx` | eigenständiges, layoutneutrales Feature `session-navigation-ui`, zusammen mit #18/#19 und #25; an den geschlossenen Versuch `#38484` anknüpfen; responsive Darstellung, Scroll-Synchronisation und Screenshots ergänzen |
 | 30 | **C/D mit Design-Review** — Markdown-Dateien wahlweise gerendert oder als Quelltext öffnen | `packages/session-ui/src/context/open-file.tsx`, `packages/session-ui/src/context/index.ts`, `packages/session-ui/src/components/markdown.tsx`, `packages/session-ui/src/components/markdown.css`, `packages/app/src/pages/session/markdown-preview.ts`, ausgewählte Hunks aus `file-tabs.tsx`, `session-side-panel.tsx` und `session.tsx` | als `markdown-file-preview`; Storage-Key neutralisieren; Dateilink-, Vorschau-, Fehler- und Persistenzfälle testen |
@@ -269,6 +269,100 @@ die querschnittlichen Pflichten, die unabhängig vom konkreten Paket gelten:
 | 32 | **C mit UI-Nachweis** — Permission-Aktionen optional innerhalb der gemeinsamen Prompt-Shell halten | `packages/session-ui/src/components/dock-prompt.tsx`, `packages/session-ui/src/components/dock-prompt.stories.tsx`, `packages/app/src/pages/session/composer/session-permission-dock.tsx`, zugehörige Permission-Regeln in `packages/session-ui/src/components/message-part.css` | eigenständiger Fix `permission-dock-layout`; das additive `footerInside` bleibt opt-in und darf Question-Docks nicht verändern; Story, schmale Breite, Umbruch und Fokuswege visuell prüfen |
 | 33 | **C nach Vertragsprüfung** — dauerhafte Permission-Antwort anbieten, sobald die Anfrage `always`-Muster liefert | `packages/app/src/pages/session/composer/session-composer-state.ts` | eigenständiger Fix `persistent-permission-choice`; nicht an `protocol() === "v2"` koppeln, aber zuerst bestätigen, dass der V1-Request die `always`-Semantik tatsächlich unterstützt; beide Protokollpfade testen |
 | 34 | **C mit Windows-Nachweis** — unverpackten Electron-Entwicklungsstart von der installierten Dev-App-ID trennen | `packages/desktop/src/main/index.ts`; neutraler Identitätsvertrag/Test nahe der Desktop-Konfiguration | veröffentlicht als PR #46474 mit Issue #46473 auf Branch `desktop-dev-identity`; der neutrale Test hält installierte IDs stabil und erzwingt eine eigene unverpackte AppUserModelID. Reproduktion im Fork: richtige und verwaiste Startmenü-Verknüpfung teilten eine AppUserModelID, die verwaiste Verknüpfung zeigte auf eine fehlende `electron.exe`, Taskleiste zeigte generisches Dokument-Icon. |
+
+| 35 | **C, stärkster offener Kandidat** — Providerkatalog nur auf Anfrage ausliefern | siehe Bauanweisung unten | als `provider-connected-list`. Anker: offenes Upstream-Issue #47328 |
+| 36 | **C, klein** — Bootstrap-Abfragen nicht mehrfach ausführen | siehe Bauanweisung unten | als `bootstrap-query-keys` |
+| 37 | **C mit neuem Issue** — Verweise auf eine gelöschte Sitzung überleben ihr Ziel | siehe Bauanweisung unten | als `stale-session-references` |
+| 38 | **D, vorher mit Upstream klären** — eine beim Start wiederhergestellte Route auf eine fehlende Sitzung still verwerfen | `packages/app/src/utils/initial-route.ts` (neu), ein Hunk in `context/layout.tsx`, ein Hunk in `pages/session.tsx` | Der Desktop-Renderer stellt `last-active-url` ungeprüft wieder her (`packages/desktop/src/renderer/index.tsx:107`, der einzige Setter der Startroute); zeigt sie auf eine gelöschte Sitzung, meldet die App einen Fehler für etwas, das der Nutzer nie gewählt hat. Die Unterscheidung „vom Nutzer geöffnet" gegen „beim Start wiederhergestellt" ist eine Vertragsänderung an `SessionErrorFallback`, kein Bugfix — erst abstimmen. Hängt an #37 (gleiche Datei, andere Hunks) |
+
+### Bauanweisung #35 `provider-connected-list`
+
+Vollständig gegen `upstream/dev` `bbd72fb8b0` hunkweise geprüft; alle benutzten Bausteine
+(`WorkspaceRoutingQueryFields`, `QueryBoolean`, `QueryBooleanOpenApi`, `mapValues`) existieren dort
+bereits. Kein Fork-Anteil in den vier Dateien.
+
+| Datei | Hunks | Inhalt |
+|---|---|---|
+| `opencode/src/server/routes/instance/httpapi/groups/provider.ts` | 2 | `ProviderListQuery` = `WorkspaceRoutingQueryFields` + optionales `connected`; Endpunkt nutzt es statt `WorkspaceRoutingQuery` |
+| `.../httpapi/handlers/provider.ts` | 1 (zusammenhängend) | `connected=true` überspringt Katalog und Config vollständig; sonst Katalog-Cache über `source`-Identität und Filter-Signatur, verbundene Provider bleiben ungecacht |
+| `.../httpapi/public.ts` | 1 | `"GET /provider connected": QueryBooleanOpenApi` |
+| `app/src/context/global-sync/bootstrap.ts` | 4 | `fetchProviders` herausgelöst, `connectedOnly = true` als Vorgabe, `staleTime: Infinity` auf der Provider-Query, `loadProvidersProgressively` und dessen zwei Aufrufstellen |
+
+Commit-Schnitt: erst der additive API-Vertrag (Server, 3 Dateien), dann dessen Nutzung (Client).
+
+**Was in die PR-Beschreibung gehört:** `connected=true` liefert `default` nur aus den verbundenen
+Providern — bewusst, weil der Aufrufer den Katalog getrennt nachlädt. Der Katalog-Cache lebt pro
+Handler-Instanz und wird über die Objektidentität des models.dev-Snapshots invalidiert, nicht über
+eine Zeitspanne.
+
+**Messung (gepackter Desktop-Build, Windows):** letzter `/provider` 39,8 s → 12,3 s; 27 → 11
+Aufrufe; Vollkatalog 27 × → 1 ×; übertragen ~156 MB → ~8,7 MB.
+
+**Tests (grün):** `opencode/test/server/httpapi-provider.test.ts` — zwei additive Fälle: die
+verbundene Sicht enthält genau die verbundenen Anbieter und ist eine echte Teilmenge des Katalogs;
+zwei aufeinanderfolgende Vollabrufe liefern dieselbe Menge, und Katalogzeilen behalten ihre
+models.dev-Nutzlast über den gecachten Aufruf. `app/src/context/global-sync/bootstrap.test.ts` —
+die Provider-Query fragt ohne ausdrückliche Anforderung nur die verbundenen Anbieter ab.
+
+### Bauanweisung #36 `bootstrap-query-keys`
+
+Eine Datei, vier unabhängige Hunks in `app/src/context/global-sync/bootstrap.ts`:
+`BOOTSTRAP_STALE_TIME` und dessen Anwendung auf `config`, `project`, `agents`, `path`,
+`references`; `directoryKeyPart` über das bereits vorhandene `@/utils/path-key`.
+
+Getrennt von #35 zu führen: anderes Problem (Cache-Treffer statt Nutzlastgröße), wirkt auch ohne
+#35, und #35 wäre sonst kein fokussierter PR mehr. Reihenfolge ist frei; beide berühren dieselbe
+Datei, aber verschiedene Stellen. Wird #35 zuerst gemergt, muss #36 neu von `upstream/dev`
+extrahiert werden.
+
+**Begründung für die Query-Keys:** Verbraucher erreichen die Queries über `PathKey`
+(Backslashes zu Slashes normalisiert), der Bootstrap übergibt rohe Verzeichnisse — unter Windows
+landet dasselbe Verzeichnis dadurch unter zwei Cache-Einträgen.
+
+**Test (grün):** `bootstrap.test.ts` bildet `C:epopp` und `C:/repo/app` für `path`,
+`providers`, `agents` und `references` auf denselben Schlüssel ab. Die Testdatei ist gegenüber
+`upstream/dev` rein additiv — keine bestehende Erwartung wurde angefasst.
+
+### Bauanweisung #37 `stale-session-references`
+
+Zwei Fehler mit derselben Ursache — ein Verweis überlebt sein Ziel —, deshalb ein Paket:
+
+| Datei | Hunks | Inhalt |
+|---|---|---|
+| `app/src/context/tabs.tsx` | 2 | `params.dir` aus der `currentHref`-Bedingung in `removeSessions` (Zeile 311 upstream; existiert dort unverändert). Der `recent`-Zeiger wird auch dann gelöscht, wenn die Sitzung keinen offenen Tab mehr hatte |
+| `app/src/context/layout.tsx` | 2 | Import und Listener auf `SESSION_TABS_REMOVED_EVENT`; verwirft den persistierten `handoff`, wenn er auf eine gelöschte Sitzung zeigt |
+| `app/src/app.tsx` | 2 | `catchError` im Import und um den Effekt in `LegacyTargetSessionRedirect` |
+| `app/src/pages/session.tsx` | 2 | `catchError` im Import und um den Effekt in `ResolvedTargetSessionRoute` |
+
+`components/titlebar-session-events.ts` existiert upstream — keine neue Datei nötig.
+
+**Nicht mitnehmen:** die `unassigned`-Ergänzung und die `tab-key.ts`-Auslagerung in `tabs.tsx`
+(Fork, Vertrag #28), die Sidebar-Breite und der `panels`-Block in `layout.tsx` (Fork),
+`trackRouteNavigation` (gehört zu #38).
+
+**Reproduktion für das Issue:** Sitzung löschen, während sie auf `/server/:key/session/:id`
+geöffnet ist — sie bleibt in der Adresszeile stehen, und der persistierte Handoff stellt sie beim
+nächsten Start wieder her. Das `catchError` um die beiden Effekte ist Absicherung desselben
+Vertrags: Solids `ErrorBoundary` fängt nur Render-Fehler, ein Wurf aus einem Effekt läuft an ihr
+vorbei zur globalen Boundary.
+
+**Test (grün):** `app/src/context/tabs.test.ts`. Dafür ist die Zeiger-Prüfung als reine Funktion
+`recentKeyPointsAtSession` aus `removeSessions` herausgelöst — sie ist ohne Router und Kontext
+prüfbar, was der Inline-Fassung nicht möglich war. Der Test deckte dabei einen Fehler auf: die
+erste Fassung teilte den Schlüssel am Trennzeichen und griff auf das zweite Feld zu, doch der
+Server-Key enthält dieses Zeichen selbst — der Zeiger wurde nie erkannt. Jetzt wird das Ende des
+Schlüssels geprüft, ohne zu teilen. Abgedeckt sind außerdem Draft-Schlüssel, leere Eingaben und
+Sitzungs-IDs, die auf dieselbe Zeichenfolge enden.
+
+### Nicht upstream-fähig aus der Startzeit-/Sitzungsarbeit (05.09.2026)
+
+- `packages/app/src/pages/layout-sidebar/*` — das Sidebar-Layout ist mQorva-eigen (Vertrag #28).
+  Das gilt für die Markierung fehlender Sitzungen (`session-item.tsx`, `sessions.ts`,
+  `sidebar-data.tsx`), das automatische Öffnen der zuletzt benutzten Sitzung (`shell.tsx`) und den
+  Löschpfad in `sidebar.tsx`.
+- Das Entfernen des Startoverlays — die Komponente existiert upstream nicht.
+- Archivieren durch Löschen ersetzen — eine Produktentscheidung des Forks gegen Upstreams
+  bewusstes `time_archived`-Verhalten.
 
 ### Neue Integrationsnähte, keine direkten PR-Kandidaten
 
@@ -350,6 +444,15 @@ bootstrap-init-timeout, build-and-dev-flags) per rebase + --force-with-lease
 von `dc4449df0d` auf `10765ff2a9` nachgezogen. Am 31.08. wurde der PR-Body von
 `windows-zorder-reset` (#46305) über `gh pr edit` korrigiert (Windows-Laufzeit-Smoke
 ehrlich dokumentiert statt pauschal als blockiert).
+**Stichtag 05.09.2026 (Teil-Audit Startzeit/Sitzungen):** `upstream/dev` `bbd72fb8b0`,
+Fork `dev` `bde2eb8625` zuzüglich unverbuchter Arbeit an den Sitzungsverweisen. Geprüft wurden nur
+die von der Startzeit- und der Tote-Sessions-Arbeit berührten Dateien, nicht der gesamte Diff.
+Ergebnis: vier neue Kandidaten (#35–#38), Kandidat #27 hinfällig. Upstream kennt weder das
+`connected`-Query noch einen Katalog-Cache in `handlers/provider.ts`, und `tabs.tsx:311` trägt die
+`params.dir`-Bedingung unverändert — beide Befunde am Blob von `upstream/dev` belegt, nicht aus
+Commit-Titeln geschlossen. Das offene Issue #47328 deckt #35 als Anker ab. Ein vollständiges Audit
+über den gesamten `upstream/dev..dev` steht weiterhin aus.
+
 **Stichtag 02.09.2026:** `upstream/dev` `ef2792511d` (37 Commits seit 30.08.),
 Fork `dev` `fe27d3dcd8`. `merge-base` der 9 offenen PR-Branches = ihre jeweilige
 PR-Basis; Upstream hat in keiner PR-Datei Eingriffe vorgenommen. Keine neuen

@@ -38,6 +38,15 @@ function hasProviderWithFetch(input: unknown, key: "all" | "providers") {
   return "providers" in input && providerListHasFetch(input.providers)
 }
 
+function providerIDs(input: unknown) {
+  return providerList(input, "all").flatMap((provider) => (isRecord(provider) ? [String(provider.id)] : []))
+}
+
+function connectedIDs(input: unknown) {
+  if (!isRecord(input) || !Array.isArray(input.connected)) return []
+  return input.connected.map(String)
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value)
 }
@@ -376,6 +385,60 @@ describe("provider HttpApi", () => {
       expect(hasNonZeroModelCost(configBody, "providers", "google")).toBe(true)
     }),
     { ...projectOptions, init: writeFunctionOptionsPlugin },
+  )
+
+  it.instance(
+    "serves only connected providers when asked, and the full catalog otherwise",
+    Effect.gen(function* () {
+      const directory = (yield* TestInstance).directory
+      const headers = { "x-opencode-directory": directory }
+
+      const connectedResponse = yield* request("/provider?connected=true", { headers })
+      const fullResponse = yield* request("/provider", { headers })
+      expect(connectedResponse.status).toBe(200)
+      expect(fullResponse.status).toBe(200)
+
+      const connectedBody = yield* connectedResponse.json
+      const fullBody = yield* fullResponse.json
+
+      // The catalog holds every provider models.dev knows about; the connected view holds only
+      // what is usable right now. That difference is the whole point of the parameter — it is
+      // what lets a client skip several megabytes it does not need yet.
+      expect(providerIDs(connectedBody).length).toBeGreaterThan(0)
+      expect(providerIDs(fullBody).length).toBeGreaterThan(providerIDs(connectedBody).length)
+
+      // Both views report the same connected set, and the connected view lists exactly those.
+      expect(connectedIDs(connectedBody)).toEqual(connectedIDs(fullBody))
+      expect(providerIDs(connectedBody).sort()).toEqual(connectedIDs(connectedBody).sort())
+
+      // Whatever the connected view returns must also be in the catalog — same shape, fewer rows.
+      for (const id of providerIDs(connectedBody)) expect(providerIDs(fullBody)).toContain(id)
+    }),
+    projectOptions,
+  )
+
+  it.instance(
+    "serves the same catalog on repeated calls",
+    Effect.gen(function* () {
+      const directory = (yield* TestInstance).directory
+      const headers = { "x-opencode-directory": directory }
+
+      const first = yield* (yield* request("/provider", { headers })).json
+      const second = yield* (yield* request("/provider", { headers })).json
+
+      // The transformed catalog is cached between requests. A stale or partial cache would show
+      // up here as a different set of providers on the second call.
+      expect(providerIDs(second)).toEqual(providerIDs(first))
+      expect(connectedIDs(second)).toEqual(connectedIDs(first))
+
+      // Connected providers overwrite their catalog entry and must not be served from the cached
+      // public info, which is built before that state is merged in.
+      for (const id of connectedIDs(second)) expect(providerIDs(second)).toContain(id)
+
+      // Catalog rows keep their models.dev payload across the cached call.
+      expect(hasNonZeroModelCost(second, "all", "google")).toBe(true)
+    }),
+    projectOptions,
   )
 
   it.instance(

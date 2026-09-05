@@ -1007,6 +1007,8 @@ export const dict = {
   "sidebarLayout.reviewPanel": "Toggle side panel",
   "sidebarLayout.empty.title": "No project open",
   "sidebarLayout.empty.description": "Open a project in the sidebar to get started.",
+  "sidebarLayout.empty.noSession.title": "No session open",
+  "sidebarLayout.empty.noSession.description": "Start a session from a project in the sidebar.",
   "sidebarLayout.pin": "Pin",
   "sidebarLayout.unpin": "Unpin",
   "settings.general.row.sidebarLayout.title": "Sidebar layout",
