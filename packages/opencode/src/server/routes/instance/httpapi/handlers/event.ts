@@ -2,6 +2,7 @@ import { EventV2Bridge } from "@/event-v2-bridge"
 import { InstanceState } from "@/effect/instance-state"
 import { GlobalBus } from "@/bus/global"
 import { EventV2 } from "@opencode-ai/core/event"
+import { SessionEvent } from "@opencode-ai/core/session/event"
 import { Effect, Queue } from "effect"
 import * as Stream from "effect/Stream"
 import { HttpServerResponse } from "effect/unstable/http"
@@ -22,6 +23,13 @@ function eventID() {
   return EventV2.ID.create()
 }
 
+/** The directory a session left, for `session.next.moved`; undefined for every other event. */
+function movedFrom(event: EventV2.Payload): string | undefined {
+  if (event.type !== SessionEvent.Moved.type) return undefined
+  const data = event.data as { from?: { directory?: string } }
+  return data.from?.directory
+}
+
 function eventResponse(events: EventV2.Interface) {
   return Effect.gen(function* () {
     const instance = yield* InstanceState.context
@@ -34,8 +42,11 @@ function eventResponse(events: EventV2.Interface) {
     const stream = Stream.fromQueue(queue).pipe(
       Stream.filter(
         (event) =>
-          event.location?.directory === instance.directory &&
-          (event.location.workspaceID === undefined || event.location.workspaceID === workspaceID),
+          // A move is addressed to its destination, but the directory being left has to hear about
+          // it too — otherwise its subscribers keep showing a session that is no longer theirs.
+          movedFrom(event) === instance.directory ||
+          (event.location?.directory === instance.directory &&
+            (event.location.workspaceID === undefined || event.location.workspaceID === workspaceID)),
       ),
       Stream.map((event) => ({ id: event.id, type: event.type, properties: event.data })),
     )

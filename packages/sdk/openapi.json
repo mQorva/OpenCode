@@ -17839,6 +17839,9 @@
                       "subdirectory": {
                         "type": "string"
                       },
+                      "from": {
+                        "$ref": "#/components/schemas/LocationRef"
+                      },
                       "projectID": {
                         "type": "string"
                       }
@@ -25474,6 +25477,9 @@
                   "subdirectory": {
                     "type": "string"
                   },
+                  "from": {
+                    "$ref": "#/components/schemas/LocationRef"
+                  },
                   "projectID": {
                     "type": "string"
                   }
@@ -28189,6 +28195,9 @@
               },
               "subdirectory": {
                 "type": "string"
+              },
+              "from": {
+                "$ref": "#/components/schemas/LocationRef"
               },
               "projectID": {
                 "type": "string"
@@ -34270,6 +34279,9 @@
               },
               "subdirectory": {
                 "type": "string"
+              },
+              "from": {
+                "$ref": "#/components/schemas/LocationRef"
               },
               "projectID": {
                 "type": "string"

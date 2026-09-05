@@ -849,6 +849,7 @@ export type GlobalEvent = {
           sessionID: string
           location: LocationRef
           subdirectory?: string
+          from?: LocationRef
           projectID?: string
         }
       }
@@ -3353,6 +3354,7 @@ export type SyncEventSessionNextMoved = {
       sessionID: string
       location: LocationRef
       subdirectory?: string
+      from?: LocationRef
       projectID?: string
     }
   }
@@ -4228,6 +4230,7 @@ export type SessionNextMoved = {
     sessionID: string
     location: LocationRef
     subdirectory?: string
+    from?: LocationRef
     projectID?: string
   }
 }
@@ -6288,6 +6291,7 @@ export type EventSessionNextMoved = {
     sessionID: string
     location: LocationRef
     subdirectory?: string
+    from?: LocationRef
     projectID?: string
   }
 }

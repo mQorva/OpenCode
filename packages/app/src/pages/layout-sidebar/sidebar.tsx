@@ -658,8 +658,9 @@ export function Sidebar(props: { data: SidebarData }) {
    * Relocate a started session. The server keeps the transcript as it is and only rewrites where
    * the session runs, so the history stays honest about the directory it was produced in.
    *
-   * The move is not announced on the event stream, so both directory stores are rebooked here
-   * rather than waiting for an update that never arrives.
+   * The move event reaches both directories, but which client store it lands in depends on the
+   * per-directory streams being connected. Rebooking both stores here makes the sidebar follow
+   * immediately; the event arriving afterwards resolves to the same state.
    */
   const moveSessionToProject = async (entry: SidebarSession, worktree: string) => {
     if (entry.directory === worktree) return

@@ -585,9 +585,28 @@ export function createServerSyncContextInner(serverSDK: ServerSDK) {
       return
     }
 
-    if (event.current?.type === "session.moved") {
-      const info = session.get(event.current.data.sessionID)
-      if (info) indexSession(info)
+    // `current` carries the v1 shape, which has no move event, so this reads the outer type.
+    if (eventType === "session.next.moved") {
+      const moved = event.properties as
+        | {
+            sessionID?: string
+            location?: { directory?: string; workspaceID?: string }
+            projectID?: string
+            subdirectory?: string
+          }
+        | undefined
+      const info = moved?.sessionID ? session.get(moved.sessionID) : undefined
+      // The cached record still points at the directory the session left, and indexSession files
+      // it by that field. Move it over first, or it lands back in the store it just left.
+      const destination = moved?.location?.directory
+      if (info && destination)
+        indexSession({
+          ...info,
+          directory: destination,
+          projectID: moved.projectID ?? info.projectID,
+          workspaceID: moved.location?.workspaceID ?? info.workspaceID,
+          path: moved.subdirectory ?? info.path,
+        })
     }
     if (event.current?.type === "session.forked")
       void session
@@ -599,7 +618,7 @@ export function createServerSyncContextInner(serverSDK: ServerSDK) {
     if (!existing) return
     children.mark(key)
     if (
-      event.current?.type === "session.moved" ||
+      eventType === "session.next.moved" ||
       // event.current?.type === "session.archived" ||
       event.current?.type === "session.forked" ||
       eventType === "command.updated" ||

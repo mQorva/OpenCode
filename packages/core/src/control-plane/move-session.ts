@@ -168,13 +168,22 @@ const layer = Layer.effect(
           .pipe(Effect.orDie)
       }
 
-      yield* events.publish(SessionEvent.Moved, {
-        sessionID: input.sessionID,
-        location: Location.Ref.make({ directory }),
-        subdirectory: RelativePath.make(path.relative(destination.directory, directory).replaceAll("\\", "/")),
-        projectID: changesProject ? destination.id : undefined,
-        timestamp: yield* DateTime.now,
-      })
+      // MoveSession runs outside any instance, so nothing would stamp a location on this event and
+      // per-directory subscribers would never see it. Name the destination explicitly, and carry
+      // the source along for the subscribers watching the directory being left.
+      const target = Location.Ref.make({ directory })
+      yield* events.publish(
+        SessionEvent.Moved,
+        {
+          sessionID: input.sessionID,
+          location: target,
+          subdirectory: RelativePath.make(path.relative(destination.directory, directory).replaceAll("\\", "/")),
+          from: Location.Ref.make({ directory: current.location.directory }),
+          projectID: changesProject ? destination.id : undefined,
+          timestamp: yield* DateTime.now,
+        },
+        { location: target },
+      )
 
       if (patch) {
         const repository = yield* git.repo.discover(current.location.directory)

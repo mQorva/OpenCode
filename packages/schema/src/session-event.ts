@@ -81,6 +81,9 @@ export const Moved = Event.define({
     ...Base,
     location: Location.Ref,
     subdirectory: RelativePath.pipe(optional),
+    // Where the session came from. A move concerns two directories, and subscribers watching the
+    // one being left have no other way to learn the session is gone.
+    from: Location.Ref.pipe(optional),
     // Only set when the destination belongs to another project. Same-project moves omit it so
     // older events, which never carried a project, keep replaying unchanged.
     projectID: ProjectID.pipe(optional),

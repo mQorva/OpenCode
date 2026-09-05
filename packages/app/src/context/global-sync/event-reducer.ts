@@ -226,12 +226,12 @@ export function applyDirectoryEvent(input: {
     //   if (!info?.parentID) input.setStore("sessionTotal", (value) => Math.max(0, value - 1))
     //   break
     // }
-    case "session.moved": {
+    case "session.next.moved": {
       const properties = event.properties as {
         sessionID: string
         location: { directory: string; workspaceID?: string }
         projectID?: string
-        subpath?: string
+        subdirectory?: string
       }
       const result = Binary.search(input.store.session, properties.sessionID, (session) => session.id)
       if (!result.found) break
@@ -241,7 +241,7 @@ export function applyDirectoryEvent(input: {
           projectID: properties.projectID ?? session.projectID,
           workspaceID: properties.location.workspaceID,
           directory: properties.location.directory,
-          path: properties.subpath,
+          path: properties.subdirectory,
           time: { ...session.time, updated: Date.now() },
         }))
         break

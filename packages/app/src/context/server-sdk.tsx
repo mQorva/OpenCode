@@ -19,6 +19,13 @@ const isAbortError = (error: unknown) =>
 
 const isStreamClosed = (error: unknown, signal?: AbortSignal) => isAbortError(error) || signal?.aborted === true
 export type ServerEvent = Event & { current?: OpenCodeEvent }
+
+/** The directory a session left, for a move event; undefined for anything else. */
+function movedFromDirectory(payload: Event): string | undefined {
+  if (payload.type !== "session.next.moved") return undefined
+  const properties = payload.properties as { from?: { directory?: string } } | undefined
+  return properties?.from?.directory
+}
 type QueuedServerEvent = { directory: string; payload: ServerEvent }
 type CurrentDelta = Extract<
   OpenCodeEvent,
@@ -287,6 +294,12 @@ function createServerSdkContextBase(server: ServerConnection.Any, scope: ServerS
             const directory = legacy ? (event.directory ?? "global") : (event.location?.directory ?? "global")
             const payload = legacy ? (event.payload as Event) : adaptServerEvent(event)
             if (enqueueServerEvent(queue, { directory, payload })) schedule()
+            // A move concerns two directories: the one gaining the session, named by the event's
+            // location, and the one losing it. Only the former is addressed above, so hand the
+            // event to the latter as well or its store keeps a session that has left.
+            const movedFrom = movedFromDirectory(payload)
+            if (movedFrom && movedFrom !== directory && enqueueServerEvent(queue, { directory: movedFrom, payload }))
+              schedule()
 
             if (Date.now() - yielded < STREAM_YIELD_MS) continue
             yielded = Date.now()
