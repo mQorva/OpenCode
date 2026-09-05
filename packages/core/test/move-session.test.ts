@@ -3,7 +3,7 @@ import { $ } from "bun"
 import fs from "fs/promises"
 import path from "path"
 import { eq } from "drizzle-orm"
-import { Effect } from "effect"
+import { Effect, Layer } from "effect"
 import { MoveSession } from "@opencode-ai/core/control-plane/move-session"
 import { Database } from "@opencode-ai/core/database/database"
 import { AppNodeBuilder } from "@opencode-ai/core/effect/app-node-builder"
@@ -14,25 +14,39 @@ import { ProjectTable } from "@opencode-ai/core/project/sql"
 import { ProjectDirectories } from "@opencode-ai/core/project/directories"
 import { AbsolutePath } from "@opencode-ai/core/schema"
 import { SessionV2 } from "@opencode-ai/core/session"
+import { SessionExecution } from "@opencode-ai/core/session/execution"
+import { SessionMessage } from "@opencode-ai/core/session/message"
 import { SessionProjector } from "@opencode-ai/core/session/projector"
 import { SessionTable } from "@opencode-ai/core/session/sql"
 import { SessionStore } from "@opencode-ai/core/session/store"
 import { tmpdir } from "./fixture/tmpdir"
 import { testEffect } from "./lib/effect"
 
-const it = testEffect(
-  AppNodeBuilder.build(
-    LayerNode.group([
-      MoveSession.node,
-      Database.node,
-      EventV2.node,
-      ProjectDirectories.node,
-      Project.node,
-      SessionProjector.node,
-      SessionStore.node,
-    ]),
-  ),
+const nodes = LayerNode.group([
+  MoveSession.node,
+  Database.node,
+  EventV2.node,
+  ProjectDirectories.node,
+  Project.node,
+  SessionProjector.node,
+  SessionStore.node,
+])
+
+const it = testEffect(AppNodeBuilder.build(nodes, [[SessionExecution.node, SessionExecution.noopLayer]]))
+
+// A second runner whose execution service reports one fixed session as mid-turn. The guard reads
+// the service the graph was built with, so the binding has to be in place before it is built.
+const BUSY_SESSION = SessionV2.ID.make("ses_move_busy")
+const busyLayer = Layer.succeed(
+  SessionExecution.Service,
+  SessionExecution.Service.of({
+    active: Effect.succeed(new Set([BUSY_SESSION])),
+    resume: () => Effect.void,
+    wake: () => Effect.void,
+    interrupt: () => Effect.void,
+  }),
 )
+const itBusy = testEffect(AppNodeBuilder.build(nodes, [[SessionExecution.node, busyLayer]]))
 
 function abs(input: string) {
   return AbsolutePath.make(input)
@@ -260,6 +274,51 @@ describe("MoveSession", () => {
       )
 
       expect(yield* fixture.row()).toEqual({ directory: fixture.other, project_id: fixture.otherProjectID })
+    }),
+  )
+
+  it.live("refuses to move a session with a staged revert into another project", () =>
+    Effect.gen(function* () {
+      const fixture = yield* twoProjects(SessionV2.ID.make("ses_move_revert"))
+      const { db } = yield* Database.Service
+      yield* db
+        .update(SessionTable)
+        .set({ revert: { messageID: SessionMessage.ID.make("msg_staged"), snapshot: "0".repeat(40) } })
+        .where(eq(SessionTable.id, fixture.sessionID))
+        .run()
+        .pipe(Effect.orDie)
+
+      const error = yield* Effect.flip(
+        MoveSession.Service.use((service) =>
+          service.moveSession({
+            sessionID: fixture.sessionID,
+            destination: { directory: fixture.other },
+            allowProjectChange: true,
+          }),
+        ),
+      )
+
+      expect(error).toBeInstanceOf(MoveSession.PendingRevertError)
+      expect(yield* fixture.row()).toEqual({ directory: fixture.source, project_id: fixture.projectID })
+    }),
+  )
+
+  itBusy.live("refuses to move a session that is mid-turn", () =>
+    Effect.gen(function* () {
+      const fixture = yield* twoProjects(BUSY_SESSION)
+
+      const error = yield* Effect.flip(
+        MoveSession.Service.use((service) =>
+          service.moveSession({
+            sessionID: fixture.sessionID,
+            destination: { directory: fixture.other },
+            allowProjectChange: true,
+          }),
+        ),
+      )
+
+      expect(error).toBeInstanceOf(MoveSession.SessionBusyError)
+      expect(yield* fixture.row()).toEqual({ directory: fixture.source, project_id: fixture.projectID })
     }),
   )
 

@@ -10,6 +10,7 @@ import { ProjectV2 } from "../project"
 import { ProjectTable } from "../project/sql"
 import { SessionV2 } from "../session"
 import { SessionEvent } from "../session/event"
+import { SessionExecution } from "../session/execution"
 import { SessionSchema } from "../session/schema"
 import { SessionStore } from "../session/store"
 import { AbsolutePath, RelativePath } from "../schema"
@@ -49,6 +50,17 @@ export class ChangesAcrossProjectsError extends Schema.TaggedErrorClass<ChangesA
   },
 ) {}
 
+export class SessionBusyError extends Schema.TaggedErrorClass<SessionBusyError>()("MoveSession.SessionBusyError", {
+  sessionID: SessionSchema.ID,
+}) {}
+
+export class PendingRevertError extends Schema.TaggedErrorClass<PendingRevertError>()(
+  "MoveSession.PendingRevertError",
+  {
+    sessionID: SessionSchema.ID,
+  },
+) {}
+
 export class CaptureChangesError extends Schema.TaggedErrorClass<CaptureChangesError>()(
   "MoveSession.CaptureChangesError",
   {
@@ -67,6 +79,8 @@ export class ResetSourceChangesError extends Schema.TaggedErrorClass<ResetSource
 
 export type Error =
   | SessionV2.NotFoundError
+  | SessionBusyError
+  | PendingRevertError
   | DestinationProjectMismatchError
   | ChangesAcrossProjectsError
   | CaptureChangesError
@@ -86,6 +100,7 @@ const layer = Layer.effect(
     const events = yield* EventV2.Service
     const project = yield* ProjectV2.Service
     const sessions = yield* SessionStore.Service
+    const execution = yield* SessionExecution.Service
     const { db } = yield* Database.Service
 
     const moveSession = Effect.fn("MoveSession.moveSession")(function* (input: Input) {
@@ -94,11 +109,23 @@ const layer = Layer.effect(
       const directory = AbsolutePath.make(input.destination.directory)
       if (current.location.directory === directory) return
 
+      // A turn in flight holds the runner, its tools and its snapshots against the directory the
+      // session is leaving. Moving underneath it would strand that work, so wait for it to end.
+      // This covers work driven through SessionExecution; a turn started over the HTTP prompt
+      // route keeps its runner state in its own instance, which the route guards separately.
+      const running = yield* execution.active
+      if (running.has(input.sessionID)) return yield* new SessionBusyError({ sessionID: input.sessionID })
+
       const source = yield* project.resolve(current.location.directory)
       const destination = yield* project.resolve(directory)
       const changesProject = current.projectID !== destination.id
       if (changesProject && !input.allowProjectChange) {
         return yield* new DestinationProjectMismatchError({ expected: current.projectID, actual: destination.id })
+      }
+      // Snapshots live per project, so a staged revert points into the repository being left.
+      // Rather than silently dropping it, let the user commit or clear it first.
+      if (changesProject && current.revert) {
+        return yield* new PendingRevertError({ sessionID: input.sessionID })
       }
       // A patch captured in one repository has no meaning in another, so refuse rather than
       // apply it somewhere it was never written against.
@@ -183,5 +210,5 @@ const layer = Layer.effect(
 export const node = makeGlobalNode({
   service: Service,
   layer,
-  deps: [Database.node, Git.node, EventV2.node, ProjectV2.node, SessionStore.node],
+  deps: [Database.node, Git.node, EventV2.node, ProjectV2.node, SessionExecution.node, SessionStore.node],
 })

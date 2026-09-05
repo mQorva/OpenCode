@@ -7,6 +7,12 @@ import { Auth } from "../../src/auth"
 import { Config } from "../../src/config/config"
 import { Installation } from "../../src/installation"
 import { MoveSession } from "@opencode-ai/core/control-plane/move-session"
+import { AbsolutePath } from "@opencode-ai/core/schema"
+import { SessionV2 } from "@opencode-ai/core/session"
+import type { SessionSchema } from "@opencode-ai/core/session/schema"
+import { InstanceStore } from "../../src/project/instance-store"
+import { Session } from "../../src/session/session"
+import { SessionRunState } from "../../src/session/run-state"
 import { ServerAuth } from "../../src/server/auth"
 import { RootHttpApi } from "../../src/server/routes/instance/httpapi/api"
 import { GlobalPaths } from "../../src/server/routes/instance/httpapi/groups/global"
@@ -38,8 +44,39 @@ const apiLayer = HttpRouter.serve(
       upgrade: () => Effect.void,
     }),
   ),
+  Layer.provide(instanceGuards()),
   Layer.provide(ServerAuth.Config.configLayer({ password: Option.none(), username: "opencode" })),
 )
+// The move route asks the session's own instance whether a turn is running, so both services have
+// to answer here. `busy` decides what that instance reports back.
+function instanceGuards(options: { busy?: boolean; directory?: string } = {}) {
+  const directory = AbsolutePath.make(options.directory ?? "/source")
+  const runState = Layer.succeed(
+    SessionRunState.Service,
+    // oxlint-disable-next-line typescript-eslint/no-unsafe-type-assertion
+    {
+      assertNotBusy: (sessionID: SessionV2.ID) =>
+        options.busy ? Effect.fail(new Session.BusyError({ sessionID })) : Effect.void,
+    } as unknown as SessionRunState.Interface,
+  )
+  const sessions = Layer.succeed(
+    SessionV2.Service,
+    // oxlint-disable-next-line typescript-eslint/no-unsafe-type-assertion
+    {
+      get: (sessionID: SessionV2.ID) => Effect.succeed({ id: sessionID, location: { directory } }),
+    } as unknown as SessionV2.Interface,
+  )
+  const instances = Layer.succeed(
+    InstanceStore.Service,
+    // oxlint-disable-next-line typescript-eslint/no-unsafe-type-assertion
+    {
+      provide: (_input: unknown, effect: Effect.Effect<unknown, unknown, never>) =>
+        effect.pipe(Effect.provide(runState)),
+    } as unknown as InstanceStore.Interface,
+  )
+  return Layer.mergeAll(sessions, instances)
+}
+
 const it = testEffect(apiLayer)
 
 describe("global HttpApi", () => {
