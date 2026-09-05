@@ -40,7 +40,6 @@ import {
 import { Dynamic } from "solid-js/web"
 import { makeEventListener } from "@solid-primitives/event-listener"
 import { CommandProvider, useCommand, type CommandOption } from "@/context/command"
-import { AppStartupOverlay } from "@/components/app-startup-overlay"
 import { CommentsProvider } from "@/context/comments"
 import { FileProvider } from "@/context/file"
 import { ServerSDKProvider } from "@/context/server-sdk"
@@ -392,44 +391,14 @@ function NewAppLayout(props: ParentProps<{ serverScoped?: JSX.Element }>) {
 }
 
 function NewAppLayoutContent(props: ParentProps<{ layoutMode: "sidebar" | "tabs" }>) {
-  const layout = useLayout()
-  const serverSync = useServerSync()
-  const tabs = useTabs()
-  const startup = createMemo(() => {
-    const serverReady = serverSync().ready
-    const tabsReady = tabs.ready()
-    const layoutReady = layout.ready()
-    const directories = [
-      ...new Set(
-        layout.projects
-          .list()
-          .flatMap((project) => [project.worktree, ...(project.expanded ? (project.sandboxes ?? []) : [])]),
-      ),
-    ]
-    const stores = directories.map((directory) => ({
-      directory,
-      store: serverSync().child(directory, { bootstrap: true })[0],
-    }))
-    const loaded = stores.filter(
-      ({ directory, store }) => store.status !== "loading" && !serverSync().project.initializing(directory),
-    ).length
-    const directoryProgress = !layoutReady ? 0 : stores.length === 0 ? 40 : (loaded / stores.length) * 40
-    return {
-      ready: serverReady && tabsReady && layoutReady && loaded === stores.length,
-      progress: Math.round(
-        5 + (serverReady ? 25 : 0) + (tabsReady ? 15 : 0) + (layoutReady ? 15 : 0) + directoryProgress,
-      ),
-    }
-  })
-
-  return (
-    <>
-      <Dynamic component={props.layoutMode === "sidebar" ? SidebarLayout : NewLayout}>{props.children}</Dynamic>
-      <Show when={!startup().ready}>
-        <AppStartupOverlay progress={startup().progress} />
-      </Show>
-    </>
-  )
+  // No startup overlay. It was added while the window sat empty for a long time after launch;
+  // since the bootstrap work was cut down that reason is gone, and what remained was a screen that
+  // withheld an app which was already usable. The progress it showed could not be honest either:
+  // the measured steps are coarse — the directory stores alone accounted for 40 of 100 points and
+  // finished almost together — so the bar stalled and then jumped.
+  //
+  // `components/app-startup-overlay.tsx` is still there, unused, should the wait ever come back.
+  return <Dynamic component={props.layoutMode === "sidebar" ? SidebarLayout : NewLayout}>{props.children}</Dynamic>
 }
 
 // Drafts share their workspace with the terminal, files, and prompt context. A new chat can

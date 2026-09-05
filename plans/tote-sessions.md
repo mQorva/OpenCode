@@ -200,12 +200,24 @@ Damit das zusammenspielt, unterscheidet `utils/initial-route.ts` zwei Arten von 
 Nutzers und die der App. Das Verwerfen einer toten Route ist letztere und beendet die
 Startbehandlung nicht — sonst hätte sie den Nutzer auf der leeren Startseite abgesetzt.
 
-## Entfernt: das Overlay im Sessionbereich
+## Entfernt: das Startoverlay
 
-`pages/session.tsx` hatte einen eigenen Fortschritts-Overlay, der auf das Verzeichnis der Sitzung
-wartete. Er blieb bei einer nicht auflösbaren Sitzung dauerhaft stehen und war auch sonst
-überflüssig: das fensterweite Overlay in `app.tsx` deckt den Start ab, ein Sitzungswechsel fällt
-auf das Workspace-Skelett zurück. Ersatzlos gestrichen.
+Es kam auf, als das Fenster nach dem Start lange leer blieb. Seit die Bootstrap-Arbeit
+zusammengestrichen ist, gibt es diesen Grund nicht mehr — geblieben war ein Vorhang vor einer
+bereits bedienbaren Anwendung.
+
+Ehrlichen Fortschritt konnte es ohnehin nicht zeigen: die Messpunkte sind grob, allein die
+Verzeichnis-Stores waren 40 von 100 Punkten wert und wurden fast gleichzeitig fertig. Der Balken
+stand deshalb sekundenlang bei etwa 70 und sprang dann. Ein zeitbasiertes Kriechen hätte das
+kaschiert, aber nicht behoben — und Erfundenes ist kein Fortschritt.
+
+`components/app-startup-overlay.tsx` bleibt ungenutzt liegen, falls die Wartezeit je zurückkommt.
+
+### Auch weg: das zweite Overlay im Sessionbereich
+
+`pages/session.tsx` hatte ein eigenes, das auf das Verzeichnis der Sitzung wartete. Es blieb bei
+einer nicht auflösbaren Sitzung dauerhaft stehen und verdeckte die Fehlerseite samt Ausweg. Ein
+Sitzungswechsel fällt jetzt auf das Workspace-Skelett zurück.
 
 ## Zielbild
 
