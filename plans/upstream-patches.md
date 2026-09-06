@@ -133,9 +133,9 @@ import SidebarLayout from "@/pages/layout-sidebar/shell"
 import { createHomeRoute } from "@/pages/layout-sidebar/home"
 ```
 
-**b)** In `NewAppLayout` den aufgelösten Layoutmodus an den Inhalt weiterreichen und dort das feste
-`<NewLayout>` durch die Weiche ersetzen. Die getrennte Inhaltskomponente hält `useLayout()` innerhalb
-von `ServerScopedProviders` und kann zusätzlich den Startzustand der projektbezogenen Stores überwachen:
+**b)** In `NewAppLayout` das feste `<NewLayout>` durch die Weiche ersetzen. Upstream hat hier zeitweise
+eine `NewAppLayoutContent`-Komponente extrahiert; die Weiche selbst bleibt aber immer direkt am
+`Dynamic`-Aufruf hängen, damit der Markertest nur eine Stelle prüfen muss:
 
 ```tsx
 function NewAppLayout(props: ParentProps<{ serverScoped?: JSX.Element }>) {
@@ -143,15 +143,12 @@ function NewAppLayout(props: ParentProps<{ serverScoped?: JSX.Element }>) {
   return (
     <SelectedServerProviders>
       <ServerScopedProviders serverScoped={props.serverScoped}>
-        <NewAppLayoutContent layoutMode={settings.general.layoutMode()}>{props.children}</NewAppLayoutContent>
+        <Dynamic component={settings.general.layoutMode() === "sidebar" ? SidebarLayout : NewLayout}>
+          {props.children}
+        </Dynamic>
       </ServerScopedProviders>
     </SelectedServerProviders>
   )
-}
-
-function NewAppLayoutContent(props: ParentProps<{ layoutMode: "sidebar" | "tabs" }>) {
-  // ... gemeinsamer Startzustand der neuen Layouts
-  return <Dynamic component={props.layoutMode === "sidebar" ? SidebarLayout : NewLayout}>{props.children}</Dynamic>
 }
 ```
 
@@ -166,7 +163,7 @@ function NewAppLayoutContent(props: ParentProps<{ layoutMode: "sidebar" | "tabs"
 const SidebarAwareHome = createHomeRoute(() => <NewHome />)
 ```
 
-**Marker:** `layout-sidebar/shell` · `SidebarAwareHome` · `props.layoutMode === "sidebar" ? SidebarLayout : NewLayout`
+**Marker:** `layout-sidebar/shell` · `SidebarAwareHome` · `settings.general.layoutMode() === "sidebar" ? SidebarLayout : NewLayout`
 
 ---
 
