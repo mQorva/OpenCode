@@ -224,7 +224,7 @@ export const dict = {
     "Im Workspace frei arbeiten. Nur bei Dateien außerhalb und beim Lesen von .env-Dateien nachfragen.",
   "ui.promptInput.permission.full": "Vollzugriff",
   "ui.promptInput.permission.full.description":
-    "Nie nachfragen — auch nicht bei Dateien außerhalb des Workspace oder bei Geheimnissen.",
+    "Nie nachfragen — auch nicht bei Dateien außerhalb des Workspace oder bei Zugangsdaten.",
   "ui.promptInput.send": "Senden",
   "ui.promptInput.stop": "Stoppen",
   "ui.tabs.close": "Tab schließen",

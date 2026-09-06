@@ -1,13 +1,11 @@
 import { useNavigate } from "@solidjs/router"
 import { useSDK } from "@/context/sdk"
-import { useTabs } from "@/context/tabs"
 import { useSessionKey } from "@/pages/session/session-layout"
 import { legacySessionHref, requireServerKey, sessionHref } from "@/utils/session-route"
 
 export function useSessionArchive() {
   const navigate = useNavigate()
   const sdk = useSDK()
-  const tabs = useTabs()
   const { params } = useSessionKey()
 
   const navigateAfterRemoval = (sessionID: string, parentID?: string, nextSessionID?: string) => {
@@ -22,8 +20,10 @@ export function useSessionArchive() {
       navigate(href(nextSessionID))
       return
     }
+    // Nothing left to fall back to in this directory. Landing on the root lets the layout decide
+    // what to show; opening a chat of its own would put it in a directory nobody picked.
     if (params.serverKey) {
-      tabs.newDraft({ server: requireServerKey(params.serverKey), directory: sdk().directory })
+      navigate("/")
       return
     }
     navigate(`/${params.dir}/session`)

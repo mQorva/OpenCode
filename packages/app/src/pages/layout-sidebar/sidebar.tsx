@@ -298,11 +298,13 @@ function ProjectGroup(props: {
             onPointerDown={(event) => event.stopPropagation()}
             class="shrink-0 items-center pr-1 hidden group-hover/project:flex group-focus-within/project:flex"
           >
+            {/* The v2 icon set has no speech bubble and silently falls back to a plus, which reads
+                as "add project" right next to one — so this uses the v1 icon. */}
             <TooltipV2 value={language.t("command.session.new")} placement="top">
               <IconButtonV2
                 size="small"
                 variant="ghost-muted"
-                icon={<IconV2 name="speech-bubble" size="small" />}
+                icon={<Icon name="speech-bubble" size="small" />}
                 class="!size-7 shrink-0 rounded-md"
                 onClick={props.onNewChat}
                 aria-label={language.t("command.session.new")}

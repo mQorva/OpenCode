@@ -1,6 +1,8 @@
 import { useNavigate } from "@solidjs/router"
 import { createEffect, Show } from "solid-js"
+import { WordmarkV2 } from "@opencode-ai/ui/v2/wordmark-v2"
 import { useLanguage, useLayout, useSettings, useTabs } from "./upstream"
+import { NEW_SESSION_SIDEBAR_CONTENT_WIDTH } from "@/pages/session/new-session-layout"
 import { tabHref } from "@/context/tabs"
 
 /**
@@ -32,14 +34,25 @@ export function SidebarHome() {
 
   return (
     <Show when={tabs.store.length === 0}>
-      <div class="flex-1 w-full min-h-0 flex flex-col items-center justify-center gap-2 px-6 text-center">
-        <div class="text-[13px] font-[530] leading-4 tracking-[-0.04px] text-text-base">
-          {hasProjects() ? language.t("sidebarLayout.empty.noSession.title") : language.t("sidebarLayout.empty.title")}
+      {/* The same empty stage a new session opens on, minus the composer — there is no session to
+          type into yet. The hint below it says what to do next. */}
+      <div data-component="sidebar-home-empty" class="relative flex-1 min-h-0 w-full overflow-hidden">
+        <div class="pointer-events-none absolute inset-x-0 top-[25.375%] hidden justify-center md:flex">
+          <div class={NEW_SESSION_SIDEBAR_CONTENT_WIDTH}>
+            <WordmarkV2 class="h-auto w-full text-v2-background-bg-inverse" />
+          </div>
         </div>
-        <div class="text-[13px] font-[440] leading-4 tracking-[-0.04px] text-text-weak">
-          {hasProjects()
-            ? language.t("sidebarLayout.empty.noSession.description")
-            : language.t("sidebarLayout.empty.description")}
+        <div class="h-full flex flex-col items-center justify-end gap-2 px-6 pb-16 text-center">
+          <div class="text-[13px] font-[530] leading-4 tracking-[-0.04px] text-text-base">
+            {hasProjects()
+              ? language.t("sidebarLayout.empty.noSession.title")
+              : language.t("sidebarLayout.empty.title")}
+          </div>
+          <div class="text-[13px] font-[440] leading-4 tracking-[-0.04px] text-text-weak">
+            {hasProjects()
+              ? language.t("sidebarLayout.empty.noSession.description")
+              : language.t("sidebarLayout.empty.description")}
+          </div>
         </div>
       </div>
     </Show>

@@ -288,7 +288,14 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
 
     const permission = {
       current(): PermissionLevel {
-        return scope()?.permission ?? saved.permission ?? DEFAULT_PERMISSION_LEVEL
+        const local = scope()?.permission
+        if (local) return local
+        // The session row is the authority once one exists: the local pick is only a per-browser
+        // cache, so a session opened without one would otherwise show the default while the
+        // backend keeps enforcing the level actually chosen.
+        const session = id()
+        const stored = session ? sync().session.get(session)?.permissionLevel : undefined
+        return stored ?? saved.permission ?? DEFAULT_PERMISSION_LEVEL
       },
       set(level: PermissionLevel) {
         startTransition(() =>

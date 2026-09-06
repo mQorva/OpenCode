@@ -224,9 +224,13 @@ function SessionErrorFallback(props: { error: unknown; sessionID?: string; serve
     const conn = server.list.find((item) => ServerConnection.key(item) === key)
     return conn ? serverName(conn) : key
   })
+  // Dropping the tab alone leaves the route pointing at the session that is gone, and the page
+  // then sits in its loading state forever. Leave the route with it.
   const closeTab = () => {
     if (!props.sessionID) return
     tabs.removeSessionTab({ server: props.serverKey ?? server.key, sessionId: props.sessionID })
+    markInternalNavigation()
+    navigate("/", { replace: true })
   }
   const notFound = isCurrentSessionNotFoundError(props.error, props.sessionID)
   // A session route restored at startup was never chosen by the user. If its target is gone, there
@@ -234,11 +238,7 @@ function SessionErrorFallback(props: { error: unknown; sessionID?: string; serve
   // and open the home page instead. The message below stays for sessions the user actually opened,
   // where "gone" is news. `isRestoredStartupRoute` flips on this very navigation, so this runs once.
   if (notFound && isRestoredStartupRoute()) {
-    onMount(() => {
-      closeTab()
-      markInternalNavigation()
-      navigate("/", { replace: true })
-    })
+    onMount(closeTab)
     return null
   }
   if (notFound) {
