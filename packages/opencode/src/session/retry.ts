@@ -13,6 +13,12 @@ export type RetryReason = "free_tier_limit" | "account_rate_limit" | (string & {
 
 export type Retryable = {
   message: string
+  /**
+   * Hard limits (quota / daily budget exhausted) do not recover within a retry
+   * window, so waiting and retrying only burns time. Terminal failures surface
+   * immediately instead.
+   */
+  terminal?: boolean
   action?: {
     reason: RetryReason
     provider: string
@@ -29,6 +35,9 @@ export const RETRY_JITTER_FACTOR = 0.25
 export const RETRY_MAX_DELAY_NO_HEADERS = 30_000 // 30 seconds
 export const RETRY_MAX_DELAY = 2_147_483_647 // max 32-bit signed integer for setTimeout
 export const RETRY_MAX_RETRIES = 5
+// waiting longer than this means the limit resets on a quota window (hours or
+// days), not on provider congestion - fail fast instead of blocking the session
+export const RETRY_MAX_WAIT = 120_000 // 2 minutes
 
 const RETRYABLE_MESSAGE_PATTERNS = [
   /429|500|502|503|504|524/i,
@@ -39,6 +48,16 @@ const RETRYABLE_MESSAGE_PATTERNS = [
   /try your request again|retry your request|resource exhausted|resource_exhausted/i,
   /\btry again (?:later|in\b)|\b(?:currently|temporarily) at capacity\b/i,
 ]
+
+// providers signal an exhausted budget structurally before they say it in prose
+const TERMINAL_STATUS_CODES = new Set([402])
+const TERMINAL_ERROR_CODES = new Set([
+  // openai
+  "insufficient_quota",
+  "billing_hard_limit_reached",
+  "billing_not_active",
+  "account_deactivated",
+])
 
 function cap(ms: number) {
   return Math.min(ms, RETRY_MAX_DELAY)
@@ -99,6 +118,7 @@ export function retryable(error: Err, provider: string) {
     if (error.data.responseBody?.includes("FreeUsageLimitError")) {
       return {
         message: GO_UPSELL_MESSAGE,
+        terminal: true,
         action: {
           reason: "free_tier_limit",
           provider,
@@ -132,6 +152,7 @@ export function retryable(error: Err, provider: string) {
       const link = `https://opencode.ai/workspace/${workspace}/go`
       return {
         message: `${message} - ${link}`,
+        terminal: true,
         action: {
           reason: "account_rate_limit",
           provider,
@@ -142,16 +163,48 @@ export function retryable(error: Err, provider: string) {
         },
       }
     }
+    if (terminalStatus(status) || terminalBody(error.data.responseBody))
+      return { message: error.data.message, terminal: true }
     return { message: error.data.message.includes("Overloaded") ? "Provider is overloaded" : error.data.message }
   }
 
   const message = isRecord(error.data) ? error.data.message : undefined
   if (typeof message !== "string") return undefined
   const lower = message.toLowerCase()
+  if (terminalBody(message)) return { message, terminal: true }
   if (lower.includes("too_many_requests")) return { message: "Too Many Requests" }
   if (lower.includes("exhausted") || lower.includes("unavailable")) return { message: "Provider is overloaded" }
   if (matchesRetryableMessage(message)) return { message }
   return undefined
+}
+
+function terminalStatus(status: number | undefined) {
+  return status !== undefined && TERMINAL_STATUS_CODES.has(status)
+}
+
+// terminal only on explicit provider signals: a documented error code, or a
+// google QuotaFailure whose quota id names a per-day window
+function terminalBody(value: unknown) {
+  const body = parseJSON(value)
+  if (!isRecord(body)) return false
+  const error = isRecord(body.error) ? body.error : undefined
+  for (const code of [error?.type, error?.code, body.code, body.type]) {
+    if (typeof code === "string" && TERMINAL_ERROR_CODES.has(code.toLowerCase())) return true
+  }
+  const details = (isRecord(body.error) ? body.error.details : undefined) ?? body.details
+  if (Array.isArray(details)) {
+    for (const detail of details) {
+      if (!isRecord(detail)) continue
+      const violations = detail.violations
+      if (!Array.isArray(violations)) continue
+      for (const violation of violations) {
+        if (!isRecord(violation)) continue
+        const quota = violation.quotaId ?? violation.quotaMetric
+        if (typeof quota === "string" && /PerDay/i.test(quota)) return true
+      }
+    }
+  }
+  return false
 }
 
 function matchesRetryableMessage(value: unknown) {
@@ -193,13 +246,16 @@ export function policy(opts: {
       if (meta.attempt > RETRY_MAX_RETRIES) return Cause.done(meta.attempt)
       return Effect.gen(function* () {
         const wait = delay(meta.attempt, SessionV1.APIError.isInstance(error) ? error : undefined)
+        // a quota that only resets in minutes/hours is not worth waiting on
+        const terminal = retry.terminal === true || wait > RETRY_MAX_WAIT
         const now = yield* Clock.currentTimeMillis
         yield* opts.set({
           attempt: meta.attempt,
           message: retry.message,
           action: retry.action,
-          next: now + wait,
+          next: terminal ? now : now + wait,
         })
+        if (terminal) return yield* Cause.done(meta.attempt)
         return [meta.attempt, Duration.millis(wait)] as [number, Duration.Duration]
       })
     }),

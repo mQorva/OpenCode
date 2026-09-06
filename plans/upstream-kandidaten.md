@@ -122,7 +122,7 @@ vor und werden erst nach dem v2-Architektur-Gate angegangen. Permission-Verträg
 | 4 | `bootstrap-init-timeout` | #8 | PR #46167 offen gegen `upstream/dev` `10765ff2a9`, HEAD `cc3fe65b0c`, Issue #46166; +16/-2 in `bootstrap.ts`; `tsgo --noEmit` exit 0 | auf Maintainer-Feedback warten |
 | 5 | `windows-zorder-reset` | #20 | PR #46305 offen gegen `upstream/dev` `10765ff2a9`, HEAD `13bed544a9`, Issue #46304; +5/-0 in `windows.ts`; `tsgo -b` exit 0 in `packages/desktop` auf Win11 (`10.0.26200.0`); **Windows-Laufzeit-Smoke der Z-Order-Reparatur nicht durchgeführt** (kein Skript-/Manuelltest außerhalb der Maintainer-CI), ehrlich im PR-Body dokumentiert | auf Maintainer-Feedback warten, ggf. Win-Verifikation durch Maintainer |
 | 6 | `build-and-dev-flags` (Bündel) | #9 + #21 | PR #46196 offen gegen `upstream/dev` `10765ff2a9`, HEADs `d93bd149da` (Tip) / `a748a93544` (#9) / `9fda3f7da1` (#21); Issues #46194 und #46195; +2/-1 in `build.ts` und +4/-1 in `index.ts`; `tsgo --noEmit` exit 0 in beiden Paketen | auf Maintainer-Feedback warten |
-| 7 | `permission-dock-layout` | #32 | **entfällt vorerst**: Fork-Hunk nicht mehr in `upstream/dev` auffindbar (`git diff upstream/dev..dev` ist leer für die betroffenen Dateien auf `10765ff2a9`). Letzter Fork-Commit auf `dev` ist `b152378fed chore: Repo-Root, packages aktualisiert (2 Dateien)`; entweder wurde der Fork-Patch durch nachfolgende `chore:`-Updates neutralisiert oder Upstream hat die Logik inzwischen selbst. Vor Re-Aufnahme Inventar-Check und `git log` der Original-Commits nötig | — |
+| 7 | `permission-dock-layout` | #32 | **reaktivierbar** (06.09.2026): Der ältere Befund „Fork-Hunk nicht mehr auffindbar" stammt aus einer früheren Stand-Auswertung und ist überholt. Aktueller `git diff upstream/dev..dev` zeigt weiterhin Fork-Hunks in `dock-prompt.tsx`, `session-permission-dock.tsx`, `dock-prompt.stories.tsx` und `message-part.css` (u. a. `footerInside`-Opt-in, `ButtonV2`-Migration, `persistent`-Prop). Upstream hat zwischenzeitlich `dock-prompt.tsx` schlanker gezogen (nur `DockTray`), ohne `footerInside` einzuführen oder den Permission-Dock-Footer in die Shell zu holen — der Vertrag ist also noch unverwirklicht. PR-Vorbereitung: Story `footerInside: true` als Permission-Variante in der Storybook-Story steht; UI-Nachweis (schmale Breite, Umbruch, Fokuswege, Question-Dock unverändert) weiterhin offen und vor PR-Erstellung zu erbringen | PR-Vorbereitung mit UI-Nachweis |
 | 8 | `persistent-permission-choice` | #33 | PR #46302 offen gegen `upstream/dev` `10765ff2a9`, HEAD `a2beb0b98c`, Issue #46301; +7/-0 in `session-composer-state.ts`; `tsgo -b` exit 0 in `packages/app` | auf Maintainer-Feedback warten |
 | 9 | `desktop-dev-identity` | #34 | PR #46474 offen gegen `upstream/dev` `04284921ac`, HEAD `47e49d1f59`, Issue #46473; +23/-1 in `app-identity.ts`, Test und `index.ts`; Identitätstest 2/2, Desktop-Typecheck und Build erfolgreich. Der verwandte gemergte PR #23368 führte die explizite Windows-ID ein, trennte aber den unverpackten Start nicht von der installierten Dev-App. | auf Maintainer-Feedback und Pflichtchecks warten |
 | v2-1 | `sidebar-workspace-ui` | #28 + Sidebar-Teile aus #31 | blockiert | gegen `v2` re-evaluieren |
@@ -274,6 +274,41 @@ die querschnittlichen Pflichten, die unabhängig vom konkreten Paket gelten:
 | 36 | **C, klein** — Bootstrap-Abfragen nicht mehrfach ausführen | siehe Bauanweisung unten | als `bootstrap-query-keys` |
 | 37 | **C mit neuem Issue** — Verweise auf eine gelöschte Sitzung überleben ihr Ziel | siehe Bauanweisung unten | als `stale-session-references` |
 | 38 | **D, vorher mit Upstream klären** — eine beim Start wiederhergestellte Route auf eine fehlende Sitzung still verwerfen | `packages/app/src/utils/initial-route.ts` (neu), ein Hunk in `context/layout.tsx`, ein Hunk in `pages/session.tsx` | Der Desktop-Renderer stellt `last-active-url` ungeprüft wieder her (`packages/desktop/src/renderer/index.tsx:107`, der einzige Setter der Startroute); zeigt sie auf eine gelöschte Sitzung, meldet die App einen Fehler für etwas, das der Nutzer nie gewählt hat. Die Unterscheidung „vom Nutzer geöffnet" gegen „beim Start wiederhergestellt" ist eine Vertragsänderung an `SessionErrorFallback`, kein Bugfix — erst abstimmen. Hängt an #37 (gleiche Datei, andere Hunks) |
+| 39 | **C, aber nur zu einem Drittel eigenständig** — erschöpftes Anbieterbudget an strukturellen Signalen erkennen statt am Wartezeit-Text | `packages/opencode/src/session/retry.ts`, `packages/opencode/test/session/retry.test.ts` | siehe Bauanweisung unten. Zwei der drei Teile sind durch fremde offene PRs (#47339, #47641) bereits besetzt; sendbar bleibt nur der strukturelle Teil als `retry-terminal-signals`, und der braucht ein neues Issue |
+
+### Bauanweisung #39 `retry-terminal-signals`
+
+**Stand 06.09.2026.** Der Fork-Arbeitsbaum enthält eine dreiteilige Änderung an `retry.ts`. Die
+Datei ist gegen `upstream/dev` `ea2d59d7ca` ansonsten unverändert — der gesamte Diff ist diese
+Arbeit. Anker war zunächst das offene Issue #39790; die Duplikatprüfung ergibt jedoch, dass zwei
+fremde PRs auf genau dieses Issue offen sind und zwei der drei Teile bereits abdecken:
+
+| Teil | Inhalt im Fork | Upstream-Lage |
+|---|---|---|
+| A | `terminal: true` an `free_tier_limit` und `account_rate_limit`, Abbruch in `policy` | **besetzt** durch PR #47339 (`KaranDhillon05`, offen seit 04.09.) — gleicher Abbruch über `isTerminalQuota(retry.action)` |
+| B | `RETRY_MAX_WAIT`, Abbruch wenn `delay()` länger als das Fenster fordert | **besetzt** durch PR #47641 (`ApexMene`, offen seit 06.09.) — gleicher Konstantenname, gleicher `Cause.done`-Pfad, Schwelle 5 min statt unserer 2 min |
+| C | Strukturelle Terminalsignale: HTTP 402, `insufficient_quota` / `billing_hard_limit_reached` / `billing_not_active` / `account_deactivated`, Google `QuotaFailure` mit `…PerDay`-Quota-ID | **frei** — kein offener oder geschlossener PR, kein offenes Issue. Der geschlossene PR #39791 (`vinlee19`, ohne Merge geschlossen 31.08.) klassifizierte über Meldungstext, nicht über strukturierte Codes |
+
+Teil C ist auch ein anderes Problem als A und B: Ein Anbieter kann ein erschöpftes Budget melden,
+ohne eine lange Wartezeit anzufordern und ohne ein zen-Markermuster im Body. Dann greifen weder
+#47339 noch #47641, und die Sitzung läuft die vollen fünf Versuche.
+
+**Vor einem PR zu erledigen:**
+
+1. Teil C aus dem Arbeitsbaum isolieren — ohne `RETRY_MAX_WAIT` und ohne die `terminal`-Flags an
+   den beiden zen-Pfaden. Das `terminal`-Feld am `Retryable`-Typ bleibt nötig, kollidiert aber
+   textuell mit #47339; Konfliktlage vor dem Senden gegen den dann aktuellen Stand neu bewerten.
+2. Eigenes Issue anlegen: 402 und dokumentierte Billing-Codes werden als vorübergehend behandelt.
+   Präzedenz für die Reproduktion ist das geschlossene Issue #27593 („Error: 402 Insufficient
+   Balance — opencode-go"). Nicht an #39790 hängen — dieses Issue ist durch A und B besetzt.
+3. Die vier Tests zu Teil C behalten (402, strukturierte Quota-Codes, `PerDay`-Verletzung terminal;
+   `PerMinute` und einfaches Rate-Limit weiterhin retrybar), die zu A und B entfallen.
+
+**Verifikation des Gesamtstands im Arbeitsbaum (noch nicht des reduzierten Teils C):**
+`bun test test/session/retry.test.ts` → 68 pass / 0 fail; `tsgo --noEmit` in `packages/opencode` →
+exit 0. Beide am 06.09.2026 gelaufen.
+
+**Kein Branch angelegt.** Erst nach Entscheidung über den Zuschnitt und nach dem eigenen Issue.
 
 ### Bauanweisung #35 `provider-connected-list`
 
@@ -319,7 +354,8 @@ extrahiert werden.
 (Backslashes zu Slashes normalisiert), der Bootstrap übergibt rohe Verzeichnisse — unter Windows
 landet dasselbe Verzeichnis dadurch unter zwei Cache-Einträgen.
 
-**Test (grün):** `bootstrap.test.ts` bildet `C:epopp` und `C:/repo/app` für `path`,
+**Test (grün):** `bootstrap.test.ts` bildet `C:
+epopp` und `C:/repo/app` für `path`,
 `providers`, `agents` und `references` auf denselben Schlüssel ab. Die Testdatei ist gegenüber
 `upstream/dev` rein additiv — keine bestehende Erwartung wurde angefasst.
 

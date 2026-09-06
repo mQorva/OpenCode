@@ -124,6 +124,87 @@ describe("session.retry.delay", () => {
     }),
   )
 
+  it.instance("policy stops immediately on a quota limit instead of retrying", () =>
+    Effect.gen(function* () {
+      const attempts: number[] = []
+      const error = Schema.decodeUnknownSync(SessionV1.APIError.Schema)(
+        new SessionV1.APIError({
+          message: "Free usage exceeded",
+          isRetryable: true,
+          statusCode: 429,
+          responseBody: JSON.stringify({
+            type: "error",
+            error: { type: "FreeUsageLimitError", message: "Free usage exceeded" },
+          }),
+        }).toObject(),
+      )
+      const step = yield* Schedule.toStepWithMetadata(
+        SessionRetry.policy({
+          provider: "opencode",
+          parse: Schema.decodeUnknownSync(SessionV1.APIError.Schema),
+          set: (info) =>
+            Effect.sync(() => {
+              attempts.push(info.attempt)
+            }),
+        }),
+      )
+
+      const stopped = yield* step(error).pipe(
+        Effect.as(false),
+        Effect.catch(() => Effect.succeed(true)),
+      )
+
+      expect(stopped).toBe(true)
+      expect(attempts).toStrictEqual([1])
+    }),
+  )
+
+  it.instance("policy stops when the provider asks to wait longer than the retry window", () =>
+    Effect.gen(function* () {
+      const attempts: number[] = []
+      const error = apiError({ "retry-after": String(SessionRetry.RETRY_MAX_WAIT / 1000 + 60) })
+      const step = yield* Schedule.toStepWithMetadata(
+        SessionRetry.policy({
+          provider: "test",
+          parse: Schema.decodeUnknownSync(SessionV1.APIError.Schema),
+          set: (info) =>
+            Effect.sync(() => {
+              attempts.push(info.attempt)
+            }),
+        }),
+      )
+
+      const stopped = yield* step(error).pipe(
+        Effect.as(false),
+        Effect.catch(() => Effect.succeed(true)),
+      )
+
+      expect(stopped).toBe(true)
+      expect(attempts).toStrictEqual([1])
+    }),
+  )
+
+  it.instance("policy keeps retrying short provider backoffs", () =>
+    Effect.gen(function* () {
+      const attempts: number[] = []
+      const error = apiError({ "retry-after-ms": "0" })
+      const step = yield* Schedule.toStepWithMetadata(
+        SessionRetry.policy({
+          provider: "test",
+          parse: Schema.decodeUnknownSync(SessionV1.APIError.Schema),
+          set: (info) =>
+            Effect.sync(() => {
+              attempts.push(info.attempt)
+            }),
+        }),
+      )
+
+      yield* Effect.forEach(Array.from({ length: 3 }), () => Effect.ignore(step(error)))
+
+      expect(attempts).toStrictEqual([1, 2, 3])
+    }),
+  )
+
   it.instance("policy stops after five retries", () =>
     Effect.gen(function* () {
       const attempts: number[] = []
@@ -350,6 +431,7 @@ describe("session.retry.retryable", () => {
 
     expect(SessionRetry.retryable(error, "opencode")).toEqual({
       message: SessionRetry.GO_UPSELL_MESSAGE,
+      terminal: true,
       action: {
         reason: "free_tier_limit",
         provider: "opencode",
@@ -387,6 +469,7 @@ describe("session.retry.retryable", () => {
     expect(SessionRetry.retryable(error, "opencode-go")).toEqual({
       message:
         "5 hour usage limit reached. It will reset in 5 hours 23 minutes. To continue using this model now, enable usage from your available balance - https://opencode.ai/workspace/wrk_01K6XGM22R6FM8JVABE9XDQXGH/go",
+      terminal: true,
       action: {
         reason: "account_rate_limit",
         provider: "opencode-go",
@@ -424,6 +507,86 @@ describe("session.retry.retryable", () => {
     expect(SessionRetry.retryable(error, "opencode-go")?.action?.message).toBe(
       "Usage limit reached. It will reset in 15 minutes. To continue using this model now, enable usage from your available balance",
     )
+  })
+  test("treats payment-required responses as terminal", () => {
+    const error = Schema.decodeUnknownSync(SessionV1.APIError.Schema)(
+      new SessionV1.APIError({ message: "boom", isRetryable: true, statusCode: 402 }).toObject(),
+    )
+
+    expect(SessionRetry.retryable(error, retryProvider)).toEqual({ message: "boom", terminal: true })
+  })
+
+  test("treats structured quota codes as terminal", () => {
+    const error = Schema.decodeUnknownSync(SessionV1.APIError.Schema)(
+      new SessionV1.APIError({
+        message: "You exceeded your current quota",
+        isRetryable: true,
+        statusCode: 429,
+        responseBody: JSON.stringify({ error: { type: "insufficient_quota", code: "insufficient_quota" } }),
+      }).toObject(),
+    )
+
+    expect(SessionRetry.retryable(error, retryProvider)).toEqual({
+      message: "You exceeded your current quota",
+      terminal: true,
+    })
+  })
+
+  test("treats per-day quota violations as terminal", () => {
+    const error = Schema.decodeUnknownSync(SessionV1.APIError.Schema)(
+      new SessionV1.APIError({
+        message: "Resource has been exhausted",
+        isRetryable: true,
+        statusCode: 429,
+        responseBody: JSON.stringify({
+          error: {
+            code: 429,
+            status: "RESOURCE_EXHAUSTED",
+            details: [
+              {
+                "@type": "type.googleapis.com/google.rpc.QuotaFailure",
+                violations: [{ quotaId: "GenerateRequestsPerDayPerProjectPerModel" }],
+              },
+            ],
+          },
+        }),
+      }).toObject(),
+    )
+
+    expect(SessionRetry.retryable(error, retryProvider)).toEqual({
+      message: "Resource has been exhausted",
+      terminal: true,
+    })
+  })
+
+  test("keeps per-minute quota violations retryable", () => {
+    const error = Schema.decodeUnknownSync(SessionV1.APIError.Schema)(
+      new SessionV1.APIError({
+        message: "Resource has been exhausted",
+        isRetryable: true,
+        statusCode: 429,
+        responseBody: JSON.stringify({
+          error: {
+            status: "RESOURCE_EXHAUSTED",
+            details: [{ violations: [{ quotaId: "GenerateRequestsPerMinutePerProject" }] }],
+          },
+        }),
+      }).toObject(),
+    )
+
+    expect(SessionRetry.retryable(error, retryProvider)).toEqual({ message: "Resource has been exhausted" })
+  })
+
+  test("keeps plain rate limits retryable", () => {
+    const error = Schema.decodeUnknownSync(SessionV1.APIError.Schema)(
+      new SessionV1.APIError({
+        message: "rate limit exceeded",
+        isRetryable: true,
+        statusCode: 429,
+      }).toObject(),
+    )
+
+    expect(SessionRetry.retryable(error, retryProvider)).toEqual({ message: "rate limit exceeded" })
   })
 })
 
