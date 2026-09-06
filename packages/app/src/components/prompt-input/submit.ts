@@ -8,7 +8,7 @@ import { useTabs } from "@/context/tabs"
 import { useServerSync, type ServerSync } from "@/context/server-sync"
 import { useLanguage } from "@/context/language"
 import { useLayout } from "@/context/layout"
-import { DEFAULT_PERMISSION_LEVEL, useLocal, type ModelSelection } from "@/context/local"
+import { useLocal, type ModelSelection } from "@/context/local"
 import { usePermission } from "@/context/permission"
 import { type ContextItem, type ImageAttachmentPart, type Prompt, type usePrompt } from "@/context/prompt"
 import { useSDK, type DirectorySDK } from "@/context/sdk"
@@ -434,12 +434,12 @@ export function createPromptSubmit(input: PromptSubmitInput) {
         seed(sessionDirectory, created)
         session = created
         // The v1 create route carries no permission level, so hand the picked one to the
-        // new session before the first prompt reaches the model.
-        if (permissionLevel !== DEFAULT_PERMISSION_LEVEL) {
-          await client.session
-            .update({ sessionID: created.id, directory: sessionDirectory, permissionLevel })
-            .catch(() => {})
-        }
+        // new session before the first prompt reaches the model. This runs even for the default
+        // level: a session without a stored level has to borrow one from elsewhere, and that
+        // borrowed value would then follow whatever is picked in other sessions later on.
+        await client.session
+          .update({ sessionID: created.id, directory: sessionDirectory, permissionLevel })
+          .catch(() => {})
         await startTransition(() => {
           if (!session) return
           if (shouldAutoAccept) permissionState.enableAutoAccept(session.id, sessionDirectory)

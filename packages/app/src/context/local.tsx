@@ -1,7 +1,7 @@
 import { createSimpleContext } from "@opencode-ai/ui/context"
 import { base64Encode } from "@opencode-ai/core/util/encode"
 import { useParams } from "@solidjs/router"
-import { batch, createEffect, createMemo, startTransition } from "solid-js"
+import { batch, createEffect, createMemo, createSignal, startTransition } from "solid-js"
 import { createStore } from "solid-js/store"
 import { useModels } from "@/context/models"
 import { useSettings } from "@/context/settings"
@@ -286,16 +286,37 @@ export const { use: useLocal, provider: LocalProvider } = createSimpleContext({
       setStore("draft", state)
     }
 
+    /**
+     * A session's level belongs to that session alone. Only a draft, which has no session yet,
+     * borrows the last level picked by hand — every existing session reads its own, so changing
+     * the level in one never reaches another.
+     *
+     * The last resolved level is remembered per session so that a switch does not flash the
+     * default while the session row is still loading.
+     */
+    const [lastPermission, setLastPermission] = createSignal<Record<string, PermissionLevel>>({})
+    const resolvePermission = (): PermissionLevel => {
+      const session = id()
+      if (!session) return scope()?.permission ?? saved.permission ?? DEFAULT_PERMISSION_LEVEL
+      const local = saved.session[session]?.permission
+      if (local) return local
+      const stored = sync().session.get(session)?.permissionLevel
+      if (stored) return stored
+      return lastPermission()[session] ?? saved.permission ?? DEFAULT_PERMISSION_LEVEL
+    }
+
+    createEffect(() => {
+      const session = id()
+      if (!session) return
+      const level = resolvePermission()
+      setLastPermission((current: Record<string, PermissionLevel>) =>
+        current[session] === level ? current : { ...current, [session]: level },
+      )
+    })
+
     const permission = {
       current(): PermissionLevel {
-        const local = scope()?.permission
-        if (local) return local
-        // The session row is the authority once one exists: the local pick is only a per-browser
-        // cache, so a session opened without one would otherwise show the default while the
-        // backend keeps enforcing the level actually chosen.
-        const session = id()
-        const stored = session ? sync().session.get(session)?.permissionLevel : undefined
-        return stored ?? saved.permission ?? DEFAULT_PERMISSION_LEVEL
+        return resolvePermission()
       },
       set(level: PermissionLevel) {
         startTransition(() =>
