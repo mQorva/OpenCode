@@ -55,7 +55,7 @@ export const dict = {
   "workspace.modal.title": "Neuen Workspace erstellen",
   "workspace.modal.placeholder": "Workspace-Namen eingeben",
 
-  "common.cancel": "Abbrechen",
+  "common.cancel": "abbrechen",
   "common.creating": "Erstelle...",
   "common.create": "Erstellen",
   "common.contactUs": "Kontaktiere uns",
@@ -583,7 +583,7 @@ export const dict = {
   "workspace.billing.add": "$ hinzufügen",
   "workspace.billing.enterAmount": "Betrag eingeben",
   "workspace.billing.loading": "Lade...",
-  "workspace.billing.addAction": "Hinzufügen",
+  "workspace.billing.addAction": "hinzufügen",
   "workspace.billing.addBalance": "Guthaben aufladen",
   "workspace.billing.alipay": "Alipay",
   "workspace.billing.wechat": "WeChat Pay",

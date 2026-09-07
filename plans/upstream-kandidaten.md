@@ -270,11 +270,11 @@ die querschnittlichen Pflichten, die unabhängig vom konkreten Paket gelten:
 | 33 | **C nach Vertragsprüfung** — dauerhafte Permission-Antwort anbieten, sobald die Anfrage `always`-Muster liefert | `packages/app/src/pages/session/composer/session-composer-state.ts` | eigenständiger Fix `persistent-permission-choice`; nicht an `protocol() === "v2"` koppeln, aber zuerst bestätigen, dass der V1-Request die `always`-Semantik tatsächlich unterstützt; beide Protokollpfade testen |
 | 34 | **C mit Windows-Nachweis** — unverpackten Electron-Entwicklungsstart von der installierten Dev-App-ID trennen | `packages/desktop/src/main/index.ts`; neutraler Identitätsvertrag/Test nahe der Desktop-Konfiguration | veröffentlicht als PR #46474 mit Issue #46473 auf Branch `desktop-dev-identity`; der neutrale Test hält installierte IDs stabil und erzwingt eine eigene unverpackte AppUserModelID. Reproduktion im Fork: richtige und verwaiste Startmenü-Verknüpfung teilten eine AppUserModelID, die verwaiste Verknüpfung zeigte auf eine fehlende `electron.exe`, Taskleiste zeigte generisches Dokument-Icon. |
 
-| 35 | **C, stärkster offener Kandidat** — Providerkatalog nur auf Anfrage ausliefern | siehe Bauanweisung unten | als `provider-connected-list`. Anker: offenes Upstream-Issue #47328 |
-| 36 | **C, klein** — Bootstrap-Abfragen nicht mehrfach ausführen | siehe Bauanweisung unten | als `bootstrap-query-keys` |
-| 37 | **C mit neuem Issue** — Verweise auf eine gelöschte Sitzung überleben ihr Ziel | siehe Bauanweisung unten | als `stale-session-references` |
+| 35 | **C, vorbereitet 07.09.2026** — Providerkatalog nur auf Anfrage ausliefern | siehe Bauanweisung unten | PR #47678 offen gegen `upstream/dev` `ea2d59d7ca`, Branch `provider-connected-list`, HEAD `4ee5418517`, Issue #47677. Der Katalog-Cache wurde herausgenommen (besetzt durch fremden PR #44132). Anker ist **nicht** #47328 (das ist Flock/models.dev-Startup), sondern ein eigenes Issue; verwandt: #35897 und #44180 |
+| 36 | **C, klein** — Bootstrap-Abfragen nicht mehrfach ausführen | siehe Bauanweisung unten | PR #47682 offen gegen `upstream/dev` `ea2d59d7ca`, Branch `bootstrap-query-keys`, HEAD `24aadc002a`, Issue #47681 |
+| 37 | **C mit neuem Issue** — Verweise auf eine gelöschte Sitzung überleben ihr Ziel | siehe Bauanweisung unten | PR #47684 offen gegen `upstream/dev` `ea2d59d7ca`, Branch `stale-session-references`, HEAD `3df3a64408`, Issue #47683 |
 | 38 | **D, vorher mit Upstream klären** — eine beim Start wiederhergestellte Route auf eine fehlende Sitzung still verwerfen | `packages/app/src/utils/initial-route.ts` (neu), ein Hunk in `context/layout.tsx`, ein Hunk in `pages/session.tsx` | Der Desktop-Renderer stellt `last-active-url` ungeprüft wieder her (`packages/desktop/src/renderer/index.tsx:107`, der einzige Setter der Startroute); zeigt sie auf eine gelöschte Sitzung, meldet die App einen Fehler für etwas, das der Nutzer nie gewählt hat. Die Unterscheidung „vom Nutzer geöffnet" gegen „beim Start wiederhergestellt" ist eine Vertragsänderung an `SessionErrorFallback`, kein Bugfix — erst abstimmen. Hängt an #37 (gleiche Datei, andere Hunks) |
-| 39 | **C, aber nur zu einem Drittel eigenständig** — erschöpftes Anbieterbudget an strukturellen Signalen erkennen statt am Wartezeit-Text | `packages/opencode/src/session/retry.ts`, `packages/opencode/test/session/retry.test.ts` | siehe Bauanweisung unten. Zwei der drei Teile sind durch fremde offene PRs (#47339, #47641) bereits besetzt; sendbar bleibt nur der strukturelle Teil als `retry-terminal-signals`, und der braucht ein neues Issue |
+| 39 | **C, aber nur zu einem Drittel eigenständig** — erschöpftes Anbieterbudget an strukturellen Signalen erkennen statt am Wartezeit-Text | `packages/opencode/src/session/retry.ts`, `packages/opencode/test/session/retry.test.ts` | siehe Bauanweisung unten. Zwei der drei Teile sind durch fremde offene PRs (#47339, #47641) bereits besetzt; gesendet wurde nur der strukturelle Teil C als PR #47686 gegen `upstream/dev` `ea2d59d7ca`, Branch `retry-terminal-signals`, HEAD `5dad82a48a`, Issue #47685 |
 
 ### Bauanweisung #39 `retry-terminal-signals`
 
@@ -308,7 +308,12 @@ ohne eine lange Wartezeit anzufordern und ohne ein zen-Markermuster im Body. Dan
 `bun test test/session/retry.test.ts` → 68 pass / 0 fail; `tsgo --noEmit` in `packages/opencode` →
 exit 0. Beide am 06.09.2026 gelaufen.
 
-**Kein Branch angelegt.** Erst nach Entscheidung über den Zuschnitt und nach dem eigenen Issue.
+**Gesendet 07.09.2026 als Teil C.** PR #47686 auf Branch `retry-terminal-signals`, HEAD
+`5dad82a48a`, Basis `upstream/dev` `ea2d59d7ca`, Issue #47685. Teile A und B blieben draußen und
+sind den fremden PRs #47339 und #47641 überlassen; der PR-Body grenzt sich gegen beide ab.
+Prüfungen: `bun test test/session/retry.test.ts` 65 pass / 0 fail, `tsgo --noEmit` exit 0,
+`prettier --check` sauber, `oxlint` 2 Warnungen wie auf `upstream/dev`. Gegenprobe: die drei
+Terminal-Fälle schlagen ohne die Änderung fehl.
 
 ### Bauanweisung #35 `provider-connected-list`
 
@@ -324,6 +329,34 @@ bereits. Kein Fork-Anteil in den vier Dateien.
 | `app/src/context/global-sync/bootstrap.ts` | 4 | `fetchProviders` herausgelöst, `connectedOnly = true` als Vorgabe, `staleTime: Infinity` auf der Provider-Query, `loadProvidersProgressively` und dessen zwei Aufrufstellen |
 
 Commit-Schnitt: erst der additive API-Vertrag (Server, 3 Dateien), dann dessen Nutzung (Client).
+
+**Zuschnitt-Entscheidung 07.09.2026:** Der Katalog-Cache über die `source`-Identität ist aus dem
+Paket entfernt. Der offene fremde PR #44132 (`camalolo`, seit 22.08.) memoisiert denselben
+`/provider`-Payload über die Identität seiner vier Eingaben und geht dabei weiter als unsere
+Variante — er cacht die kodierten Bytes und zusätzlich die Kompression. Beides zusammen in einem
+PR wäre ein Duplikat in genau der Datei, die #44132 anfasst. Übrig bleibt der `connected`-Vertrag,
+der zu #44132 orthogonal ist und mit ihm komponiert. Entsprechend entfällt auch der zweite
+Fork-Test („serves the same catalog on repeated calls"), und in `bootstrap.ts` bleiben
+`directoryKeyPart` und `BOOTSTRAP_STALE_TIME` draußen — das ist #36.
+
+**Anker-Korrektur:** #47328 beschreibt den blockierenden models.dev-Fetch unter globalem `Flock`
+beim Start, nicht die Nutzlast des Providerkatalogs; dieses Paket löst es nicht. Ein eigenes Issue
+liegt als `plans/upstream/issue-provider-connected-list.md` bereit, der PR-Body als
+`plans/upstream/pr-body-provider-connected-list.md`.
+
+**Eigene Messung auf dem vorbereiteten Branch** (HTTP-API-Testrahmen, dieselbe Instanz, nicht der
+gepackte Desktop-Build): `GET /provider` 4.168.456 Bytes / 1507 ms gegen
+`GET /provider?connected=true` 4.468 Bytes / 19 ms. Die im Fork notierten Desktop-Zahlen
+(39,8 s → 12,3 s, ~156 MB → ~8,7 MB) gehören zur Fork-Variante **mit** Katalog-Cache und dürfen für
+diesen PR nicht behauptet werden.
+
+**Prüfungen auf `provider-connected-list` (07.09.2026):** `bun test test/server/httpapi-provider.test.ts`
+in `packages/opencode` 6 pass / 1 skip / 0 fail; `bun test --conditions=solid --preload ./happydom.ts
+src/context/global-sync/bootstrap.test.ts` in `packages/app` 11 pass / 0 fail; `tsgo --noEmit`
+(opencode) und `tsgo -b` (app) exit 0; `prettier --check` sauber; `oxlint` 5 Warnungen, identisch
+mit der `upstream/dev`-Grundlinie. Gegenprobe: mit deaktiviertem Frühausstieg liefern Katalog und
+verbundene Sicht beide 159 Anbieter, der Test schlägt fehl. SDK-/OpenAPI-Änderungen stammen aus
+`bun ./script/generate.ts`; die reinen Zeilenende-Änderungen des Generats wurden nicht übernommen.
 
 **Was in die PR-Beschreibung gehört:** `connected=true` liefert `default` nur aus den verbundenen
 Providern — bewusst, weil der Aufrufer den Katalog getrennt nachlädt. Der Katalog-Cache lebt pro
