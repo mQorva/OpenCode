@@ -37,6 +37,7 @@ import { SessionRevert } from "./session/revert"
 import { Revert } from "@opencode-ai/schema/revert"
 import { FSUtil } from "./fs-util"
 import { SessionDurable } from "@opencode-ai/schema/durable-event-manifest"
+import { PermissionV1 } from "@opencode-ai/schema/v1/permission"
 
 export const RevertState = Revert.State
 export type RevertState = Revert.State
@@ -81,6 +82,7 @@ type CreateInput = {
   agent?: AgentV2.ID
   model?: ModelV2.Ref
   location: Location.Ref
+  permissionLevel?: PermissionV1.Level
 }
 
 type CompactInput = {
@@ -144,6 +146,11 @@ export interface Interface {
     sessionID: SessionSchema.ID
     model: ModelV2.Ref
   }) => Effect.Effect<void, NotFoundError>
+  readonly update: (input: {
+    sessionID: SessionSchema.ID
+    title?: string
+    permissionLevel?: PermissionV1.Level
+  }) => Effect.Effect<SessionSchema.Info, NotFoundError>
   readonly prompt: (input: {
     id?: SessionMessage.ID
     sessionID: SessionSchema.ID
@@ -237,6 +244,7 @@ const layer = Layer.effect(
           cost: 0,
           tokens: { input: 0, output: 0, reasoning: 0, cache: { read: 0, write: 0 } },
           time: { created: now, updated: now },
+          permissionLevel: input.permissionLevel,
         })
         const projected = yield* events
           .publish(SessionV1.Event.Created, { sessionID, info }, { location: input.location })
@@ -413,6 +421,27 @@ const layer = Layer.effect(
           timestamp: yield* DateTime.now,
           model: input.model,
         })
+      }),
+      update: Effect.fn("V2Session.update")(function* (input) {
+        yield* result.get(input.sessionID)
+        yield* db
+          .update(SessionTable)
+          .set({
+            ...(input.title !== undefined ? { title: input.title } : {}),
+            ...(input.permissionLevel !== undefined ? { permission_level: input.permissionLevel } : {}),
+            time_updated: Date.now(),
+          })
+          .where(eq(SessionTable.id, input.sessionID))
+          .run()
+          .pipe(Effect.orDie)
+        const row = yield* db
+          .select()
+          .from(SessionTable)
+          .where(eq(SessionTable.id, input.sessionID))
+          .get()
+          .pipe(Effect.orDie)
+        if (!row) return yield* new NotFoundError({ sessionID: input.sessionID })
+        return fromRow(row)
       }),
       compact: Effect.fn("V2Session.compact")(function* (input) {
         yield* result.get(input.sessionID)

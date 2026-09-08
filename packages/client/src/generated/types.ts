@@ -262,6 +262,7 @@ export type SessionsListOutput = {
         readonly patch: string
       }>
     }
+    readonly permissionLevel?: "ask" | "workspace" | "full"
   }>
   readonly cursor: { readonly previous?: string | null; readonly next?: string | null }
 }
@@ -272,25 +273,36 @@ export type SessionsCreateInput = {
     readonly agent?: string | null
     readonly model?: { readonly id: string; readonly providerID: string; readonly variant?: string } | null
     readonly location?: { readonly directory: string; readonly workspaceID?: string } | null
+    readonly permissionLevel?: ("ask" | "workspace" | "full") | null
   }["id"]
   readonly agent?: {
     readonly id?: string | null
     readonly agent?: string | null
     readonly model?: { readonly id: string; readonly providerID: string; readonly variant?: string } | null
     readonly location?: { readonly directory: string; readonly workspaceID?: string } | null
+    readonly permissionLevel?: ("ask" | "workspace" | "full") | null
   }["agent"]
   readonly model?: {
     readonly id?: string | null
     readonly agent?: string | null
     readonly model?: { readonly id: string; readonly providerID: string; readonly variant?: string } | null
     readonly location?: { readonly directory: string; readonly workspaceID?: string } | null
+    readonly permissionLevel?: ("ask" | "workspace" | "full") | null
   }["model"]
   readonly location?: {
     readonly id?: string | null
     readonly agent?: string | null
     readonly model?: { readonly id: string; readonly providerID: string; readonly variant?: string } | null
     readonly location?: { readonly directory: string; readonly workspaceID?: string } | null
+    readonly permissionLevel?: ("ask" | "workspace" | "full") | null
   }["location"]
+  readonly permissionLevel?: {
+    readonly id?: string | null
+    readonly agent?: string | null
+    readonly model?: { readonly id: string; readonly providerID: string; readonly variant?: string } | null
+    readonly location?: { readonly directory: string; readonly workspaceID?: string } | null
+    readonly permissionLevel?: ("ask" | "workspace" | "full") | null
+  }["permissionLevel"]
 }
 
 export type SessionsCreateOutput = {
@@ -324,6 +336,54 @@ export type SessionsCreateOutput = {
         readonly patch: string
       }>
     }
+    readonly permissionLevel?: "ask" | "workspace" | "full"
+  }
+}["data"]
+
+export type SessionsUpdateInput = {
+  readonly sessionID: { readonly sessionID: string }["sessionID"]
+  readonly title?: {
+    readonly title?: string | undefined
+    readonly permissionLevel?: ("ask" | "workspace" | "full") | undefined
+  }["title"]
+  readonly permissionLevel?: {
+    readonly title?: string | undefined
+    readonly permissionLevel?: ("ask" | "workspace" | "full") | undefined
+  }["permissionLevel"]
+}
+
+export type SessionsUpdateOutput = {
+  readonly data: {
+    readonly id: string
+    readonly parentID?: string
+    readonly projectID: string
+    readonly agent?: string
+    readonly model?: { readonly id: string; readonly providerID: string; readonly variant?: string }
+    readonly cost: number
+    readonly tokens: {
+      readonly input: number
+      readonly output: number
+      readonly reasoning: number
+      readonly cache: { readonly read: number; readonly write: number }
+    }
+    readonly time: { readonly created: number; readonly updated: number; readonly archived?: number }
+    readonly title: string
+    readonly location: { readonly directory: string; readonly workspaceID?: string }
+    readonly subpath?: string
+    readonly revert?: {
+      readonly messageID: string
+      readonly partID?: string
+      readonly snapshot?: string
+      readonly diff?: string
+      readonly files?: ReadonlyArray<{
+        readonly path: string
+        readonly status: "added" | "modified" | "deleted"
+        readonly additions: number
+        readonly deletions: number
+        readonly patch: string
+      }>
+    }
+    readonly permissionLevel?: "ask" | "workspace" | "full"
   }
 }["data"]
 
@@ -362,6 +422,7 @@ export type SessionsGetOutput = {
         readonly patch: string
       }>
     }
+    readonly permissionLevel?: "ask" | "workspace" | "full"
   }
 }["data"]
 
@@ -721,6 +782,8 @@ export type SessionsHistoryOutput = {
           readonly sessionID: string
           readonly location: { readonly directory: string; readonly workspaceID?: string }
           readonly subdirectory?: string
+          readonly from?: { readonly directory: string; readonly workspaceID?: string }
+          readonly projectID?: string
         }
       }
     | {
@@ -1179,6 +1242,8 @@ export type SessionsEventsOutput =
         readonly sessionID: string
         readonly location: { readonly directory: string; readonly workspaceID?: string }
         readonly subdirectory?: string
+        readonly from?: { readonly directory: string; readonly workspaceID?: string }
+        readonly projectID?: string
       }
     }
   | {

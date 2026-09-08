@@ -1,4 +1,4 @@
-import { describe, expect } from "bun:test"
+import { describe, expect, test } from "bun:test"
 import { Cause, Deferred, Effect, Fiber, Layer } from "effect"
 import { AgentV2 } from "@opencode-ai/core/agent"
 import { Database } from "@opencode-ai/core/database/database"
@@ -304,7 +304,7 @@ describe("PermissionV2", () => {
       expect(
         yield* db.select().from(PermissionTable).where(eq(PermissionTable.project_id, Project.ID.global)).all(),
       ).toMatchObject([{ action: "read", resource: "src/*" }])
-      const saved = yield* PermissionSaved.Service
+const saved = yield* PermissionSaved.Service
       const id = (yield* saved.list())[0]!.id
       expect(yield* saved.list()).toEqual([{ id, projectID: Project.ID.global, action: "read", resource: "src/*" }])
       yield* service.assert(assertion({ id: PermissionV2.ID.create("per_next"), resources: ["src/next.ts"] }))
@@ -312,4 +312,54 @@ describe("PermissionV2", () => {
       expect(yield* saved.list()).toEqual([])
     }),
   )
+})
+
+describe("PermissionV2.levelRules", () => {
+  const rule = (action: string, effect: PermissionV2.Effect) => ({ action, resource: "*", effect })
+  const agent: PermissionV2.Ruleset = [
+    { action: "*", resource: "*", effect: "allow" },
+    { action: "external_directory", resource: "*", effect: "ask" },
+    { action: "read", resource: "*.env", effect: "ask" },
+    { action: "doom_loop", resource: "*", effect: "ask" },
+  ]
+
+  test("workspace adds no rules by default", () => {
+    expect(PermissionV2.levelRules("workspace", agent)).toEqual([])
+  })
+
+  test("workspace treats an implicit skill ask as allow on a restrictive agent", () => {
+    const restrictive = [
+      { action: "*", resource: "*", effect: "ask" as const },
+      { action: "read", resource: "*", effect: "allow" as const },
+      { action: "grep", resource: "*", effect: "allow" as const },
+    ]
+    expect(PermissionV2.levelRules("workspace", restrictive)).toMatchObject([
+      { action: "skill", effect: "allow" },
+    ])
+  })
+
+  test("workspace does not lift an explicit skill deny or ask", () => {
+    const denied = [...agent, rule("skill", "deny")]
+    expect(PermissionV2.levelRules("workspace", denied)).toEqual([])
+    const asked = [...agent, rule("skill", "ask")]
+    expect(PermissionV2.levelRules("workspace", asked)).toEqual([])
+  })
+
+  test("ask shifts writes, shell and network to ask but keeps reads silent", () => {
+    const result = PermissionV2.levelRules("ask", agent)
+    expect(result).toEqual([
+      { action: "edit", resource: "*", effect: "ask" },
+      { action: "bash", resource: "*", effect: "ask" },
+      { action: "webfetch", resource: "*", effect: "ask" },
+      { action: "websearch", resource: "*", effect: "ask" },
+    ])
+  })
+
+test("full promotes ask to allow but keeps the doom loop guard", () => {
+    const result = PermissionV2.levelRules("full", agent)
+    expect(result).toEqual([
+      { action: "external_directory", resource: "*", effect: "allow" },
+      { action: "read", resource: "*.env", effect: "allow" },
+    ])
+  })
 })

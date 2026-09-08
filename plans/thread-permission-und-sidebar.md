@@ -148,10 +148,15 @@ nicht schrumpfende linke Gruppe den rechten Teil (inkl. Submit) über den rechte
 
 **Entscheidung (Option 1, festgehalten):** Skill wird wie ein **Lese-Tool** behandelt (analog `read`/`grep`/`glob`, die laut `level.ts:11-12` auf allen Stufen still sind). Intern bleibt es bei **3 Stufen** (`ask` / `workspace` / `full`) – **keine** vierte Zwischenstufe. Das Skill-Lesen selbst verleiht keine Rechte und fragt nicht ab; die riskanten Folge-Aktionen (bash/edit/write), die ein Skill auslöst, behalten unverändert ihre eigenen `ctx.ask` mit eigenen Regeln. Damit bleibt „im Zweifel Fragen, wenn die Rechte nicht reichen" vollständig erhalten – nur die redundante Skill-Lese-Abfrage entfällt.
 
-**Fix umsetzen:**
-- `skill`-Anfragen für die `workspace`-Stufe still durchlassen (auf „allow" setzen statt Default `ask`); der Default ohne Regel bleibt `ask` (`permission/evaluate.ts:9-10`), aber da Skill nur liest, analog zu `read` in die stillen Leseoperationen eingeordnet.
-- Kein `danger`-Flag, keine neue Level-ID, keine zusätzliche Stufe.
-- **Zu prüfen (Implementierung):** ob `skill` konfigurierbar sein soll (global `permission`-Config/Agent-`defaults` können eine `skill`-Regel bereits setzen und würden das Verhalten übersteuern).
+**Fix umsetzen (V1 aktiver Pfad + V2 ergänzt):**
+- **V1 (aktiv):** In `packages/opencode/src/permission/level.ts` hebt die `workspace`-Stufe `skill` von `ask` auf `allow`, solange keine explizite `skill`-Regel existiert; explizites ask/deny bleibt. Tests in `test/permission/level.test.ts` (3 neue).
+- **V2 (ergänzt, war Lücke):** `packages/core` wertet `permissionLevel` jetzt aus:
+  - `SessionSchema.Info` + `fromRow` um `permissionLevel` erweitert.
+  - `PermissionV2.levelRules(level, ruleset)` spiegelt die V1-Semantik auf das V2-Regelformat `{ action, resource, effect }` (inkl. Skill-Lese bei workspace, ask-Shift, full-Promote, doom_loop-Guard).
+  - `PermissionV2.configured` hängt `levelRules(session.permissionLevel, agent.permissions)` ein.
+  - Neuer V2-Server-Endpunkt `session.update` (`PATCH /api/session/:sessionID`) + `SessionV2.Service.update` (setzt `title`/`permissionLevel` in der DB) — passend zum JS-SDK `Session2.update`.
+  - App `local.tsx` ruft bereits `client.session.update({ permissionLevel })` (JS-SDK `PATCH /session/:sessionID`) → wirkt nun in V2.
+  - Tests: `core/test/permission.test.ts` 5 neue `levelRules`-Fälle (16 pass total).
 
 **Zu prüfen:** Was die aktive Ruleset für `skill` als Default setzt (Agent-`defaults`, global `permission`-Config) und ob `skill` dort standardmäßig `ask` oder `allow` ist; ob sinnvoll, Skills mit einem Gefährdungs-Flag (`danger`) zu versehen, das den Modus übersteuert.
 

@@ -5,6 +5,7 @@ import { Session } from "@opencode-ai/schema/session"
 import { Project } from "@opencode-ai/schema/project"
 import { AbsolutePath, NonNegativeInt, PositiveInt, RelativePath, statics } from "@opencode-ai/schema/schema"
 import { Workspace } from "@opencode-ai/schema/workspace"
+import { PermissionV1 } from "@opencode-ai/schema/v1/permission"
 import { Context, Effect, Encoding, Result, Schema, Struct } from "effect"
 import { HttpApiEndpoint, HttpApiGroup, HttpApiMiddleware, HttpApiSchema, OpenApi } from "effect/unstable/httpapi"
 import {
@@ -132,6 +133,7 @@ export const makeSessionGroup = <I extends HttpApiMiddleware.AnyId, S>(sessionLo
           agent: Agent.ID.pipe(Schema.optional),
           model: Model.Ref.pipe(Schema.optional),
           location: Location.Ref.pipe(Schema.optional),
+          permissionLevel: PermissionV1.Level.pipe(Schema.optional),
         }),
         success: Schema.Struct({ data: Session.Info }),
       }).annotateMerge(
@@ -141,6 +143,25 @@ export const makeSessionGroup = <I extends HttpApiMiddleware.AnyId, S>(sessionLo
           description: "Create a session at the requested location.",
         }),
       ),
+    )
+    .add(
+      HttpApiEndpoint.patch("session.update", "/api/session/:sessionID", {
+        params: { sessionID: Session.ID },
+        payload: Schema.Struct({
+          title: Schema.String.pipe(Schema.optional),
+          permissionLevel: PermissionV1.Level.pipe(Schema.optional),
+        }),
+        success: Schema.Struct({ data: Session.Info }),
+        error: SessionNotFoundError,
+      })
+        .middleware(sessionLocationMiddleware)
+        .annotateMerge(
+          OpenApi.annotations({
+            identifier: "v2.session.update",
+            summary: "Update session",
+            description: "Update session properties such as title or permission level.",
+          }),
+        ),
     )
     .add(
       HttpApiEndpoint.get("session.active", "/api/session/active", {

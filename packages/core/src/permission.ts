@@ -3,6 +3,7 @@ export * as PermissionV2 from "./permission"
 import { makeLocationNode } from "./effect/app-node"
 import { Context, Deferred, Effect as EffectRuntime, Layer, Schema } from "effect"
 import { Permission } from "@opencode-ai/schema/permission"
+import { PermissionV1 } from "@opencode-ai/schema/v1/permission"
 import { EventV2 } from "./event"
 import { Location } from "./location"
 import { AgentV2 } from "./agent"
@@ -89,6 +90,36 @@ export function merge(...rulesets: Permission.Ruleset[]): Permission.Ruleset {
   return rulesets.flat()
 }
 
+// Permissions the "ask" level turns into a prompt. Reads (read, grep, glob, list,
+// lsp) stay silent on every level.
+const ASKABLE_ACTIONS = ["edit", "bash", "webfetch", "websearch"]
+
+const NEVER_ALLOWED_ACTION = "doom_loop"
+
+// Rules the session permission level contributes, appended after the agent ruleset.
+// Mirrors the legacy V1 semantics in packages/opencode/src/permission/level.ts but on
+// the V2 rule shape `{ action, resource, effect }`:
+//   - "workspace": skil loads are read-only, so a would-be skill ask becomes allow —
+//     but only when the agent does not carry an explicit skill rule (that would win).
+//   - "ask": shift edit/bash/webfetch/websearch from allow to ask (deny untouched).
+//   - "full": promote every ask to allow (deny untouched, doom_loop guard kept).
+export function levelRules(level: PermissionV1.Level | undefined, ruleset: Permission.Ruleset): Permission.Ruleset {
+  if (level === "ask")
+    return ASKABLE_ACTIONS
+      .filter((action) => evaluate(action, "*", ruleset).effect === "allow")
+      .map((action) => ({ action, resource: "*", effect: "ask" as const }))
+
+  if (level === "full")
+    return ruleset
+      .filter((rule) => rule.effect === "ask" && rule.action !== NEVER_ALLOWED_ACTION)
+      .map((rule) => ({ ...rule, effect: "allow" as const }))
+
+  // workspace
+  if (ruleset.some((rule) => rule.action === "skill")) return []
+  if (evaluate("skill", "*", ruleset).effect !== "ask") return []
+  return [{ action: "skill", resource: "*", effect: "allow" as const }]
+}
+
 export interface Interface {
   readonly ask: (input: AssertInput) => EffectRuntime.Effect<AskResult, SessionV2.NotFoundError>
   readonly assert: (input: AssertInput) => EffectRuntime.Effect<void, Error | SessionV2.NotFoundError>
@@ -141,7 +172,8 @@ const layer = Layer.effect(
       const session = yield* sessions.get(sessionID)
       if (!session) return yield* new SessionV2.NotFoundError({ sessionID })
       const agent = yield* agents.resolve(agentID ?? session.agent)
-      return agent?.permissions ?? missingAgentPermissions
+      const rules = agent?.permissions ?? missingAgentPermissions
+      return [...rules, ...levelRules(session.permissionLevel, rules)]
     })
 
     function denied(input: AssertInput, rules: Permission.Ruleset) {
