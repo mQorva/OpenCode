@@ -4,6 +4,7 @@ import { InstanceState } from "@/effect/instance-state"
 import { Wildcard } from "@opencode-ai/core/util/wildcard"
 import { Deferred, Effect, Layer, Context } from "effect"
 import os from "os"
+import { FSUtil } from "@opencode-ai/core/fs-util"
 import { PermissionV1 } from "@opencode-ai/core/v1/permission"
 import { EventV2Bridge } from "@/event-v2-bridge"
 import { evaluate } from "./evaluate"
@@ -182,11 +183,18 @@ const layer = Layer.effect(
   }),
 )
 
-function expand(pattern: string): string {
-  if (pattern.startsWith("~/")) return os.homedir() + pattern.slice(1)
-  if (pattern === "~") return os.homedir()
-  if (pattern.startsWith("$HOME/")) return os.homedir() + pattern.slice(5)
-  if (pattern.startsWith("$HOME")) return os.homedir() + pattern.slice(5)
+export function expand(pattern: string): string {
+  if (pattern.startsWith("~/")) pattern = os.homedir() + pattern.slice(1)
+  if (pattern === "~") pattern = os.homedir()
+  if (pattern.startsWith("$HOME/")) pattern = os.homedir() + pattern.slice(5)
+  if (pattern.startsWith("$HOME")) pattern = os.homedir() + pattern.slice(5)
+  // Normalise Windows absolute paths (symlink/junction resolution) so a whitelist
+  // entry and the runtime ask target collapse onto the same canonical prefix.
+  // Otherwise a directory reached through a link (e.g. ~/.claude -> ~/.codex) would
+  // not match its whitelist and every external read would prompt. Only touch real
+  // path wildcards (drive letter + "\*"); bare paterns like "*.env" or "ls" must
+  // stay untouched — normalising them would treat them as cwd-relative paths.
+  if (process.platform === "win32" && /^[A-Za-z]:[\\/]/.test(pattern)) return FSUtil.normalizePathPattern(pattern)
   return pattern
 }
 
