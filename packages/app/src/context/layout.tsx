@@ -5,7 +5,7 @@ import { createSimpleContext } from "@opencode-ai/ui/context"
 import { makeEventListener } from "@solid-primitives/event-listener"
 import { readSessionTabsRemovedDetail, SESSION_TABS_REMOVED_EVENT } from "@/components/titlebar-session-events"
 import { useServerSync } from "./server-sync"
-import { useServerSDK } from "./server-sdk"
+import { type ServerSDK, useServerSDK } from "./server-sdk"
 import { RECENTLY_CLOSED_DISPLAY_LIMIT, ServerConnection, useServer } from "./server"
 import { usePlatform } from "./platform"
 import { Project } from "@opencode-ai/sdk/v2"
@@ -666,7 +666,11 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
           server.projects.open(root)
         },
         close(directory: string) {
-          server.projects.close(directory)
+          const root = rootFor(directory)
+          const projectID = serverSync()
+            .data.project.find((project) => pathKey(project.worktree) === pathKey(root))?.id
+          if (projectID) void removeProjectTree(serverSdk(), projectID, root)
+          server.projects.close(root)
         },
         expand(directory: string) {
           server.projects.expand(directory)
@@ -1127,3 +1131,22 @@ export const { use: useLayout, provider: LayoutProvider } = createSimpleContext(
     }
   },
 })
+
+// Removes the project and its whole tree (sessions, messages, workspaces, directory
+// links) on the server. The sidebar entry is dropped by the caller regardless; this
+// only cleans up the durable database state so the project does not come back after
+// a restart. Files on disk are never touched.
+// Removes the project and its whole tree (sessions, messages, workspaces, directory
+// links) on the server. The sidebar entry is dropped by the caller regardless; this
+// only cleans up the durable database state so the project does not come back after
+// a restart. Files on disk are never touched.
+function removeProjectTree(serverSDK: ServerSDK, projectID: string, directory: string) {
+  const server = serverSDK.server.http
+  const headers: Record<string, string> | undefined = server.password
+    ? { Authorization: `Basic ${btoa(`opencode:${server.password}`)}` }
+    : undefined
+  void fetch(
+    `${server.url}/project/${encodeURIComponent(projectID)}?directory=${encodeURIComponent(directory)}`,
+    { method: "DELETE", headers },
+  ).catch(() => {})
+}

@@ -506,12 +506,15 @@ function PromptInputV2ModelControl(props: {
           />
         )}
       </Show>
-      <span class="truncate leading-4">{props.modelName}</span>
+      <span class="truncate leading-4" data-slot="prompt-input-select-label">
+        {props.modelName}
+      </span>
       <span class="-ml-0.5 -mr-1 flex shrink-0">
         <Icon name="chevron-down" />
       </span>
     </>
   )
+  const triggerClass = "min-w-0 max-w-full justify-start ![font-weight:440] group"
   return (
     <Show
       when={!props.loading}
@@ -520,7 +523,7 @@ function PromptInputV2ModelControl(props: {
           variant="ghost-muted"
           size="normal"
           disabled
-          class="min-w-0 max-w-[220px] justify-start ![font-weight:440] opacity-70 cursor-wait"
+          class={`${triggerClass} opacity-70 cursor-wait`}
           style={{ height: "28px" }}
         >
           <Icon name="spinner" class="size-3.5 animate-spin mr-1 text-v2-icon-icon-muted" />
@@ -546,7 +549,7 @@ function PromptInputV2ModelControl(props: {
               data-control-type="dialog"
               variant="ghost-muted"
               size="normal"
-              class="min-w-0 max-w-[220px] justify-start ![font-weight:440] group"
+              class={triggerClass}
               classList={{ "animate-in fade-in": shouldAnimate() }}
               style={{ height: "28px" }}
               onClick={props.onUnpaidClick}
@@ -563,7 +566,7 @@ function PromptInputV2ModelControl(props: {
                 variant="ghost-muted"
                 size="normal"
                 style={{ height: "28px" }}
-                class="min-w-0 max-w-[220px] justify-start ![font-weight:440] group"
+                class={triggerClass}
                 classList={{ "animate-in fade-in": shouldAnimate() }}
                 data-action="prompt-model"
                 data-control-type="popover"

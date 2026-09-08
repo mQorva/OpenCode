@@ -92,6 +92,7 @@ export interface Interface {
   readonly list: () => Effect.Effect<Info[]>
   readonly get: (id: ProjectV2.ID) => Effect.Effect<Info | undefined>
   readonly update: (input: UpdateInput) => Effect.Effect<Info, NotFoundError>
+  readonly remove: (id: ProjectV2.ID) => Effect.Effect<Info | undefined>
   readonly initGit: (input: { directory: string; project: Info }) => Effect.Effect<Info>
   readonly setInitialized: (id: ProjectV2.ID) => Effect.Effect<void>
   readonly sandboxes: (id: ProjectV2.ID) => Effect.Effect<string[]>
@@ -363,6 +364,28 @@ const layer = Layer.effect(
       return data
     })
 
+    const remove = Effect.fn("Project.remove")(function* (id: ProjectV2.ID) {
+      if (id === ProjectV2.ID.global) return undefined
+      const row = yield* db.select().from(ProjectTable).where(eq(ProjectTable.id, id)).get().pipe(Effect.orDie)
+      if (!row) return undefined
+      // Remove the whole tree in one transaction instead of relying on FK cascades
+      // alone: sessions (and their messages/parts/todos), workspaces and directory
+      // links all hang off the project.
+      yield* db
+        .transaction(
+          (d) =>
+            Effect.gen(function* () {
+              yield* d.delete(SessionTable).where(eq(SessionTable.project_id, id)).run()
+              yield* d.delete(WorkspaceTable).where(eq(WorkspaceTable.project_id, id)).run()
+              yield* d.delete(ProjectDirectoryTable).where(eq(ProjectDirectoryTable.project_id, id)).run()
+              yield* d.delete(ProjectTable).where(eq(ProjectTable.id, id)).run()
+            }),
+          { behavior: "immediate" },
+        )
+        .pipe(Effect.orDie)
+      return fromRow(row)
+    })
+
     const initGit = Effect.fn("Project.initGit")(function* (input: { directory: string; project: Info }) {
       if (input.project.vcs === "git") return input.project
       if (!(yield* Effect.sync(() => which("git")))) throw new Error("Git is not installed")
@@ -454,6 +477,7 @@ const layer = Layer.effect(
       list,
       get,
       update,
+      remove,
       initGit,
       setInitialized,
       sandboxes,

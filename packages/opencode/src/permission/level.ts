@@ -22,7 +22,17 @@ const NEVER_ALLOWED = "doom_loop"
 // "ask" and "full" are symmetric: each shifts one step along allow -> ask -> deny and
 // neither touches deny, so a level can never grant more than the agent allows.
 export function rules(level: Level, ruleset: PermissionV1.Ruleset): PermissionV1.Rule[] {
-  if (level === "workspace") return []
+  if (level === "workspace") {
+    // Skills are read-only loads (SKILL.md plus a sampled file list); the actual risk sits in
+    // the downstream tools the skill then drives, which keep their own permission prompts.
+    // So on the workspace level a skill load is a silent read: if the current rules would ask,
+    // promote it to allow. An explicit agent/session skill rule still wins — deny stays deny and
+    // an explicit ask stays an ask — so we never grant more than the configuration allows.
+    if (ruleset.some((rule) => rule.permission === "skill")) return []
+    const skill = evaluate("skill", "*", ruleset)
+    if (skill.action !== "ask") return []
+    return [{ permission: "skill", pattern: "*", action: "allow" }]
+  }
 
   if (level === "ask")
     // The filter is load-bearing: opencode writes its defaults as "*": "allow" or

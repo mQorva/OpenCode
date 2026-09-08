@@ -817,6 +817,9 @@ export const dict = {
   "sidebarLayout.addProject": "Projekt hinzufügen",
   "sidebarLayout.projectSettings": "Projekteinstellungen",
   "sidebarLayout.removeProject": "Projekt aus der Liste entfernen",
+  "sidebarLayout.removeProject.title": "Projekt aus der Liste entfernen?",
+  "sidebarLayout.removeProject.description":
+    "Das Projekt wird aus OpenCode entfernt. Alle zugehörigen Sessions und Verläufe werden gelöscht. Dateien auf dem Laufwerk bleiben unangetastet.",
   "sidebarLayout.copyProjectName": "Projektname kopieren",
   "sidebarLayout.copyProjectPath": "Projektpfad kopieren",
   "sidebarLayout.revealProject": "im Datei-Explorer anzeigen",

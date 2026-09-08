@@ -1,0 +1,49 @@
+/* Narrow-pane behaviour for the v2 composer controls row.
+   The composer can shrink well below the width its default control widths assume:
+   it sits inside a resizable side panel and a dockable window. Rather than let
+   the trailing controls (model, variant, submit) run past the right edge, the
+   row collapses its labelled selects — permission, agent, model, variant — to
+   icon-only chips under container queries, exactly like the titlebar tabs.
+
+   The form element carries the query container (see index.tsx): `container-type:
+   inline-size`. Two thresholds:
+     - narrow  (<=640px): trailer (model/variant/context) collapses to icons so the
+       submit button stays on screen and the leading controls keep their labels.
+     - cramped (<=520px): leading controls (add, agent, permission) collapse too.
+   Labels keep their accessible name via aria-label and tooltips, so nothing is
+   lost, only hidden visually. */
+
+@container prompt-input (max-width: 640px) {
+  [data-slot="prompt-input-trailing-controls"] [data-component="button-v2"] {
+    padding-inline: 0;
+    gap: 0;
+  }
+
+  [data-slot="prompt-input-trailing-controls"] [data-slot="prompt-input-select-trigger"],
+  [data-slot="prompt-input-trailing-controls"] [data-slot="prompt-input-permission-trigger"],
+  [data-slot="prompt-input-trailing-controls"] [data-action="prompt-model"] {
+    justify-content: center;
+  }
+
+  [data-slot="prompt-input-trailing-controls"] [data-slot="prompt-input-select-label"],
+  [data-slot="prompt-input-trailing-controls"] [data-slot="prompt-input-permission-label"] {
+    display: none;
+  }
+}
+
+@container prompt-input (max-width: 520px) {
+  [data-slot="prompt-input-leading-controls"] [data-component="button-v2"] {
+    padding-inline: 0;
+    gap: 0;
+  }
+
+  [data-slot="prompt-input-leading-controls"] [data-slot="prompt-input-select-trigger"],
+  [data-slot="prompt-input-leading-controls"] [data-slot="prompt-input-permission-trigger"] {
+    justify-content: center;
+  }
+
+  [data-slot="prompt-input-leading-controls"] [data-slot="prompt-input-select-label"],
+  [data-slot="prompt-input-leading-controls"] [data-slot="prompt-input-permission-label"] {
+    display: none;
+  }
+}

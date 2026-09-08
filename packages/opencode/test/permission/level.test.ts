@@ -69,4 +69,24 @@ describe("permission level", () => {
     expect(action(ruleset, "webfetch")).toBe("deny")
     expect(action(ruleset, "edit")).toBe("ask")
   })
+
+  test("workspace treats skill as a silent read, promoting ask to allow", () => {
+    // An agent that would prompt for skills (e.g. a "*": "ask" baseline) is
+    // relaxed on the workspace level: skill loads are read-only.
+    const restrictive = Permission.merge(defaults, Permission.fromConfig({ "*": "ask", read: "allow", grep: "allow" }))
+    const ruleset = Permission.forSession({ agent: restrictive, level: "workspace" })
+    expect(action(ruleset, "skill")).toBe("allow")
+  })
+
+  test("workspace does not lift an explicit skill deny", () => {
+    const agent = Permission.merge(defaults, Permission.fromConfig({ skill: { "*": "deny" } }))
+    const ruleset = Permission.forSession({ agent, level: "workspace" })
+    expect(action(ruleset, "skill")).toBe("deny")
+  })
+
+  test("workspace keeps an explicit skill ask as an ask", () => {
+    const agent = Permission.merge(defaults, Permission.fromConfig({ skill: { "*": "ask" } }))
+    const ruleset = Permission.forSession({ agent, level: "workspace" })
+    expect(action(ruleset, "skill")).toBe("ask")
+  })
 })

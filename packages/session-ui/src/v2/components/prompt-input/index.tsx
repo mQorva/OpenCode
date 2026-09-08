@@ -23,6 +23,7 @@ import type {
 import type { PromptInputV2Interaction, PromptInputV2SelectControl } from "./interaction"
 import { parsePromptInputV2Editor } from "./editor-dom"
 import "./attachments.css"
+import "./prompt-input.css"
 
 export type {
   PromptInputV2Attachment,
@@ -111,7 +112,7 @@ export function PromptInputV2(props: PromptInputV2Props) {
       <form
         data-component="prompt-input-v2"
         data-dock-border-underlay={props.borderUnderlay ? "v2" : undefined}
-        class="group/prompt-input relative min-h-[96px] w-full overflow-clip rounded-xl bg-[var(--prompt-input-surface,var(--v2-background-bg-base))]"
+        class="group/prompt-input relative min-h-[96px] w-full overflow-clip rounded-xl bg-[var(--prompt-input-surface,var(--v2-background-bg-base))] [container-type:inline-size] [container-name:prompt-input]"
         classList={{
           "shadow-[var(--v2-elevation-raised)]": !props.borderUnderlay,
           "border border-v2-icon-icon-info border-dashed": state.drag === "active",
@@ -205,6 +206,7 @@ export function PromptInputV2(props: PromptInputV2Props) {
         <div class="flex h-11 items-center gap-3 px-2">
           <div
             class="flex shrink-0 items-center gap-1"
+            data-slot="prompt-input-leading-controls"
             aria-hidden={state.mode === "shell"}
             inert={state.mode === "shell" ? true : undefined}
             style={buttons()}
@@ -239,6 +241,7 @@ export function PromptInputV2(props: PromptInputV2Props) {
           <div class="flex-1" />
           <div
             class="flex min-w-0 items-center gap-1"
+            data-slot="prompt-input-trailing-controls"
             aria-hidden={state.mode === "shell"}
             inert={state.mode === "shell" ? true : undefined}
             style={buttons()}
@@ -531,11 +534,14 @@ function PromptInputV2PermissionSelect(props: { control: PromptInputV2SelectCont
           as={ButtonV2}
           variant="ghost-muted"
           size="normal"
-          class={`max-w-[220px] justify-start ![font-weight:440] ${danger(current())}`}
+          class={`max-w-full justify-start ![font-weight:440] ${danger(current())}`}
           aria-label={i18n.t("ui.promptInput.choosePermission")}
+          data-slot="prompt-input-permission-trigger"
         >
           <IconV2 name={permissionIcon(current())} class="shrink-0" />
-          <span class="truncate leading-5">{option(current())?.label ?? current()}</span>
+          <span class="truncate leading-5" data-slot="prompt-input-permission-label">
+            {option(current())?.label ?? current()}
+          </span>
           <span class="-ms-0.5 -me-1 flex shrink-0">
             <IconV2 name="chevron-down" />
           </span>
@@ -595,16 +601,17 @@ export function PromptInputV2Select(props: {
         </>
       }
     >
-      <MenuV2 gutter={6} modal={false} placement="top-start" onOpenChange={props.onOpenChange}>
+<MenuV2 gutter={6} modal={false} placement="top-start" onOpenChange={props.onOpenChange}>
         <MenuV2.Trigger
           as={ButtonV2}
           variant="ghost-muted"
           size="normal"
-          class={`max-w-[220px] justify-start ![font-weight:440] ${props.class ?? ""}`}
+          class={`max-w-full justify-start ![font-weight:440] ${props.class ?? ""}`}
           aria-label={props.title}
+          data-slot="prompt-input-select-trigger"
         >
           {props.currentIcon}
-          <span class={`truncate leading-5 ${capitalize()}`}>
+          <span class={`truncate leading-5 capitalize ${capitalize()}`} data-slot="prompt-input-select-label">
             {props.options.find((option) => option.id === props.current)?.label ?? props.current}
           </span>
           <span class="-ms-0.5 -me-1 flex shrink-0">

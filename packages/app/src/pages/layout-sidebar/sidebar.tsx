@@ -1006,7 +1006,32 @@ export function Sidebar(props: { data: SidebarData }) {
                             ? () => clearProjectNotifications(group.project)
                             : undefined
                         }
-                        onCloseProject={() => layout.projects.close(group.project.worktree)}
+                        onCloseProject={() => {
+                          void dialog.show(() => (
+                            <DialogV2 fit>
+                              <DialogHeader hideClose>
+                                <DialogTitleGroup
+                                  title={language.t("sidebarLayout.removeProject.title")}
+                                  description={language.t("sidebarLayout.removeProject.description")}
+                                />
+                              </DialogHeader>
+                              <DialogFooter>
+                                <ButtonV2 variant="ghost" onClick={() => dialog.close()}>
+                                  {language.t("common.cancel")}
+                                </ButtonV2>
+                                <ButtonV2
+                                  variant="danger"
+                                  onClick={() => {
+                                    layout.projects.close(group.project.worktree)
+                                    dialog.close()
+                                  }}
+                                >
+                                  {language.t("sidebarLayout.removeProject")}
+                                </ButtonV2>
+                              </DialogFooter>
+                            </DialogV2>
+                          ))
+                        }}
                         onCopySessionTitle={(entry) =>
                           copy(entry.session.title || language.t("sidebarLayout.untitled"))
                         }

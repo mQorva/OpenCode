@@ -275,6 +275,42 @@ die querschnittlichen Pflichten, die unabhängig vom konkreten Paket gelten:
 | 37 | **C mit neuem Issue** — Verweise auf eine gelöschte Sitzung überleben ihr Ziel | siehe Bauanweisung unten | PR #47684 offen gegen `upstream/dev` `ea2d59d7ca`, Branch `stale-session-references`, HEAD `3df3a64408`, Issue #47683 |
 | 38 | **D, vorher mit Upstream klären** — eine beim Start wiederhergestellte Route auf eine fehlende Sitzung still verwerfen | `packages/app/src/utils/initial-route.ts` (neu), ein Hunk in `context/layout.tsx`, ein Hunk in `pages/session.tsx` | Der Desktop-Renderer stellt `last-active-url` ungeprüft wieder her (`packages/desktop/src/renderer/index.tsx:107`, der einzige Setter der Startroute); zeigt sie auf eine gelöschte Sitzung, meldet die App einen Fehler für etwas, das der Nutzer nie gewählt hat. Die Unterscheidung „vom Nutzer geöffnet" gegen „beim Start wiederhergestellt" ist eine Vertragsänderung an `SessionErrorFallback`, kein Bugfix — erst abstimmen. Hängt an #37 (gleiche Datei, andere Hunks) |
 | 39 | **C, aber nur zu einem Drittel eigenständig** — erschöpftes Anbieterbudget an strukturellen Signalen erkennen statt am Wartezeit-Text | `packages/opencode/src/session/retry.ts`, `packages/opencode/test/session/retry.test.ts` | siehe Bauanweisung unten. Zwei der drei Teile sind durch fremde offene PRs (#47339, #47641) bereits besetzt; gesendet wurde nur der strukturelle Teil C als PR #47686 gegen `upstream/dev` `ea2d59d7ca`, Branch `retry-terminal-signals`, HEAD `5dad82a48a`, Issue #47685 |
+| 40 | **C, vorbereitet 08.09.2026** — Snapshot-Revert nicht mehr über fremde Worktree-Änderungen laufen lassen (Patch-Scoping, Ownership-Sperre, Lösch-Deckel, diffFull-Budget) | `packages/opencode/src/snapshot/index.ts`, `packages/opencode/src/session/processor.ts`, `packages/opencode/src/session/revert.ts`, `packages/opencode/test/snapshot/snapshot.test.ts`, `packages/opencode/test/session/revert-compact.test.ts` | siehe Bauanweisung unten. Schließt die offenen Issues #40736, #33940, #46783. Restore-Scope-Anteil aus #45141 bewusst nicht dupliziert. Verifiziert mit `bun typecheck`, Snapshot 57/57 + 4 neue, revert-compact 8/8 auf `upstream/dev` `ecbc6ccac8` |
+
+### Bauanweisung #40 `snapshot-revert-guard`
+
+**Gesendet 08.09.2026 als PR #47861.** Branch `snapshot-revert-guard`, HEADs `73c91de821`
+(Fix), `12c00f0355` (Tests), Basis `upstream/dev` `ecbc6ccac8`, PR-Status OPEN /
+mergeable MERGEABLE. Issues: Closes #40736, #33940, #46783 (alle offen, keine Duplikate).
+Prüfungen: `tsgo --noEmit` exit 0 in `packages/opencode`; `bun test test/snapshot/snapshot.test.ts`
+57 pass / 3 skip / 0 fail (inkl. 4 neue); `bun test test/session/revert-compact.test.ts`
+8 pass / 0 fail; `git diff --check` sauber; kein mQorva/sidebar-Marker. PR-Body:
+`plans/upstream/pr-body-snapshot-revert-guard.md`. Ausstehend: CI-Ergebnis und
+Maintainer-Feedback.
+
+**Ausgangslage:** Isoliertes Paket auf `upstream/dev` `ecbc6ccac8`, Worktree
+`.worktrees/snapshot-revert-guard`. Es adressiert drei offene Issues mit derselben Wurzel:
+Die Patch-Liste kam aus `git diff --cached --name-only <hash>` über den gesamten gestageten
+Worktree-Delta; fremde Änderungen landeten in der Liste (Cross-Session-Attribution, #40736),
+`revert()` wurde darüber gegen fremde Snapshots gerollt und löschte bei fehlendem Tree-Eintrag
+bedingungslos mit `fs.remove` (Datenverlust, #46783, #33940).
+
+| Datei | Hunks | Inhalt |
+|---|---|---|
+| `opencode/src/snapshot/index.ts` | ~9 | `Interface`: `track(owner?)`, `patch(hash, files?)`, `revert(patches, owner?)`. Ownership-Ledger `owner-log.json` im gitdir, `assertOwnership` weigert bei fremdem Owner nach Ziel-Snapshot. `patchPaths`-Helper; `patch` schränkt den `--name-only`-Diff per Pathspec auf gemeldete Tool-Pfade ein. `revert`: Löschbudget `maxDeletions = 100` mit Abbruch statt Bulk-`remove`. `diffFull`: `diffContext = 3`, `patchBudget = 2 MiB` (nutzt `limit`), `yield* Effect.yieldNow` pro Batch |
+| `opencode/src/session/processor.ts` | ~6 | `recordMutatedFiles` sammelt pro Turn die gemeldeten Pfade (`metadata.filepath`/`metadata.files`/`input.filePath`); `track(input.sessionID)`, `patch(ctx.snapshot, ctx.mutatedFiles)` |
+| `opencode/src/session/revert.ts` | 1 | übergibt `input.sessionID` als Owner an `track()`/`revert()` |
+| `opencode/test/snapshot/snapshot.test.ts` | neu | 4 Regressionstests: Patch-Einschränkung, leere Tool-Liste, Ownership-Refus, Löschbudget |
+| `opencode/test/session/revert-compact.test.ts` | 1 | Test-Turns übergeben `sessionID` als Owner (spiegelt Produktion) |
+
+**Erwartete Grenze:** Der zweite eingebaute Teil von PR #45141 (Restore-Scope,
+`checkout-index -a`→gelistete Pfade) bleibt hier aus; #45141 ist offen und belegt diesen Teil
+bereits. `#45141` bleibt damit der Referenz-PR für Restore.
+
+**Verifikation (08.09.2026, Paketstand):** `tsgo --noEmit` in `packages/opencode` exit 0;
+`bun test test/snapshot/snapshot.test.ts` 57 pass / 3 skip / 0 fail (inkl. 4 neue);
+`bun test test/session/revert-compact.test.ts` 8 pass / 0 fail; `git diff --check` sauber;
+kein mQorva/sidebar-Marker im Diff (nur `packages/opencode`). PR-Body: `plans/upstream/pr-body-snapshot-revert-guard.md`.
 
 ### Bauanweisung #39 `retry-terminal-signals`
 
