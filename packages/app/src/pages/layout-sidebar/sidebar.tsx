@@ -20,10 +20,12 @@ import {
   draftsForProject,
   hiddenCount,
   moveDraftTarget,
+  selectionRange,
   sessionPinKey,
   sessionTreeIDs,
   splitPinned,
-  togglePin,
+  togglePins,
+  toggleSelection,
   applyOrder,
   chatDirectories,
   reorder,
@@ -32,6 +34,7 @@ import {
   unassignedDrafts,
   visibleSessions,
   type SidebarProject,
+  type SidebarSelection,
   type SidebarSession,
 } from "./sessions"
 import { notifySessionTabsRemoved } from "@/components/titlebar-session-events"
@@ -185,6 +188,8 @@ function ProjectGroup(props: {
   sessionsExpanded: boolean
   activeSessionID?: string
   activeDraftID?: string
+  /** Selection block of this group — a pathKey, used to scope multi-selection to the group. */
+  block: string
   isPinned: (entry: SidebarSession) => boolean
   isUnread: (entry: SidebarSession) => boolean
   onToggleCollapsed: () => void
@@ -215,6 +220,11 @@ function ProjectGroup(props: {
   acceptsProjectDrop: (key: string) => boolean
   /** All project worktrees, used to recognise project-on-project drags. */
   projectWorktrees: () => Set<string>
+  selectionCount: (entry: SidebarSession) => number
+  selectionAllPinned: (entry: SidebarSession) => boolean
+  onToggleSelect: (entry: SidebarSession) => void
+  onSelectRange: (keys: string[], entry: SidebarSession) => void
+  onContextMenu: (entry: SidebarSession) => void
 }) {
   const language = useLanguage()
   const droppable = createDroppable(props.group.project.worktree)
@@ -360,6 +370,12 @@ function ProjectGroup(props: {
                   active={entry.session.id === props.activeSessionID}
                   pinned={props.isPinned(entry)}
                   unread={props.isUnread(entry)}
+                  selected={props.selectionCount(entry) > 0}
+                  selectionCount={props.selectionCount(entry)}
+                  selectionAllPinned={props.selectionAllPinned(entry)}
+                  onToggleSelect={() => props.onToggleSelect(entry)}
+                  onSelectRange={() => props.onSelectRange(shown().map(sessionPinKey), entry)}
+                  onContextMenu={() => props.onContextMenu(entry)}
                   attention={() => props.sessionAttention(entry)}
                   working={() => props.sessionWorking(entry)}
                   onSelect={() => props.onSelect(entry)}
@@ -414,6 +430,9 @@ export function Sidebar(props: { data: SidebarData }) {
   const allChatSessions = props.data.chatSessions
 
   const [unread, setUnread] = persisted(Persist.window("sidebar-layout.unread"), createStore<string[]>([]))
+  // Multi-selection is scoped to one group (a project or the pinned block) and purely ephemeral —
+  // it exists to apply the row actions to more than one session at once.
+  const [selection, setSelection] = createSignal<SidebarSelection>({ keys: [] })
   const [collapsed, setCollapsed] = persisted(Persist.window("sidebar-layout.collapsed"), createStore<string[]>([]))
   const [expandedSessions, setExpandedSessions] = createSignal<string[]>([])
   const [searching, setSearching] = createSignal(false)
@@ -467,13 +486,25 @@ export function Sidebar(props: { data: SidebarData }) {
   const select = (entry: SidebarSession) => {
     const key = sessionPinKey(entry)
     if (unread.includes(key)) setUnread((items) => items.filter((item) => item !== key))
+    if (!entry.missing) notification.ensureServerState(server.key).session.markViewed(entry.session.id)
     const tab = tabs.addSessionTab({ server: entry.server, sessionId: entry.session.id })
     tabs.select(tab)
+    // Opening a session ends any multi-selection; the row click replaces it.
+    if (selection().keys.length > 0) setSelection({ keys: [] })
   }
 
-  const toggle = (entry: SidebarSession) => setPinned(togglePin([...pinned], sessionPinKey(entry)))
+  const toggle = (entry: SidebarSession, block?: string) => {
+    const targets = block ? groupTargets(entry, block) : [entry]
+    setPinned(togglePins([...pinned], targets.map(sessionPinKey)))
+  }
   const isPinned = (entry: SidebarSession) => pinned.includes(sessionPinKey(entry))
-  const isUnread = (entry: SidebarSession) => unread.includes(sessionPinKey(entry))
+  const isUnread = (entry: SidebarSession) => {
+    if (unread.includes(sessionPinKey(entry))) return true
+    if (entry.missing) return false
+    // Following-up sessions light up automatically: the notification state records each
+    // session.idle turn that finished in the background and clears on open (session.tsx).
+    return notification.ensureServerState(server.key).session.unseenCount(entry.session.id) > 0
+  }
   const sessionWorking = (entry: SidebarSession) => serverSync().session.data.session_working(entry.session.id)
   const sessionAttention = (entry: SidebarSession) => {
     if (entry.missing) return "missing" as const
@@ -490,9 +521,97 @@ export function Sidebar(props: { data: SidebarData }) {
       return "question" as const
     }
   }
-  const markUnread = (entry: SidebarSession) => {
+  const markUnread = (entry: SidebarSession, block?: string) => {
+    const targets = block ? groupTargets(entry, block) : [entry]
+    setUnread((items) => [...new Set([...items, ...targets.map(sessionPinKey)])])
+  }
+
+  // --- Multi-selection -----------------------------------------------
+
+  /** Every key the row actions should apply to: the full group selection when this row is part of
+   *  it, otherwise exactly this row. The menu therefore always acts on what the user sees. */
+  const groupTargets = (entry: SidebarSession, block: string): SidebarSession[] => {
+    const sel = selection()
     const key = sessionPinKey(entry)
-    if (!unread.includes(key)) setUnread((items) => [...items, key])
+    if (sel.block !== block || !sel.keys.includes(key)) return [entry]
+    const byKey = new Map(
+      [...split().pinned, ...split().projects.flatMap((group) => group.sessions)].map((item) => [
+        sessionPinKey(item),
+        item,
+      ] as const),
+    )
+    const found = sel.keys.flatMap((key) => {
+      const item = byKey.get(key)
+      return item ? [item] : []
+    })
+    return found.length > 0 ? found : [entry]
+  }
+
+  /** Selection this row belongs to — empty when the row is not part of the active selection. */
+  const selectionFor = (entry: SidebarSession, block: string) => {
+    const sel = selection()
+    const key = sessionPinKey(entry)
+    if (sel.block !== block || !sel.keys.includes(key)) return []
+    return sel.keys
+  }
+
+  const selectionCount = (entry: SidebarSession, block: string) => selectionFor(entry, block).length
+
+  /** All selected rows pinned → the context menu says "unpin", otherwise "pin". */
+  const selectionAllPinned = (entry: SidebarSession, block: string) => {
+    const keys = selectionFor(entry, block)
+    return keys.length > 0 && keys.every((key) => pinned.includes(key))
+  }
+
+  /** Right-click on a row narrows the selection to it unless it was already selected. */
+  const focusSelection = (entry: SidebarSession, block: string) => {
+    const key = sessionPinKey(entry)
+    const sel = selection()
+    if (sel.block !== block || !sel.keys.includes(key)) setSelection({ block, anchor: key, keys: [key] })
+  }
+
+  const toggleSelect = (entry: SidebarSession, block: string) => {
+    const key = sessionPinKey(entry)
+    const sel = selection()
+    if (sel.block !== block) {
+      setSelection({ block, anchor: key, keys: [key] })
+      return
+    }
+    setSelection({ block, anchor: key, keys: toggleSelection(sel.keys, key) })
+  }
+
+  const selectRange = (ordered: string[], entry: SidebarSession, block: string) => {
+    const sel = selection()
+    const key = sessionPinKey(entry)
+    if (sel.block !== block) {
+      setSelection({ block, anchor: key, keys: [key] })
+      return
+    }
+    setSelection({ block, anchor: sel.anchor, keys: selectionRange(ordered, sel.anchor, key) })
+  }
+
+  // --- Delete ---------------------------------------------
+
+  const sessionTreeIDsFrom = (entry: SidebarSession) => {
+    const [store] = serverSync().child(entry.directory, { bootstrap: true })
+    return sessionTreeIDs(store.session ?? [], entry.session.id)
+  }
+
+  /** Delete a batch with overlapping session trees visited once. Removing a parent already takes
+   *  every sub-session with it, so only the roots that nothing else covers get a request. */
+  const deleteSessions = async (entries: SidebarSession[]): Promise<boolean> => {
+    const covered = new Set<string>()
+    const roots: SidebarSession[] = []
+    for (const entry of entries) {
+      const removed = entry.missing ? [entry.session.id] : sessionTreeIDsFrom(entry)
+      if (removed.every((id) => covered.has(id))) continue
+      for (const id of removed) covered.add(id)
+      roots.push(entry)
+    }
+    for (const entry of roots) {
+      if (!await deleteSession(entry)) return false
+    }
+    return true
   }
 
   const copy = (value: string) => {
@@ -549,15 +668,22 @@ export function Sidebar(props: { data: SidebarData }) {
     return true
   }
 
-  const confirmDelete = (entry: SidebarSession) => {
+  const confirmDelete = (entry: SidebarSession, block?: string) => {
+    const targets = block ? groupTargets(entry, block) : [entry]
+    const first = targets[0] ?? entry
+    const multiple = targets.length > 1
     void dialog.show(() => (
       <DialogV2 fit>
         <DialogHeader hideClose>
           <DialogTitleGroup
-            title={language.t("session.delete.title")}
-            description={language.t("session.delete.confirm", {
-              name: entry.session.title || language.t("command.session.new"),
-            })}
+            title={multiple ? language.t("session.delete.titleMultiple") : language.t("session.delete.title")}
+            description={
+              multiple
+                ? language.t("session.delete.confirmMultiple", { count: targets.length })
+                : language.t("session.delete.confirm", {
+                    name: first.session.title || language.t("command.session.new"),
+                  })
+            }
           />
         </DialogHeader>
         <DialogFooter>
@@ -567,12 +693,17 @@ export function Sidebar(props: { data: SidebarData }) {
           <ButtonV2
             variant="danger"
             onClick={() => {
-              void deleteSession(entry).then((deleted) => {
-                if (deleted) dialog.close()
+              void (multiple ? deleteSessions(targets) : deleteSession(first)).then((deleted) => {
+                if (deleted) {
+                  dialog.close()
+                  if (selection().keys.length > 0) setSelection({ keys: [] })
+                }
               })
             }}
           >
-            {language.t("session.delete.button")}
+            {multiple
+              ? language.t("session.delete.buttonMultiple", { count: targets.length })
+              : language.t("session.delete.button")}
           </ButtonV2>
         </DialogFooter>
       </DialogV2>
@@ -932,13 +1063,21 @@ export function Sidebar(props: { data: SidebarData }) {
                           active={entry.session.id === activeSessionID()}
                           pinned
                           unread={isUnread(entry)}
+                          selected={selectionCount(entry, PINNED_ORDER_KEY) > 0}
+                          selectionCount={selectionCount(entry, PINNED_ORDER_KEY)}
+                          selectionAllPinned
+                          onToggleSelect={() => toggleSelect(entry, PINNED_ORDER_KEY)}
+                          onSelectRange={() =>
+                            selectRange(split().pinned.map(sessionPinKey), entry, PINNED_ORDER_KEY)
+                          }
+                          onContextMenu={() => focusSelection(entry, PINNED_ORDER_KEY)}
                           attention={() => sessionAttention(entry)}
                           working={() => sessionWorking(entry)}
                           onSelect={() => select(entry)}
                           onRename={(title) => renameSession(entry, title)}
-                          onMarkUnread={() => markUnread(entry)}
-                          onTogglePin={() => toggle(entry)}
-                          onDelete={() => confirmDelete(entry)}
+                          onMarkUnread={() => markUnread(entry, PINNED_ORDER_KEY)}
+                          onTogglePin={() => toggle(entry, PINNED_ORDER_KEY)}
+                          onDelete={() => confirmDelete(entry, PINNED_ORDER_KEY)}
                           onCopyTitle={() => copy(entry.session.title || language.t("sidebarLayout.untitled"))}
                           onCopyID={() => copy(entry.session.id)}
                           onCopyProject={() => copy(projectNameFor(entry))}
@@ -966,6 +1105,7 @@ export function Sidebar(props: { data: SidebarData }) {
                     {(group) => (
                       <ProjectGroup
                         group={group}
+                        block={pathKey(group.project.worktree)}
                         acceptsProjectDrop={acceptsProjectDrop}
                         drafts={needle() ? [] : draftsForProject([...tabs.store], group.project.worktree)}
                         collapsed={collapsed.includes(group.project.worktree)}
@@ -976,6 +1116,11 @@ export function Sidebar(props: { data: SidebarData }) {
                         isUnread={isUnread}
                         sessionWorking={sessionWorking}
                         sessionAttention={sessionAttention}
+                        selectionCount={(entry) => selectionCount(entry, pathKey(group.project.worktree))}
+                        selectionAllPinned={(entry) => selectionAllPinned(entry, pathKey(group.project.worktree))}
+                        onToggleSelect={(entry) => toggleSelect(entry, pathKey(group.project.worktree))}
+                        onSelectRange={(keys, entry) => selectRange(keys, entry, pathKey(group.project.worktree))}
+                        onContextMenu={(entry) => focusSelection(entry, pathKey(group.project.worktree))}
                         onToggleCollapsed={() =>
                           setCollapsed((items) =>
                             items.includes(group.project.worktree)
@@ -988,8 +1133,8 @@ export function Sidebar(props: { data: SidebarData }) {
                         onSelectDraft={(draft) => tabs.select(draft)}
                         onCloseDraft={closeDraft}
                         onRename={renameSession}
-                        onMarkUnread={markUnread}
-                        onTogglePin={toggle}
+                        onMarkUnread={(entry) => markUnread(entry, pathKey(group.project.worktree))}
+                        onTogglePin={(entry) => toggle(entry, pathKey(group.project.worktree))}
                         onNewChat={() => newProjectChat(group.project)}
                         onEditProject={() => editProject(group.project)}
                         onCopyProjectName={() => copy(displayName(group.project))}

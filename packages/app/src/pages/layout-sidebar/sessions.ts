@@ -28,6 +28,17 @@ export type SidebarProject = {
 }
 
 /**
+ * Multi-selection state inside one group — a project group or the pinned block. `block` pins the
+ * selection to one group (a pathKey for a project, `PINNED_ORDER_KEY` for pinned) so a selection
+ * never silently spans groups; `anchor` is the reference key for shift-click ranges.
+ */
+export type SidebarSelection = {
+  block?: string
+  anchor?: string
+  keys: string[]
+}
+
+/**
  * Drafts belong to a project through their `worktree`/`directory` fields, which is also what makes
  * them the only movable entries: an already started session is bound to its server's working
  * directory and cannot be re-homed. Drafts flagged `unassigned` sit in the separate chats block
@@ -117,7 +128,35 @@ export function splitPinned(projects: SidebarProject[], pinned: string[]) {
 }
 
 export function togglePin(pinned: string[], key: string) {
-  return pinned.includes(key) ? pinned.filter((item) => item !== key) : [...pinned, key]
+  return togglePins(pinned, [key])
+}
+
+/**
+ * Pin a batch like a single pin: when every key is already pinned, unpin them all; otherwise pin
+ * every key. This keeps a mixed selection predictable — the menu label says "pin" and pins.
+ */
+export function togglePins(pinned: string[], keys: string[]) {
+  if (keys.length === 0) return pinned
+  if (keys.every((key) => pinned.includes(key))) return pinned.filter((key) => !keys.includes(key))
+  return [...new Set([...pinned, ...keys])]
+}
+
+/** Toggle one key in a multi-selection. */
+export function toggleSelection(keys: string[], key: string) {
+  return keys.includes(key) ? keys.filter((item) => item !== key) : [...keys, key]
+}
+
+/**
+ * Shift-click range inside a group. With no anchor, or when either key is unknown, fall back to a
+ * single-key selection instead of silently keeping the old selection.
+ */
+export function selectionRange(ordered: string[], anchor: string | undefined, key: string) {
+  if (!anchor) return [key]
+  const from = ordered.indexOf(anchor)
+  const to = ordered.indexOf(key)
+  if (from < 0 || to < 0) return [key]
+  const [start, end] = from <= to ? [from, to] : [to, from]
+  return ordered.slice(start, end + 1)
 }
 
 /** Long project lists collapse to a "show more" affordance instead of scrolling forever. */

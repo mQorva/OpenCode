@@ -9,10 +9,13 @@ import {
   moveDraftTarget,
   pinKey,
   reorder,
+  selectionRange,
   sessionPinKey,
   sessionTreeIDs,
   splitPinned,
   togglePin,
+  togglePins,
+  toggleSelection,
   visibleSessions,
   type SidebarProject,
   type SidebarSession,
@@ -73,6 +76,53 @@ describe("togglePin", () => {
 
   test("appends so the newest pin lands last", () => {
     expect(togglePin(["a"], "b")).toEqual(["a", "b"])
+  })
+})
+
+describe("togglePins", () => {
+  test("pins every key when none are pinned", () => {
+    expect(togglePins([], ["a", "b"])).toEqual(["a", "b"])
+  })
+
+  test("unpins every key when all are pinned", () => {
+    expect(togglePins(["a", "b"], ["a", "b"])).toEqual([])
+  })
+
+  test("pins the selection when only some are pinned", () => {
+    expect(togglePins(["a"], ["a", "b"])).toEqual(["a", "b"])
+  })
+
+  test("keeps unrelated pins and appends", () => {
+    expect(togglePins(["x"], ["a"])).toEqual(["x", "a"])
+  })
+
+  test("no-op on an empty batch", () => {
+    expect(togglePins(["a"], [])).toEqual(["a"])
+  })
+})
+
+describe("toggleSelection", () => {
+  test("adds and removes a key", () => {
+    expect(toggleSelection([], "a")).toEqual(["a"])
+    expect(toggleSelection(["a", "b"], "a")).toEqual(["b"])
+  })
+})
+
+describe("selectionRange", () => {
+  test("selects the span between anchor and key", () => {
+    expect(selectionRange(["a", "b", "c", "d"], "a", "c")).toEqual(["a", "b", "c"])
+  })
+
+  test("works backwards from the anchor", () => {
+    expect(selectionRange(["a", "b", "c", "d"], "d", "b")).toEqual(["b", "c", "d"])
+  })
+
+  test("falls back to the key without an anchor", () => {
+    expect(selectionRange(["a", "b"], undefined, "b")).toEqual(["b"])
+  })
+
+  test("falls back to the key when the anchor is unknown", () => {
+    expect(selectionRange(["a", "b"], "gone", "b")).toEqual(["b"])
   })
 })
 

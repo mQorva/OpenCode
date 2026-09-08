@@ -19,7 +19,12 @@ function PinIcon(props: { filled?: boolean }) {
 }
 
 function SessionMenuItems(props: {
-  pinned: boolean
+  /** True when the menu acts on a multi-selection — only the batch actions are shown. */
+  multi: boolean
+  /** Size of the multi-selection, used for the batch delete label. */
+  multiCount: number
+  /** All target rows are pinned → the pin entry reads "unpin". */
+  allPinned: boolean
   onRename: () => void
   onMarkUnread: () => void
   onTogglePin: () => void
@@ -32,19 +37,25 @@ function SessionMenuItems(props: {
 
   return (
     <>
-      <MenuV2.Item onSelect={props.onRename}>{language.t("sidebarLayout.rename")}</MenuV2.Item>
+      <Show when={!props.multi}>
+        <MenuV2.Item onSelect={props.onRename}>{language.t("sidebarLayout.rename")}</MenuV2.Item>
+        <MenuV2.Item onSelect={props.onCopyTitle}>{language.t("sidebarLayout.copyTitle")}</MenuV2.Item>
+        <MenuV2.Item onSelect={props.onCopyID}>{language.t("sidebarLayout.copyID")}</MenuV2.Item>
+        <MenuV2.Item onSelect={props.onCopyProject}>{language.t("sidebarLayout.copyProject")}</MenuV2.Item>
+        <MenuV2.Separator />
+      </Show>
       <MenuV2.Item onSelect={props.onMarkUnread}>{language.t("sidebarLayout.markUnread")}</MenuV2.Item>
       <MenuV2.Item onSelect={props.onTogglePin}>
-        <Show when={props.pinned} fallback={language.t("sidebarLayout.pin")}>
+        <Show when={props.allPinned} fallback={language.t("sidebarLayout.pin")}>
           {language.t("sidebarLayout.unpin")}
         </Show>
       </MenuV2.Item>
       <MenuV2.Separator />
-      <MenuV2.Item onSelect={props.onCopyTitle}>{language.t("sidebarLayout.copyTitle")}</MenuV2.Item>
-      <MenuV2.Item onSelect={props.onCopyID}>{language.t("sidebarLayout.copyID")}</MenuV2.Item>
-      <MenuV2.Item onSelect={props.onCopyProject}>{language.t("sidebarLayout.copyProject")}</MenuV2.Item>
-      <MenuV2.Separator />
-      <MenuV2.Item onSelect={props.onDelete}>{language.t("common.delete")}</MenuV2.Item>
+      <MenuV2.Item onSelect={props.onDelete}>
+        <Show when={props.multi} fallback={language.t("common.delete")}>
+          {language.t("session.delete.buttonMultiple", { count: props.multiCount })}
+        </Show>
+      </MenuV2.Item>
     </>
   )
 }
@@ -68,6 +79,12 @@ export function SessionItem(props: {
   active: boolean
   pinned: boolean
   unread: boolean
+  /** Whether this row is part of a multi-selection; shows the check marker. */
+  selected?: boolean
+  /** Size of the multi-selection this row belongs to — drives the context menu and row actions. */
+  selectionCount?: number
+  /** All selected rows are pinned; drives the pin label in the selection context menu. */
+  selectionAllPinned?: boolean
   attention: Accessor<"permission" | "question" | "missing" | undefined>
   working: Accessor<boolean>
   indent?: boolean
@@ -80,8 +97,12 @@ export function SessionItem(props: {
   onCopyID: () => void
   onCopyProject: () => void
   canDrop: (source: string, target: string) => boolean
+  onToggleSelect?: () => void
+  onSelectRange?: () => void
+  onContextMenu?: () => void
 }) {
   const language = useLanguage()
+  const multi = () => !!props.selected && (props.selectionCount ?? 1) > 1
   const title = () => {
     if (props.entry.missing) return language.t("sidebarLayout.sessionMissing")
     const value = props.entry.session.title?.trim()
@@ -138,6 +159,7 @@ export function SessionItem(props: {
           droppable(el)
         }}
         data-drop={dropActive() ? "" : undefined}
+        onContextMenuCapture={props.onContextMenu}
         classList={{
           "opacity-50": !!props.dragID && draggable.isActiveDraggable,
           "group/session relative w-full min-w-0 h-8 flex items-center rounded-lg text-[13px] font-[440] leading-4 tracking-[-0.04px] transition-colors outline-none": true,
@@ -145,8 +167,9 @@ export function SessionItem(props: {
           "pl-8": props.indent,
           "pr-1": true,
           "bg-v2-background-bg-layer-02 text-text-base hover:text-text-strong": props.active,
+          "bg-v2-background-bg-layer-02 text-text-strong": props.selected,
           "text-text-base hover:bg-v2-background-bg-layer-02/60 hover:text-text-strong focus-within:bg-v2-background-bg-layer-02/60":
-            !props.active,
+            !props.active && !props.selected,
         }}
       >
         {/* Status column left, in the same leading column as the project folder icon. In the
@@ -161,43 +184,43 @@ export function SessionItem(props: {
             }}
           >
             <Show when={props.attention()}>
-              {(attention) => (
-                <TooltipV2 value={language.t(attentionLabel(attention()))} placement="top">
-                  <span
-                    class={`shrink-0 flex items-center ${
-                      attention() === "missing" ? "text-icon-critical-base" : "text-icon-warning-base"
-                    }`}
-                    aria-label={language.t(attentionLabel(attention()))}
-                  >
-                    <Icon name={attentionIcon(attention())} size="small" />
-                  </span>
-                </TooltipV2>
-              )}
-            </Show>
-            <Show when={!props.attention()}>
-              <Show
-                when={props.working()}
-                fallback={
-                  <Show
-                    when={props.unread}
-                    fallback={
-                      <Show when={props.pinned}>
-                        <span class="text-icon-weak" aria-hidden="true">
-                          <PinIcon filled />
-                        </span>
-                      </Show>
-                    }
-                  >
+                {(attention) => (
+                  <TooltipV2 value={language.t(attentionLabel(attention()))} placement="top">
                     <span
-                      class="size-1.5 rounded-full bg-v2-icon-icon-accent"
-                      aria-label={language.t("sidebarLayout.unread")}
-                    />
-                  </Show>
-                }
-              >
-                <Spinner class="size-3.5" />
+                      class={`shrink-0 flex items-center ${
+                        attention() === "missing" ? "text-icon-critical-base" : "text-icon-warning-base"
+                      }`}
+                      aria-label={language.t(attentionLabel(attention()))}
+                    >
+                      <Icon name={attentionIcon(attention())} size="small" />
+                    </span>
+                  </TooltipV2>
+                )}
               </Show>
-            </Show>
+              <Show when={!props.attention()}>
+                <Show
+                  when={props.working()}
+                  fallback={
+                    <Show
+                      when={props.unread}
+                      fallback={
+                        <Show when={props.pinned}>
+                          <span class="text-icon-weak" aria-hidden="true">
+                            <PinIcon filled />
+                          </span>
+                        </Show>
+                      }
+                    >
+                      <div
+                        class="shrink-0 size-2 rounded-full bg-v2-icon-icon-accent"
+                        aria-label={language.t("sidebarLayout.unread")}
+                      />
+                    </Show>
+                  }
+                >
+                  <Spinner class="size-3.5" />
+                </Show>
+              </Show>
           </div>
         </Show>
 
@@ -207,7 +230,19 @@ export function SessionItem(props: {
             <TooltipV2 value={title()} placement="right" class="min-w-0 h-full flex-1">
               <button
                 type="button"
-                onClick={props.onSelect}
+                onClick={(event) => {
+                  if (props.onToggleSelect && (event.ctrlKey || event.metaKey)) {
+                    event.preventDefault()
+                    props.onToggleSelect()
+                    return
+                  }
+                  if (props.onSelectRange && event.shiftKey) {
+                    event.preventDefault()
+                    props.onSelectRange()
+                    return
+                  }
+                  props.onSelect()
+                }}
                 class="min-w-0 h-full w-full flex items-center gap-2 text-left outline-none"
                 aria-current={props.active ? "page" : undefined}
               >
@@ -270,7 +305,9 @@ export function SessionItem(props: {
       <MenuV2.Context.Portal>
         <MenuV2.Context.Content>
           <SessionMenuItems
-            pinned={props.pinned}
+            multi={multi()}
+            multiCount={props.selectionCount ?? 1}
+            allPinned={props.selectionAllPinned ?? props.pinned}
             onRename={beginRename}
             onMarkUnread={props.onMarkUnread}
             onTogglePin={props.onTogglePin}
