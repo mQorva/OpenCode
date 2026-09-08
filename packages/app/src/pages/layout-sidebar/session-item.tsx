@@ -149,6 +149,58 @@ export function SessionItem(props: {
             !props.active,
         }}
       >
+        {/* Status column left, in the same leading column as the project folder icon. In the
+            indent it sits under that folder; prose sessions get the same leading column inline.
+            It stays visible on hover, the row actions live on the right. */}
+        <Show when={!editing()}>
+          <div
+            classList={{
+              "flex w-4 items-center justify-center": true,
+              "absolute inset-y-0 left-2": props.indent,
+              "shrink-0 mr-2": !props.indent,
+            }}
+          >
+            <Show when={props.attention()}>
+              {(attention) => (
+                <TooltipV2 value={language.t(attentionLabel(attention()))} placement="top">
+                  <span
+                    class={`shrink-0 flex items-center ${
+                      attention() === "missing" ? "text-icon-critical-base" : "text-icon-warning-base"
+                    }`}
+                    aria-label={language.t(attentionLabel(attention()))}
+                  >
+                    <Icon name={attentionIcon(attention())} size="small" />
+                  </span>
+                </TooltipV2>
+              )}
+            </Show>
+            <Show when={!props.attention()}>
+              <Show
+                when={props.working()}
+                fallback={
+                  <Show
+                    when={props.unread}
+                    fallback={
+                      <Show when={props.pinned}>
+                        <span class="text-icon-weak" aria-hidden="true">
+                          <PinIcon filled />
+                        </span>
+                      </Show>
+                    }
+                  >
+                    <span
+                      class="size-1.5 rounded-full bg-v2-icon-icon-accent"
+                      aria-label={language.t("sidebarLayout.unread")}
+                    />
+                  </Show>
+                }
+              >
+                <Spinner class="size-3.5" />
+              </Show>
+            </Show>
+          </div>
+        </Show>
+
         <Show
           when={editing()}
           fallback={
@@ -186,7 +238,7 @@ export function SessionItem(props: {
         </Show>
 
         <Show when={!editing()}>
-          {/* Actions replace the status marker on hover — the row is too narrow for both. */}
+          {/* Row actions on the right; the status column lives on the left and stays visible. */}
           <div class="shrink-0 items-center hidden group-hover/session:flex group-focus-within/session:flex">
             <TooltipV2
               value={props.pinned ? language.t("sidebarLayout.unpin") : language.t("sidebarLayout.pin")}
@@ -213,49 +265,6 @@ export function SessionItem(props: {
               />
             </TooltipV2>
           </div>
-
-          <Show when={props.attention()}>
-            {(attention) => (
-              <TooltipV2 value={language.t(attentionLabel(attention()))} placement="top">
-                <span
-                  class={`shrink-0 px-1 flex items-center ${
-                    attention() === "missing" ? "text-icon-critical-base" : "text-icon-warning-base"
-                  }`}
-                  aria-label={language.t(attentionLabel(attention()))}
-                >
-                  <Icon name={attentionIcon(attention())} size="small" />
-                </span>
-              </TooltipV2>
-            )}
-          </Show>
-          <Show when={!props.attention()}>
-            <Show
-              when={props.working()}
-              fallback={
-                <span class="shrink-0 flex items-center group-hover/session:hidden group-focus-within/session:hidden">
-                  <Show
-                    when={props.unread}
-                    fallback={
-                      <Show when={props.pinned}>
-                        <span class="px-1 text-icon-weak" aria-hidden="true">
-                          <PinIcon filled />
-                        </span>
-                      </Show>
-                    }
-                  >
-                    <span
-                      class="mx-1 size-1.5 rounded-full bg-v2-icon-icon-accent"
-                      aria-label={language.t("sidebarLayout.unread")}
-                    />
-                  </Show>
-                </span>
-              }
-            >
-              <span class="shrink-0 px-1 group-hover/session:hidden group-focus-within/session:hidden">
-                <Spinner class="size-3.5" />
-              </span>
-            </Show>
-          </Show>
         </Show>
       </MenuV2.Context.Trigger>
       <MenuV2.Context.Portal>
