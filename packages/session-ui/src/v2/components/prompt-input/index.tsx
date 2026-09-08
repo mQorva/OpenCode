@@ -537,6 +537,7 @@ function PromptInputV2PermissionSelect(props: { control: PromptInputV2SelectCont
           class={`max-w-full justify-start ![font-weight:440] ${danger(current())}`}
           aria-label={i18n.t("ui.promptInput.choosePermission")}
           data-slot="prompt-input-permission-trigger"
+          data-permission={current()}
         >
           <IconV2 name={permissionIcon(current())} class="shrink-0" />
           <span class="truncate leading-5" data-slot="prompt-input-permission-label">

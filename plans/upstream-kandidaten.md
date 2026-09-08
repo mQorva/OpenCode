@@ -495,6 +495,28 @@ Sitzungs-IDs, die auf dieselbe Zeichenfolge enden.
 - `home-sessions-view.tsx` / `message-timeline.tsx` Titellokalisierung: erst nach Klärung des
   Titel-Themas (#4) und mit Upstream-i18n statt Fork-i18n denkbar.
 
+### Neue Kandidaten aus der Thread-/Sidebar-Runde (08.09.2026)
+
+Bewertet aus dem Commit `cc7610290b` (Thread-/Sidebar-Arbeit) und `746db9a933` (V2-Level).
+Einstufung nach Produktneutralität und Extraktionsaufwand gegen `upstream/dev` `d6855b6b47`.
+
+| # | Kandidat | Einstufung | Dateien | Vorbedingung / Tests |
+|---|---|---|---|---|
+| 41 | **A-Best** — Thinking-Heading bricht nicht mehr aus dem Thread aus (`truncate` + `overflow/ellipsis`) | `packages/session-ui/src/components/session-turn.css`, `session-turn.tsx` (`TextReveal truncate`), `packages/app/src/pages/session/timeline/message-timeline.tsx` | Mini-Issue „Ellipsis statt Umbruch" (Review-Issue), 3 isolierte Hunks; `truncate`/`data-truncate` existiert upstream bereits in `text-reveal.*` |
+| 42 | **B-Wertvoll — Bundle „Composer-Controls"** — umgebaute Modellwahl (`max-w-full`), Permission-Auswahl-Farbindikator (Vollzugriff rot am Trigger, `data-permission` + höhere Spezifität), Nutzungsanzeige, Container-Query-Kollaps bei schmalem Composer | `packages/session-ui/src/v2/components/prompt-input/index.tsx` + `prompt-input.css`, `packages/app/src/components/prompt-input-v2.tsx`, `packages/ui/src/i18n/de.ts` (Projekt-Zugriff) | **als Bundle**, nicht Einzel-PR; zusammen mit #44 (Skill-Lese) prüfen, weil beide an der Permission-Auswahl hängen; Design-Issue (Kollaps-Breiten, Farbsemantik) vorab |
+| 43 | **B** — `Project.remove` + `DELETE /project/:projectID` (Server-Teil) | `packages/opencode/src/project/project.ts`, `httpapi/groups/project.ts`, `handlers/project.ts` | kollidiert mit Upstreams `time_archived`-Archivmodell → Design-Gespräch; Frontend (Dialog, `removeProjectTree`-Fetch, i18n) bleibt D |
+| 44 | **B nach Grundentscheidung — im Bundle mit #42** — Skill als Lese-Tool (workspace-Stufe) | `packages/opencode/src/permission/level.ts` (fork-eigene Datei, Konzept `PermissionV1.Level` existiert upstream nicht) | übergeordnete Frage „Session-Level als upstream-Vertrag?"; Feature-Semantik; mit #42 gebündelt, da beide die Permission-Auswahl/Level-Stufen betreffen |
+| 45 | **B-Wertvoll — komplettes Railbar-Feature `session-navigation-ui`** (Message-Rail: Marker, Preview-Tooltip, Scrubbing, Hover-Verhalten) | `packages/app/src/pages/session/timeline/message-rail.{tsx,css}`, `message-rail-text.ts`, selektierte Hunks aus `message-timeline.tsx` | als eigenständiges Feature (Kandidat #29, `session-navigation-ui`), gegen `upstream/v2` blockiert; Hover-CSS-Fix nur im Verbund; Screenshots/Scroll-Sync/Responsive ergänzen |
+| — | **D** — kompletter Punkt 2/3-Frontend | `sidebar.tsx` Dialog, `layout.tsx` `removeProjectTree`, `sidebarLayout.*`-i18n | mQorva-/Sidebar-seitig |
+| — | **D** — V2-Level-Block (`Session.Info.permissionLevel`, `levelRules`, `session.update` PATCH, `SessionV2.update`) | `schema/session.ts`, `core/permission.ts`, `protocol/groups/session.ts`, `server/handlers/session.ts`, `core/session.ts`, DB-Migration + `session/sql.ts` | fork-eigenes Session-Level-Konzept; upstream modelliert über Auto-Accept statt Session-Level |
+| — | **Duplikat** — Permission-Dedup (Punkt 5) | `opencode/src/permission/index.ts` + Tests | bereits als fremder PR #42244 offen → nicht neu stellen, ggf. auf #42244 aufspringen |
+
+Nächste Schritte für die neu bewerteten Kandidaten: #41 als erster A-Best-PR (Issue anlegen + Branch
+`thinking-heading-truncate` frisch von `upstream/dev`); #42+#44 als gemeinsames Bundle
+`composer-permission-controls` per Design-Issue vorbereiten; #43 durch Design-Gespräch (Archiv vs.
+Löschen); #45 = komplettes Railbar-Feature `session-navigation-ui` (gegen v2 blockiert); die
+V2-/Frontend-Teile bleiben bis zur v2-Übernahme bzw. Grundsatzfrage im Fork.
+
 ## Queue-Abweichung wird durch `v2` überholt
 
 Auf `upstream/dev` existiert der Typ `followup: "queue" | "steer"`, aber drei Stellen erzwingen

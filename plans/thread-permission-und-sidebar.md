@@ -57,8 +57,8 @@ Level-Skill-Tests), `app`-Layout-/Sidebar-Tests grün.
 **Stand:** Die rote Kennzeichnung für `"full"` existiert aktuell nur im Permission-Selektor des Prompt-Inputs:
 `packages/session-ui/src/v2/components/prompt-input/index.tsx` Z. 514–572 (`const danger = (id) => id === "full" ? "text-v2-state-fg-danger" : ""`). In der Sidebar (`packages/app/src/pages/layout-sidebar/session-item.tsx`), im Session-Header und in Messages gibt es keine Modus-Darstellung.
 
-**Fix (Entscheidung: Composer-Footer):**
-- **Bereits umgesetzt (keine Codeänderung nötig):** Der Permission-Trigger in `packages/session-ui/src/v2/components/prompt-input/index.tsx` Z. 514–572 (Default `"workspace"` Z. 22) färbt den Trigger-Button bei `full` bereits dauerhaft rot: `danger(current())` → `text-v2-state-fg-danger` (Z. 534/556/558). Das Schema existiert in `packages/ui/src/v2/styles/theme.css:74`. Der Indikator ist also auch ohne geöffnetes Dropdown dauerhaft sichtbar – damit ist der Composer-Footer-Indikator abgedeckt.
+**Fix (Entscheidung: Composer-Footer), umgesetzt 08.09.2026:**
+- Der Permission-Trigger in `packages/session-ui/src/v2/components/prompt-input/index.tsx` (`PromptInputV2PermissionSelect`) trägt bei `full` bereits `danger(current())` → `text-v2-state-fg-danger`. **Das war zunächst wirkungslos:** `ButtonV2` mit `variant="ghost-muted"` setzt `color: var(--v2-text-text-muted)` mit höherer Selektorspezifität (button-v2.css:233) und überschrieb die Tailwind-Klasse. → **Echter Fix:** Der Trigger trägt jetzt `data-permission={current()}`; die neue Regel `[data-component="button-v2"][data-slot="prompt-input-permission-trigger"][data-permission="full"] { color: var(--v2-state-fg-danger); }` in `prompt-input.css` hat höhere Spezifität und färbt Label/Icon/Chevron dauerhaft rot. Damit ist der Indikator ohne geöffnetes Dropdown sichtbar.
 
 ---
 
@@ -175,9 +175,9 @@ nicht schrumpfende linke Gruppe den rechten Teil (inkl. Submit) über den rechte
 **Fix-Kandidaten:**
 1. **Problem A (entschieden):** `skill` wie ein Lese-Tool behandeln – still in der `workspace`-Stufe, Frage-Dialoge bleiben nur bei nicht ausreichenden Rechten (Folge-Aktionen behalten ihre Abfragen).
 2. **Problem B (entfällt):** keine vierte Stufe einführen; bei 3 Stufen bleiben.
-3. **Problem C (Namensgebung):** „Workspace-Zugriff" klingt projektsemantisch komisch – IST jedoch nicht Gegenstand dieser Entscheidung. Vorschlag unverändert: Labels/Beschreibungen überarbeiten, ohne interne Level-IDs zu ändern (Kompatibilität). Nur deutsche Übersetzung anpassen, Source-English unangetastet (`de.ts:222-224`), Entscheidung zur Namensgebung in Punkt 9 offen/optional.
+3. **Problem C (Namensgebung) — umgesetzt 08.09.2026:** „Workspace-Zugriff" passte nicht zur Projektsprache. Deutsche Labels in `packages/ui/src/i18n/de.ts`: `workspace` = „Projekt-Zugriff" (statt „Workspace-Zugriff"), Beschreibung = „Im Projekt frei arbeiten. Nur bei Dateien außerhalb und beim Lesen von .env-Dateien nachfragen."; `full`-Beschreibung: „… auch nicht bei Dateien außerhalb **des Projekts** …". Interne Level-IDs `ask`/`workspace`/`full` blieben (Kompatibilität). Die englischen Source-Texte (`en.ts`) bleiben gemäß AGENTS.md unangetastet.
 
-**Entscheidungspunkt abschließend geklärt:** Es bleibt bei **3 Stufen**; Skill-Zugriff wird wie `read`-Tools still behandelt. Kein neues Level, kein Skill-`danger`-Flag, keine neue Level-ID. Offen bleibt nur die optionale Überarbeitung der Labels (Problem C — „Workspace-Zugriff" → projekteinschlägige Benennung) und die `skill`-Konfigurierbarkeit bei der Implementierung.
+**Entscheidungspunkt abschließend geklärt:** Es bleibt bei **3 Stufen**; Skill-Zugriff wird wie `read`-Tools still behandelt. Kein neues Level, kein Skill-`danger`-Flag, keine neue Level-ID. Die Label-Überarbeitung (Problem C) ist umgesetzt (de.ts, „Projekt-Zugriff"). Offen bleibt nur die `skill`-Konfigurierbarkeit bei der Implementierung.
 
 **Verifikation:** Permissions-Matrix pro Tool/Kontext durchtesten; Skill-Zugriff im Workspace-Modus ohne unnötige Abfrage; **3 Stufen** bestätigen (ask/workspace/full); Frage-Dialoge erscheinen weiterhin bei nicht ausreichenden Rechten (außerhalb Projekt schreiben, `.env`); i18n deutsch/englisch (falls Labels überarbeitet werden).
 
@@ -194,7 +194,7 @@ nicht schrumpfende linke Gruppe den rechten Teil (inkl. Submit) über den rechte
 2. **Punkt 4:** Rote Vollzugriff-Kennzeichnung als dauerhaft sichtbarer Indikator im **Composer-Footer**.
 3. **Punkt 5:** Nur serverseitige Deduplizierung über PR #42244 – **keine** zusätzliche sequenzielle Warteschlange.
 6. **Punkt 6 (Railbar):** Fix gesetzt; bleibt **mQorva-eigen** – kein PR jetzt, später als Kandidat im `session-navigation-ui`-Kontext (beeinflusst Seitenlayout-Modus nicht).
-9. **Punkt 9 (Zugriffsstufen):** **Entschieden – bei 3 Stufen bleiben** (`ask`/`workspace`/`full`). Skill wird wie ein Lese-Tool behandelt (still in der Workspace-Stufe); Frage-Dialoge bleiben nur bei nicht ausreichenden Rechten. Keine vierte Stufe, kein Skill-`danger`-Flag. Offen/optional: Labels überarbeiten („Workspace-Zugriff" → projekteinschlägig).
+9. **Punkt 9 (Zugriffsstufen):** **Entschieden – bei 3 Stufen bleiben** (`ask`/`workspace`/`full`). Skill wird wie ein Lese-Tool behandelt (still in der Workspace-Stufe); Frage-Dialoge bleiben nur bei nicht ausreichenden Rechten. Keine vierte Stufe, kein Skill-`danger`-Flag. Label-Überarbeitung umgesetzt („Projekt-Zugriff", de.ts).
 
 ## Verifikation
 

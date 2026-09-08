@@ -47,3 +47,13 @@
     display: none;
   }
 }
+
+/* Full access draws the whole trigger in the warning colour. The trigger is a
+   ghost-muted ButtonV2, whose base rule sits on `color: var(--v2-text-text-muted)`;
+   a tailwind utility alone would lose that fight. Match the higher specificity
+   here (attribute + slot + state) so the danger tint survives on the label, icon
+   and chevron alike — the permission selector is the always-visible indicator for
+   "this session will never ask". */
+[data-component="button-v2"][data-slot="prompt-input-permission-trigger"][data-permission="full"] {
+  color: var(--v2-state-fg-danger);
+}

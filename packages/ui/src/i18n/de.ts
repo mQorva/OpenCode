@@ -219,12 +219,12 @@ export const dict = {
   "ui.promptInput.permission.ask": "Genehmigung anfordern",
   "ui.promptInput.permission.ask.description":
     "Vor jeder Dateiänderung, jedem Befehl und jedem Netzzugriff nachfragen.",
-  "ui.promptInput.permission.workspace": "Workspace-Zugriff",
+  "ui.promptInput.permission.workspace": "Projekt-Zugriff",
   "ui.promptInput.permission.workspace.description":
-    "Im Workspace frei arbeiten. Nur bei Dateien außerhalb und beim Lesen von .env-Dateien nachfragen.",
+    "Im Projekt frei arbeiten. Nur bei Dateien außerhalb und beim Lesen von .env-Dateien nachfragen.",
   "ui.promptInput.permission.full": "Vollzugriff",
   "ui.promptInput.permission.full.description":
-    "Nie nachfragen — auch nicht bei Dateien außerhalb des Workspace oder bei Zugangsdaten.",
+    "Nie nachfragen — auch nicht bei Dateien außerhalb des Projekts oder bei Zugangsdaten.",
   "ui.promptInput.send": "Senden",
   "ui.promptInput.stop": "stoppen",
   "ui.tabs.close": "Tab schließen",
