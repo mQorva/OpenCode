@@ -1169,6 +1169,7 @@ export const dict = {
   "desktop.contextMenu.copyImage": "Bild kopieren",
   "desktop.contextMenu.saveImageAs": "Bild speichern unter…",
   "desktop.contextMenu.inspect": "Element untersuchen",
+  "desktop.taskbar.badge": "OpenCode — {{count}} ungelesene Benachrichtigungen",
   "desktop.menu.toggleSidebar": "Seitenleiste umschalten",
   "desktop.menu.toggleTerminal": "Terminal umschalten",
   "desktop.menu.toggleFileTree": "Dateibaum umschalten",

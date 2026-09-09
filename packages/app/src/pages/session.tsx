@@ -83,12 +83,14 @@ import {
   shouldShowFileTree,
 } from "@/pages/session/helpers"
 import { createCommandPaletteFileOpener } from "@/components/command-palette"
+import { SESSION_OPEN_FILE_TAB } from "@/context/layout-tabs"
 import { OpenFileProvider } from "@opencode-ai/session-ui/context/open-file"
 import { MessageTimeline } from "@/pages/session/timeline/message-timeline"
 import { createTimelineModel } from "@/pages/session/timeline/model"
 import { type DiffStyle, SessionReviewTab, type SessionReviewTabProps } from "@/pages/session/review-tab"
 import { useSessionLayout } from "@/pages/session/session-layout"
 import { restorePromptModel, syncPromptModel, syncSessionModel } from "@/pages/session/session-model-helpers"
+import { pathKey } from "@/utils/path-key"
 import {
   clampSessionPanelWidth,
   SESSION_PANEL_WIDTH_MIN,
@@ -464,9 +466,67 @@ export default function Page() {
   // kompletten Dateiinhalt gewartet, wodurch nach dem Klick sekundenlang nichts geschah.
   // Der `loaded`-Wächter schützte dabei vor nichts: eine fehlende Datei liefert vom
   // Server HTTP 200 mit leerem Inhalt, gilt also ebenfalls als geladen.
+  //
+  // Ein im Chat angeklickter Pfad kann auch ein Verzeichnis sein. Das nicht als Datei
+  // laden — der Server liest keine Verzeichnisse und antwortet mit einem generischen
+  // 500er, dessen Fehler-Tab beim Chat-Wechsel immer wieder neu lädt. Stattdessen den
+  // Ordner im Datei-Manager des Systems öffnen bzw. im Datei-Browser rechts aufklappen.
   const openChatFilePath = (input: string) => {
     const path = file.normalize(input.replace(/\\/g, "/"))
     if (!path) return
+    void openChatPath(path)
+  }
+
+  const chatPathKind = async (path: string) => {
+    const clean = path.replace(/\/+$/, "")
+    const slash = clean.lastIndexOf("/")
+    const parent = slash >= 0 ? clean.slice(0, slash) : ""
+    if (!file.tree.state(parent)?.loaded) await file.tree.list(parent)
+    const target = pathKey(path)
+    return file.tree.children(parent).find((node) => pathKey(node.path) === target)?.type
+  }
+
+  const revealChatDirectory = (path: string) => {
+    if (!view().reviewPanel.opened()) view().reviewPanel.open()
+    layout.fileTree.setTab("all")
+    void file.tree.expand(path)
+    tabs().previewTab(SESSION_OPEN_FILE_TAB)
+    tabs().setActive(SESSION_OPEN_FILE_TAB)
+  }
+
+  const openChatDirectory = (path: string) => {
+    // Einen versehentlich angelegten Datei-Tab für dieses Verzeichnis wieder schließen.
+    const stuck = tabs().all().find((tab) => file.pathFromTab(tab) === path)
+    if (stuck) tabs().close(stuck)
+
+    const clean = path.replace(/\/+$/, "")
+    const slash = clean.lastIndexOf("/")
+    const parent = slash >= 0 ? clean.slice(0, slash) : ""
+    const node = file.tree.children(parent).find((entry) => pathKey(entry.path) === pathKey(path))
+    const absolute = node?.absolute
+
+    if (absolute && platform.openPath) {
+      void platform.openPath(absolute).catch(() => revealChatDirectory(path))
+      return
+    }
+    if (absolute && platform.revealPath) {
+      void platform
+        .revealPath(absolute)
+        .then((revealed) => {
+          if (!revealed) revealChatDirectory(path)
+        })
+        .catch(() => revealChatDirectory(path))
+      return
+    }
+    revealChatDirectory(path)
+  }
+
+  const openChatPath = async (path: string) => {
+    const kind = await chatPathKind(path)
+    if (kind === "directory") {
+      openChatDirectory(path)
+      return
+    }
     openPaletteFile(path)
   }
 

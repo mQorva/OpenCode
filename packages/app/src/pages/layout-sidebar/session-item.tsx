@@ -166,8 +166,8 @@ export function SessionItem(props: {
           "pl-2": !props.indent,
           "pl-8": props.indent,
           "pr-1": true,
-          "bg-v2-background-bg-layer-02 text-text-base hover:text-text-strong": props.active,
           "bg-v2-background-bg-layer-02 text-text-strong": props.selected,
+          "bg-v2-background-bg-layer-02 text-text-base hover:text-text-strong": props.active && !props.selected,
           "text-text-base hover:bg-v2-background-bg-layer-02/60 hover:text-text-strong focus-within:bg-v2-background-bg-layer-02/60":
             !props.active && !props.selected,
         }}

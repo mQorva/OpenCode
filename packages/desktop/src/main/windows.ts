@@ -53,6 +53,7 @@ let relaunchHandler = () => {
 const titlebarThemes = new WeakMap<BrowserWindow, Partial<TitlebarTheme>>()
 const pinchZoomEnabled = new WeakMap<BrowserWindow, boolean>()
 const windowIDs = new WeakMap<BrowserWindow, string>()
+const taskbarBadges = new WeakMap<BrowserWindow, { count: number; image?: string }>()
 const registry = createWindowRegistry<BrowserWindow>({
   read: () => getStore().get(WINDOW_IDS_KEY),
   write: (ids) => getStore().set(WINDOW_IDS_KEY, ids),
@@ -165,6 +166,44 @@ export function setDockIcon() {
   if (!icon.isEmpty()) app.dock?.setIcon(icon)
 }
 
+const badgeDescription = (count: number) => nativeT("desktop.taskbar.badge", { count })
+
+// The badge is only shown while the window is hidden (minimized or otherwise not visible),
+// matching the usual unread-badge behavior without cluttering a focused window.
+function updateTaskbarBadge(win: BrowserWindow) {
+  if (win.isDestroyed()) return
+  const badge = taskbarBadges.get(win)
+  const count = badge?.count ?? 0
+  const shown = count > 0 && !win.isVisible()
+  const image = badge?.image
+
+  if (win.webContents.isDestroyed()) return
+
+  if (process.platform === "win32") {
+    if (shown && image) win.setOverlayIcon(nativeImage.createFromDataURL(image), badgeDescription(count))
+    else win.setOverlayIcon(null, badgeDescription(count))
+    return
+  }
+  if (process.platform === "darwin") {
+    app.dock?.setBadge(shown ? (count > 99 ? "99+" : String(count)) : "")
+  }
+}
+
+export function setTaskbarBadge(win: BrowserWindow, badge: { count: number; image?: string }) {
+  taskbarBadges.set(win, badge)
+  updateTaskbarBadge(win)
+}
+
+function wireTaskbarBadge(win: BrowserWindow) {
+  const refresh = () => updateTaskbarBadge(win)
+  win.on("focus", refresh)
+  win.on("blur", refresh)
+  win.on("minimize", refresh)
+  win.on("restore", refresh)
+  win.on("show", refresh)
+  win.on("hide", refresh)
+}
+
 export function createMainWindow(id: string = randomUUID()) {
   const state = windowState({
     file: windowStateFile(id),
@@ -223,6 +262,7 @@ export function createMainWindow(id: string = randomUUID()) {
   state.manage(win)
   registerWindow(win, id)
   wireFullscreen(win)
+  wireTaskbarBadge(win)
   loadWindow(win, "index.html")
   wireZoom(win)
 

@@ -1064,7 +1064,10 @@ export function MessageTimeline(props: {
   }
 
   const assistantCopyPartID = (userMessageID: string) => {
-    if (workingTurn(userMessageID)) return null
+    // The copy/meta row (with the turn duration) only appears once the whole
+    // session has come to rest: showing it after a single step would place it
+    // mid-work, before the next reasoning turn.
+    if (sessionStatus().type !== "idle") return null
     const messages = assistantMessagesByParent().get(userMessageID) ?? emptyAssistantMessages
 
     for (let i = messages.length - 1; i >= 0; i--) {

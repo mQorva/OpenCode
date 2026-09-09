@@ -190,6 +190,7 @@ export const { use: useNotification, provider: NotificationProvider } = createSi
     return {
       ready: () => selected().ready(),
       ensureServerState: ensure,
+      totalUnseen: () => selected().totalUnseen(),
       session: {
         all: (session: string) => selected().session.all(session),
         unseen: (session: string) => selected().session.unseen(session),
@@ -415,6 +416,9 @@ function createServerNotificationState(input: {
 
   return {
     ready,
+    totalUnseen() {
+      return Object.values(index.session.unseenCount).reduce((sum, count) => sum + count, 0)
+    },
     session: {
       all(session: string) {
         return index.session.all[session] ?? empty

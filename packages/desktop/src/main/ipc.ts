@@ -17,6 +17,7 @@ import {
   openExternalURL,
   openLocalFileURL,
   setPinchZoomEnabled,
+  setTaskbarBadge,
   setTitlebar,
   updateTitlebar,
 } from "./windows"
@@ -296,6 +297,12 @@ export function registerIpcHandlers(deps: Deps) {
       checkForUpdates: () => void deps.showUpdater(),
       relaunch: deps.relaunch,
     })
+  })
+
+  ipcMain.handle("set-taskbar-badge", (event: IpcMainInvokeEvent, badge: { count: number; image?: string }) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    if (!win) return
+    setTaskbarBadge(win, badge)
   })
 }
 

@@ -102,6 +102,39 @@ function setLastActiveUrl(windowID: string, value: string) {
   } catch {}
 }
 
+// The OpenCode taskbar icon is white-and-blue, so the unread badge uses a warm coral disc
+// that stays legible on dark taskbars and against the blue icon. The disc hangs off the
+// bottom-right corner of the icon (partly outside it), which is where the OS places it.
+const TASKBAR_BADGE_SIZE = 64
+const TASKBAR_BADGE_CORAL = "#FF7A59"
+function taskbarBadgeImage(count: number) {
+  if (count <= 0) return undefined
+  const canvas = document.createElement("canvas")
+  canvas.width = TASKBAR_BADGE_SIZE
+  canvas.height = TASKBAR_BADGE_SIZE
+  const ctx = canvas.getContext("2d")
+  if (!ctx) return undefined
+
+  const center = TASKBAR_BADGE_SIZE - 17
+  const radius = 17
+  ctx.beginPath()
+  ctx.arc(center, center, radius, 0, Math.PI * 2)
+  ctx.fillStyle = TASKBAR_BADGE_CORAL
+  ctx.fill()
+  ctx.strokeStyle = "rgba(255,255,255,0.92)"
+  ctx.lineWidth = 3
+  ctx.stroke()
+
+  const label = count > 99 ? "99+" : String(count)
+  ctx.fillStyle = "#fff"
+  ctx.font = `700 ${count > 9 ? 20 : 24}px system-ui, sans-serif`
+  ctx.textAlign = "center"
+  ctx.textBaseline = "middle"
+  ctx.fillText(label, center, center + 1)
+
+  return canvas.toDataURL("image/png")
+}
+
 function DesktopMemoryRouter(props: BaseRouterProps & { windowID: string }) {
   const history = createMemoryHistory()
   const initialUrl = getLastActiveUrl(props.windowID)
@@ -233,6 +266,11 @@ const createPlatform = (windowState: DesktopWindowState): Platform => {
     },
     async revealPath(path: string) {
       return window.api.revealPath(path)
+    },
+
+    setTaskbarBadge: (count) => {
+      const image = taskbarBadgeImage(count)
+      void window.api.setTaskbarBadge(image ? { count, image } : { count })
     },
 
     storage,

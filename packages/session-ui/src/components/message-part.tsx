@@ -5,7 +5,6 @@ import {
   createSignal,
   For,
   Match,
-  on,
   onMount,
   Show,
   Switch,
@@ -1711,6 +1710,10 @@ PART_MAPPING["text"] = function TextPartDisplay(props) {
     return match?.models?.[message.modelID]?.name ?? message.modelID
   })
 
+  const streaming = createMemo(
+    () => props.message.role === "assistant" && typeof (props.message as AssistantMessage).time.completed !== "number",
+  )
+
   const duration = createMemo(() => {
     if (props.message.role !== "assistant") return ""
     const message = props.message as AssistantMessage
@@ -1720,8 +1723,8 @@ PART_MAPPING["text"] = function TextPartDisplay(props) {
         ? props.turnDurationMs
         : typeof completed === "number"
           ? completed - message.time.created
-          : liveMs()
-    if (typeof ms !== "number" || !(ms >= 0)) return ""
+          : -1
+    if (!(ms >= 0)) return ""
     const total = Math.round(ms / 1000)
     if (total < 60) return i18n.t("ui.message.duration.seconds", { count: numfmt().format(total) })
     const hours = Math.floor(total / 3600)
@@ -1755,24 +1758,6 @@ PART_MAPPING["text"] = function TextPartDisplay(props) {
     return items.filter((x) => !!x).join(" \u00B7 ")
   })
 
-  const streaming = createMemo(
-    () => props.message.role === "assistant" && typeof (props.message as AssistantMessage).time.completed !== "number",
-  )
-  const [streamTick, setStreamTick] = createSignal(0)
-  createEffect(
-    on(streaming, (value) => {
-      if (!value) return
-      const timer = setInterval(() => setStreamTick((tick) => tick + 1), 1000)
-      onCleanup(() => clearInterval(timer))
-    }),
-  )
-  const liveMs = createMemo(() => {
-    if (!streaming()) return undefined
-    const start = (props.message as AssistantMessage).time.created
-    if (typeof start !== "number") return undefined
-    streamTick()
-    return Math.max(0, Date.now() - start)
-  })
   const text = () => readPartText(data.store.part_text_accum_delta, part())
   const isLastTextPart = createMemo(() => {
     const last = (data.store.part?.[props.message.id] ?? [])
@@ -1786,7 +1771,6 @@ PART_MAPPING["text"] = function TextPartDisplay(props) {
     if (typeof props.showAssistantCopyPartID === "string") return props.showAssistantCopyPartID === part().id
     return isLastTextPart()
   })
-  const showLiveMeta = createMemo(() => streaming() && isLastTextPart())
   const [copied, setCopied] = createSignal(false)
 
   const handleCopy = async () => {
@@ -1804,18 +1788,16 @@ PART_MAPPING["text"] = function TextPartDisplay(props) {
         <div data-slot="text-part-body">
           <PacedMarkdown text={text()} cacheKey={part().id} streaming={streaming()} />
         </div>
-        <Show when={showCopy() || showLiveMeta()}>
+        <Show when={showCopy()}>
           <div data-slot="text-part-copy-wrapper" data-interrupted={interrupted() ? "" : undefined}>
-            <Show when={showCopy()}>
-              <MessageActionButton
-                icon={copied() ? "check" : "copy"}
-                label={copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copyResponse")}
-                useV2={props.useV2Actions}
-                onMouseDown={(event) => event.preventDefault()}
-                onClick={handleCopy}
-                aria-label={copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copyResponse")}
-              />
-            </Show>
+            <MessageActionButton
+              icon={copied() ? "check" : "copy"}
+              label={copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copyResponse")}
+              useV2={props.useV2Actions}
+              onMouseDown={(event) => event.preventDefault()}
+              onClick={handleCopy}
+              aria-label={copied() ? i18n.t("ui.message.copied") : i18n.t("ui.message.copyResponse")}
+            />
             <Show when={meta()}>
               <span data-slot="text-part-meta" class="text-12-regular text-text-weak cursor-default">
                 {meta()}

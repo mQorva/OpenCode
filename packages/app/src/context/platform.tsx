@@ -117,6 +117,9 @@ type PlatformBase = {
   /** Run a desktop-only menu action from the app chrome */
   runDesktopMenuAction?(action: DesktopMenuAction): Promise<void> | void
 
+  /** Update the taskbar/dock badge with the number of unread notifications (desktop only) */
+  setTaskbarBadge?(count: number): void
+
   /** Check if an editor app exists (desktop only) */
   checkAppExists?(appName: string): Promise<boolean>
 

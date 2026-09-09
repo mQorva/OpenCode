@@ -41,6 +41,11 @@ export type FatalRendererError = {
   platform: string
   os?: string
 }
+export type TaskbarBadgePayload = {
+  count: number
+  /** Data URL of the badge overlay image rendered by the renderer (Windows) */
+  image?: string
+}
 
 export type ElectronAPI = {
   killSidecar: () => Promise<void>
@@ -108,6 +113,7 @@ export type ElectronAPI = {
   onZoomFactorChanged: (cb: (factor: number) => void) => () => void
   setTitlebar: (theme: TitlebarTheme) => Promise<void>
   runDesktopMenuAction: (action: DesktopMenuAction) => Promise<void>
+  setTaskbarBadge: (payload: TaskbarBadgePayload) => Promise<void>
   setBackgroundColor: (color: string) => Promise<void>
   exportDebugLogs: () => Promise<string>
   setForceFocus: (enabled: boolean) => Promise<void>

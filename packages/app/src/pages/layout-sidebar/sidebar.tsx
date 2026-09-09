@@ -149,35 +149,46 @@ function DraftItem(props: { draft: DraftTab; active: boolean; onSelect: () => vo
   const draggable = createDraggable(props.draft.draftID)
 
   return (
-    <div
-      use:draggable={draggable}
-      data-sidebar-row=""
-      classList={{
-        "group/draft relative w-full h-8 min-w-0 flex items-center rounded-lg pl-8 pr-1 text-[13px] font-[440] leading-4 tracking-[-0.04px] transition-colors": true,
-        "bg-v2-background-bg-layer-02 text-text-base hover:text-text-strong": props.active,
-        "text-text-base hover:bg-v2-background-bg-layer-02/60 hover:text-text-strong": !props.active,
-        "opacity-50": draggable.isActiveDraggable,
-      }}
-    >
-      <button
-        type="button"
-        onClick={props.onSelect}
-        class="min-w-0 h-full flex-1 text-left outline-none"
-        aria-current={props.active ? "page" : undefined}
+    <MenuV2.Context>
+      <MenuV2.Context.Trigger
+        as="div"
+        data-sidebar-row=""
+        ref={(el: HTMLElement) => draggable(el)}
+        classList={{
+          "group/draft relative w-full h-8 min-w-0 flex items-center rounded-lg pl-8 pr-1 text-[13px] font-[440] leading-4 tracking-[-0.04px] transition-colors outline-none": true,
+          "bg-v2-background-bg-layer-02 text-text-base hover:text-text-strong": props.active,
+          "text-text-base hover:bg-v2-background-bg-layer-02/60 hover:text-text-strong": !props.active,
+          "opacity-50": draggable.isActiveDraggable,
+        }}
       >
-        <SidebarMarquee>{language.t("sidebarLayout.draft")}</SidebarMarquee>
-      </button>
-      <TooltipV2 value={language.t("common.close")} placement="top">
-        <IconButtonV2
-          size="small"
-          variant="ghost-muted"
-          icon={<IconV2 name="xmark-small" size="small" />}
-          class="!size-7 shrink-0 rounded-md opacity-0 group-hover/draft:opacity-100 group-focus-within/draft:opacity-100"
-          onClick={props.onClose}
-          aria-label={language.t("common.close")}
-        />
-      </TooltipV2>
-    </div>
+        <button
+          type="button"
+          onClick={props.onSelect}
+          class="min-w-0 h-full flex-1 text-left outline-none"
+          aria-current={props.active ? "page" : undefined}
+        >
+          <SidebarMarquee>{language.t("sidebarLayout.draft")}</SidebarMarquee>
+        </button>
+        <TooltipV2 value={language.t("common.close")} placement="top">
+          <IconButtonV2
+            size="small"
+            variant="ghost-muted"
+            icon={<IconV2 name="xmark-small" size="small" />}
+            class="!size-7 shrink-0 rounded-md opacity-0 group-hover/draft:opacity-100 group-focus-within/draft:opacity-100"
+            onClick={props.onClose}
+            aria-label={language.t("common.close")}
+          />
+        </TooltipV2>
+      </MenuV2.Context.Trigger>
+      <MenuV2.Context.Portal>
+        <MenuV2.Context.Content>
+          {/* A draft is not a session yet, so the menu carries only the one action it really
+              has — closing the tab. Without a context menu the browser's default menu (copy,
+              inspect, ...) would pop up here instead. */}
+          <MenuV2.Item onSelect={props.onClose}>{language.t("common.close")}</MenuV2.Item>
+        </MenuV2.Context.Content>
+      </MenuV2.Context.Portal>
+    </MenuV2.Context>
   )
 }
 
@@ -489,8 +500,10 @@ export function Sidebar(props: { data: SidebarData }) {
     if (!entry.missing) notification.ensureServerState(server.key).session.markViewed(entry.session.id)
     const tab = tabs.addSessionTab({ server: entry.server, sessionId: entry.session.id })
     tabs.select(tab)
-    // Opening a session ends any multi-selection; the row click replaces it.
-    if (selection().keys.length > 0) setSelection({ keys: [] })
+    // The click is the primary interaction of the list and starts a fresh single selection that
+    // anchors the next shift-click range; it replaces any previous multi-selection like in any
+    // other list. Keeping the anchor is what makes "click A, shift-click B" select A..B.
+    setSelection({ block: blockOf(key), anchor: key, keys: [key] })
   }
 
   const toggle = (entry: SidebarSession, block?: string) => {

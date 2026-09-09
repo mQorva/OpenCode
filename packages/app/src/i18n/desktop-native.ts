@@ -324,6 +324,8 @@ export const DESKTOP_NATIVE_ENGLISH = {
   "desktop.contextMenu.copyImage": "Copy Image",
   "desktop.contextMenu.saveImageAs": "Save Image As…",
   "desktop.contextMenu.inspect": "Inspect Element",
+
+  "desktop.taskbar.badge": "OpenCode — {{count}} unread notifications",
 } as const
 
 export type DesktopNativeKey = keyof typeof DESKTOP_NATIVE_ENGLISH

@@ -332,7 +332,9 @@ export function SessionTurn(
   const showReasoningSummaries = createMemo(() => props.showReasoningSummaries ?? true)
 
   const assistantCopyPartID = createMemo(() => {
-    if (working()) return null
+    // Only show the copy/meta row (with the turn duration) once the whole
+    // session has come to rest, so it never lands between reasoning steps.
+    if (status().type !== "idle") return null
     return showAssistantCopyPartID() ?? null
   })
   const turnDurationMs = createMemo(() => {

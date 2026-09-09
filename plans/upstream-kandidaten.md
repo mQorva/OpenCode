@@ -506,15 +506,19 @@ Einstufung nach Produktneutralität und Extraktionsaufwand gegen `upstream/dev` 
 | 42 | **B-Wertvoll — Bundle „Composer-Controls"** — umgebaute Modellwahl (`max-w-full`), Permission-Auswahl-Farbindikator (Vollzugriff rot am Trigger, `data-permission` + höhere Spezifität), Nutzungsanzeige, Container-Query-Kollaps bei schmalem Composer | `packages/session-ui/src/v2/components/prompt-input/index.tsx` + `prompt-input.css`, `packages/app/src/components/prompt-input-v2.tsx`, `packages/ui/src/i18n/de.ts` (Projekt-Zugriff) | **als Bundle**, nicht Einzel-PR; zusammen mit #44 (Skill-Lese) prüfen, weil beide an der Permission-Auswahl hängen; Design-Issue (Kollaps-Breiten, Farbsemantik) vorab |
 | 43 | **B** — `Project.remove` + `DELETE /project/:projectID` (Server-Teil) | `packages/opencode/src/project/project.ts`, `httpapi/groups/project.ts`, `handlers/project.ts` | kollidiert mit Upstreams `time_archived`-Archivmodell → Design-Gespräch; Frontend (Dialog, `removeProjectTree`-Fetch, i18n) bleibt D |
 | 44 | **B nach Grundentscheidung — im Bundle mit #42** — Skill als Lese-Tool (workspace-Stufe) | `packages/opencode/src/permission/level.ts` (fork-eigene Datei, Konzept `PermissionV1.Level` existiert upstream nicht) | übergeordnete Frage „Session-Level als upstream-Vertrag?"; Feature-Semantik; mit #42 gebündelt, da beide die Permission-Auswahl/Level-Stufen betreffen |
-| 45 | **B-Wertvoll — komplettes Railbar-Feature `session-navigation-ui`** (Message-Rail: Marker, Preview-Tooltip, Scrubbing, Hover-Verhalten) | `packages/app/src/pages/session/timeline/message-rail.{tsx,css}`, `message-rail-text.ts`, selektierte Hunks aus `message-timeline.tsx` | als eigenständiges Feature (Kandidat #29, `session-navigation-ui`), gegen `upstream/v2` blockiert; Hover-CSS-Fix nur im Verbund; Screenshots/Scroll-Sync/Responsive ergänzen |
+| 45 | **B-Wertvolles — komplettes Railbar-Feature `session-navigation-ui`** (Message-Rail, Marker, Preview-Tooltip, Scrubbing, Hover-Verhalten) | `packages/app/src/pages/session/timeline/message-rail.{tsx,css}`, `message-rail-text.ts`, selektierte Hunks aus `message-timeline.tsx` | als eigenständiges Feature (Kandidat #29, `session-navigation-ui`), gegen `upstream/v2` blockiert; Hover-CSS-Fix nur im Verbund; Screenshots/Scroll-Sync/Responsive ergänzen |
+| 46 | **B, fork-only — vorgemerkt (09.09.2026)** — `ReferenceError: Cannot access 'liveMs' before initialization` beim Streaming einer Assistant-Antwort | `packages/session-ui/src/components/message-part.tsx` | Beobachtet als Runtime-Fehler im Fork. Diagnose: das in `bebd119fa4` eingebaute `liveMs`-Memo stand nach dem `duration`-Memo, das es eager auswertet (TDZ-Crash bei streaming Assistant-Text). Ein bloßes Arrays-Umordnen wurde als diagnostischer Eingriff nur im Arbeitsbaum versucht, nie committet. **Der aktuelle Code-Stand enthält den Live-Dauer-Block nicht mehr (die Live-Laufzeitanzeige wurde in einem parallelen Chat als Feature entfernt, `duration` nutzt wieder den `-1`-Fallback) — damit ist der Crash wirkungsmäßig auch ohne Reorder behoben.** Falls die Live-Dauer je neu eingebaut wird: `streaming`/`streamTick`/Effekt/`liveMs` ausdrücklich **vor** das `duration`-Memo setzen und den streaming-Pfad mutieren. Kein neuer Upstream-Kandidat |
+| 47 | **B, fork-only — vorgemerkt (09.09.2026)** — Chat-Inline-Pfad, der ein **Verzeichnis** ist, darf nicht als Datei geöffnet werden (Server `file.read` auf Verzeichnis → 500 „Unexpected server error"; der Fehler-Tab blieb rechts stehen und lud beim Chat-Wechsel erneut) | `packages/app/src/pages/session.tsx` (`openChatFilePath` → `chatPathKind`/`openChatDirectory`/`revealChatDirectory`) | Verzeichnisse werden im OS-Datei-Manager geöffnet (`platform.openPath`, Fallback `revealPath`), Web-Fallback klappt den Ordner im Datei-Browser rechts auf (`SESSION_OPEN_FILE_TAB` + `file.tree.expand`); ein versehentlich offener Datei-Tab desselben Pfads wird geschlossen. Erkennung über `file.list` des Elternverzeichnisses (Baum-Cache, `pathKey`-Vergleich) — ein Roundtrip nur bei unbekanntem Elternordner. `tsgo -b` exit 0 in `packages/app`; manuelle Gegenprobe (Desktop) steht aus |
 | — | **D** — kompletter Punkt 2/3-Frontend | `sidebar.tsx` Dialog, `layout.tsx` `removeProjectTree`, `sidebarLayout.*`-i18n | mQorva-/Sidebar-seitig |
 | — | **D** — V2-Level-Block (`Session.Info.permissionLevel`, `levelRules`, `session.update` PATCH, `SessionV2.update`) | `schema/session.ts`, `core/permission.ts`, `protocol/groups/session.ts`, `server/handlers/session.ts`, `core/session.ts`, DB-Migration + `session/sql.ts` | fork-eigenes Session-Level-Konzept; upstream modelliert über Auto-Accept statt Session-Level |
 | — | **Duplikat** — Permission-Dedup (Punkt 5) | `opencode/src/permission/index.ts` + Tests | bereits als fremder PR #42244 offen → nicht neu stellen, ggf. auf #42244 aufspringen |
 
-Nächste Schritte für die neu bewerteten Kandidaten: #41 als erster A-Best-PR (Issue anlegen + Branch
-`thinking-heading-truncate` frisch von `upstream/dev`); #42+#44 als gemeinsames Bundle
+Nächste Schritte für die neu bewerteten Kandidaten: #41 als erster A-Best-PR (Issue anlegen +
+Branch `thinking-heading-truncate` frisch von `upstream/dev`); #42+#44 als gemeinsames Bundle
 `composer-permission-controls` per Design-Issue vorbereiten; #43 durch Design-Gespräch (Archiv vs.
-Löschen); #45 = komplettes Railbar-Feature `session-navigation-ui` (gegen v2 blockiert); die
+Löschen); #45 = komplettes Railbar-Feature `session-navigation-ui` (gegen v2 blockiert); #46 und
+#47 bleiben `vorgemerkt` (fork-only: #46 nur relevant, falls die Live-Dauer neu eingebaut wird;
+#47 = Verzeichnis-Klick öffnet Datei-Manager statt Fehler-Tab, `tsgo -b` grün); die
 V2-/Frontend-Teile bleiben bis zur v2-Übernahme bzw. Grundsatzfrage im Fork.
 
 ## Queue-Abweichung wird durch `v2` überholt
@@ -548,7 +552,7 @@ Abweichungen sind produktneutrale Verbesserungen:
 
 ## Zählung und Pflegezustand
 
-Die Liste enthält 34 nummerierte Prüfthemen, aber keine 34 PRs. Die **Abarbeitungsliste:
+Die Liste enthält 46 nummerierte Prüfthemen, aber keine 46 PRs. Die **Abarbeitungsliste:
 PR-Pakete in Reihenfolge** weiter oben bündelt die unabhängigen Core-/Server-/Desktop-/
 Permission- und Desktop-Korrekturen zu 10 PR-Paketen (Pakete 0–9: 8 veröffentlicht, 1 entfallen,
 1 vorgemerkt). Hinzu kommen die
