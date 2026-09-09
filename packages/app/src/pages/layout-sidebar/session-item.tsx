@@ -118,20 +118,23 @@ export function SessionItem(props: {
   const [saving, setSaving] = createSignal(false)
   let input: HTMLInputElement | undefined
 
-  createEffect(() => {
+  const focusRename = (el: HTMLInputElement) => {
+    input = el
     if (!editing()) return
-    setValue(title())
-    // Focus the rename field and park the caret at the end so it lands on the
-    // freshly renamed title instead of a stale position or the prompt input.
-    queueMicrotask(() => {
-      if (!input) return
-      input.focus()
-      const end = input.value.length
-      input.setSelectionRange(end, end)
-    })
-  })
+    // Park the caret at the end. Runs on mount and whenever the input is re-created,
+    // so external re-renders cannot silently leave the field unfocused.
+    el.focus()
+    const end = el.value.length
+    el.setSelectionRange(end, end)
+  }
 
-  const beginRename = () => setEditing(true)
+  const beginRename = () => {
+    // Seed the field from the current title once, non-reactively: while the user edits,
+    // external title updates (e.g. a model turn that retitles the session) must not
+    // overwrite the draft or steal focus out of the input.
+    setValue(title())
+    setEditing(true)
+  }
   const cancelRename = () => {
     setEditing(false)
     setValue(title())
@@ -257,11 +260,21 @@ export function SessionItem(props: {
           }
         >
           <input
-            ref={input}
+            ref={focusRename}
             value={value()}
             disabled={saving()}
             onInput={(event) => setValue(event.currentTarget.value)}
-            onBlur={() => void commitRename()}
+            onBlur={() => {
+              // Wird der Fokus nur vorübergehend entrissen (z. B. weil das Kontextmenü nach der
+              // Auswahl den Fokus restauriert oder die Stufen extern neu rendern), soll das Feld
+              // nicht sofort verlassen und der Umbenennungsmodus beendet werden. Erst wenn der
+              // Fokus wirklich woanders liegt, wird committet.
+              queueMicrotask(() => {
+                if (!editing()) return
+                if (document.activeElement === input) return
+                void commitRename()
+              })
+            }}
             onKeyDown={(event) => {
               if (event.key === "Escape") {
                 event.preventDefault()
@@ -272,7 +285,7 @@ export function SessionItem(props: {
               event.preventDefault()
               void commitRename()
             }}
-            class="min-w-0 flex-1 h-6 rounded-md border border-border-weak bg-v2-background-bg-layer-02 px-1.5 text-[13px] font-[440] leading-4 tracking-[-0.04px] text-text-strong outline-none"
+            class="min-w-0 flex-1 h-6 rounded-md bg-v2-background-bg-layer-02 px-1.5 text-[13px] font-[440] leading-4 tracking-[-0.04px] text-text-strong outline-none"
             aria-label={language.t("sidebarLayout.rename")}
           />
         </Show>

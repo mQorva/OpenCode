@@ -123,11 +123,6 @@ export default function LegacyLayout(props: ParentProps) {
   const theme = useTheme()
   const language = useLanguage()
   createEffect(() => setV2Toast(false))
-  // The taskbar/dock badge only appears while the window is hidden; the main process gates
-  // visibility. We always report the current unread total so the badge stays fresh.
-  createEffect(() => {
-    platform.setTaskbarBadge?.(notification.totalUnseen())
-  })
   const initialDirectory = decode64(params.dir)
   const route = createMemo(() => {
     const slug = params.dir

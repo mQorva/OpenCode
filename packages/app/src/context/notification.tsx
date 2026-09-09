@@ -7,6 +7,7 @@ import type { ServerSync } from "./server-sync"
 import { usePlatform } from "@/context/platform"
 import { useLanguage } from "@/context/language"
 import { useSettings } from "@/context/settings"
+import { usePermission } from "@/context/permission"
 import { base64Encode } from "@opencode-ai/core/util/encode"
 import { decode64 } from "@/utils/base64"
 import { EventSessionError } from "@opencode-ai/sdk/v2"
@@ -122,6 +123,7 @@ export const { use: useNotification, provider: NotificationProvider } = createSi
     const platform = usePlatform()
     const settings = useSettings()
     const language = useLanguage()
+    const permission = usePermission()
     const owner = getOwner()
     const states = new Map<ServerScope, { dispose: () => void; state: NotificationState }>()
 
@@ -154,6 +156,7 @@ export const { use: useNotification, provider: NotificationProvider } = createSi
             platform,
             settings,
             language,
+            permission,
             navigate,
           }),
         }),
@@ -165,6 +168,18 @@ export const { use: useNotification, provider: NotificationProvider } = createSi
 
     createEffect(() => {
       global.servers.list().forEach((conn) => ensure(ServerConnection.key(conn)))
+    })
+
+    // Taskbar-/Dock-Badge immer aktuell melden. Die Sichtbarkeits-Schwelle (nur während das
+    // Fenster minimiert/verdeckt ist) legt der Main-Prozess fest; hier zählt nur die Zahl.
+    // Der Provider läuft in beiden Layouts (Legacy und Sidebar-Shell), anders als ein Shell-Effekt.
+    createEffect(() => {
+      if (!platform.setTaskbarBadge) return
+      let count = 0
+      try {
+        count = selected().totalUnseen()
+      } catch {}
+      platform.setTaskbarBadge(count)
     })
 
     createEffect(() => {
@@ -220,6 +235,7 @@ function createServerNotificationState(input: {
   platform: ReturnType<typeof usePlatform>
   settings: ReturnType<typeof useSettings>
   language: ReturnType<typeof useLanguage>
+  permission: ReturnType<typeof usePermission>
   navigate: (href: string) => void
 }) {
   const serverSDK = () => input.sdk
@@ -240,6 +256,25 @@ function createServerNotificationState(input: {
     }),
   )
   const [index, setIndex] = createStore<NotificationIndex>(buildNotificationIndex(store.list))
+
+  // Rückfragen (Question/Permission), die der Nutzer noch beantworten muss. Diese zählen
+  // bewusst nicht in die abrufbare Verlaufs-Liste, sondern nur in den Aufmerksamkeitszähler
+  // für das Taskbar-/Dock-Badge. Aufgelöst werden sie über die replied/rejected-Events.
+  const [pendingAttention, setPendingAttention] = createStore<Record<string, number>>({})
+  const attentionKey = (directory: string, sessionID: string | undefined, kind: "permission" | "question") =>
+    `${directory}\0${sessionID ?? ""}\0${kind}`
+  const beginAttention = (directory: string, sessionID: string | undefined, kind: "permission" | "question") => {
+    const key = attentionKey(directory, sessionID, kind)
+    setPendingAttention(key, (pendingAttention[key] ?? 0) + 1)
+  }
+  const endAttention = (directory: string, sessionID: string | undefined, kind: "permission" | "question") => {
+    const key = attentionKey(directory, sessionID, kind)
+    const next = pendingAttention[key] ?? 0
+    if (next <= 1) setPendingAttention(key, 0)
+    else setPendingAttention(key, next - 1)
+  }
+  const attentionCount = () =>
+    Object.values(pendingAttention).reduce((sum, value) => sum + (value > 0 ? value : 0), 0)
 
   const meta = { pruned: false, disposed: false }
 
@@ -399,15 +434,33 @@ function createServerNotificationState(input: {
 
   const unsub = serverSDK().event.listen((e) => {
     const event = e.details
-    if (event.type !== "session.idle" && event.type !== "session.error") return
-
     const directory = e.name
     const time = Date.now()
+
     if (event.type === "session.idle") {
       handleSessionIdle(directory, event, time)
       return
     }
-    handleSessionError(directory, event, time)
+    if (event.type === "session.error") {
+      handleSessionError(directory, event, time)
+      return
+    }
+
+    const properties = event.properties as { sessionID?: string }
+    const sessionID = properties.sessionID
+
+    if (event.type === "permission.asked" || event.type === "question.asked") {
+      if (
+        event.type === "permission.asked" &&
+        input.permission.autoResponds(event.properties, directory)
+      )
+        return
+      beginAttention(directory, sessionID, event.type === "permission.asked" ? "permission" : "question")
+      return
+    }
+    if (event.type === "permission.replied" || event.type === "question.replied" || event.type === "question.rejected") {
+      endAttention(directory, sessionID, event.type === "permission.replied" ? "permission" : "question")
+    }
   })
   onCleanup(() => {
     meta.disposed = true
@@ -417,7 +470,7 @@ function createServerNotificationState(input: {
   return {
     ready,
     totalUnseen() {
-      return Object.values(index.session.unseenCount).reduce((sum, count) => sum + count, 0)
+      return Object.values(index.session.unseenCount).reduce((sum, count) => sum + count, 0) + attentionCount()
     },
     session: {
       all(session: string) {

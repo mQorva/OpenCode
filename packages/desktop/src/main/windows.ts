@@ -168,13 +168,13 @@ export function setDockIcon() {
 
 const badgeDescription = (count: number) => nativeT("desktop.taskbar.badge", { count })
 
-// The badge is only shown while the window is hidden (minimized or otherwise not visible),
-// matching the usual unread-badge behavior without cluttering a focused window.
+// The badge shows whenever there is an unread count, regardless of whether the
+// window is focused or minimized — simpler and more predictable than gating on visibility.
 function updateTaskbarBadge(win: BrowserWindow) {
   if (win.isDestroyed()) return
   const badge = taskbarBadges.get(win)
   const count = badge?.count ?? 0
-  const shown = count > 0 && !win.isVisible()
+  const shown = count > 0
   const image = badge?.image
 
   if (win.webContents.isDestroyed()) return
