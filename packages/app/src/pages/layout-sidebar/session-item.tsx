@@ -121,7 +121,14 @@ export function SessionItem(props: {
   createEffect(() => {
     if (!editing()) return
     setValue(title())
-    queueMicrotask(() => input?.select())
+    // Focus the rename field and park the caret at the end so it lands on the
+    // freshly renamed title instead of a stale position or the prompt input.
+    queueMicrotask(() => {
+      if (!input) return
+      input.focus()
+      const end = input.value.length
+      input.setSelectionRange(end, end)
+    })
   })
 
   const beginRename = () => setEditing(true)
@@ -227,28 +234,26 @@ export function SessionItem(props: {
         <Show
           when={editing()}
           fallback={
-            <TooltipV2 value={title()} placement="right" class="min-w-0 h-full flex-1">
-              <button
-                type="button"
-                onClick={(event) => {
-                  if (props.onToggleSelect && (event.ctrlKey || event.metaKey)) {
-                    event.preventDefault()
-                    props.onToggleSelect()
-                    return
-                  }
-                  if (props.onSelectRange && event.shiftKey) {
-                    event.preventDefault()
-                    props.onSelectRange()
-                    return
-                  }
-                  props.onSelect()
-                }}
-                class="min-w-0 h-full w-full flex items-center gap-2 text-left outline-none"
-                aria-current={props.active ? "page" : undefined}
-              >
-                <SidebarMarquee>{title()}</SidebarMarquee>
-              </button>
-            </TooltipV2>
+            <button
+              type="button"
+              onClick={(event) => {
+                if (props.onToggleSelect && (event.ctrlKey || event.metaKey)) {
+                  event.preventDefault()
+                  props.onToggleSelect()
+                  return
+                }
+                if (props.onSelectRange && event.shiftKey) {
+                  event.preventDefault()
+                  props.onSelectRange()
+                  return
+                }
+                props.onSelect()
+              }}
+              class="min-w-0 h-full w-full flex items-center gap-2 text-left outline-none"
+              aria-current={props.active ? "page" : undefined}
+            >
+              <SidebarMarquee>{title()}</SidebarMarquee>
+            </button>
           }
         >
           <input
@@ -267,7 +272,7 @@ export function SessionItem(props: {
               event.preventDefault()
               void commitRename()
             }}
-            class="min-w-0 flex-1 h-6 rounded-md border border-border-focus bg-v2-background-bg-base px-1.5 text-[13px] font-[440] leading-4 tracking-[-0.04px] text-text-strong outline-none"
+            class="min-w-0 flex-1 h-6 rounded-md border border-border-weak bg-v2-background-bg-layer-02 px-1.5 text-[13px] font-[440] leading-4 tracking-[-0.04px] text-text-strong outline-none"
             aria-label={language.t("sidebarLayout.rename")}
           />
         </Show>
