@@ -325,7 +325,7 @@ function ProjectGroup(props: {
               <IconButtonV2
                 size="small"
                 variant="ghost-muted"
-                icon={<Icon name="speech-bubble" size="small" />}
+                icon={<Icon name="new-session" size="small" />}
                 class="!size-7 shrink-0 rounded-md"
                 onClick={props.onNewChat}
                 aria-label={language.t("command.session.new")}
