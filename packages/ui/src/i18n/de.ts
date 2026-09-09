@@ -200,6 +200,7 @@ export const dict = {
   "ui.toolErrorCard.copyError": "Fehler kopieren",
   "ui.message.duration.seconds": "{{count}}s",
   "ui.message.duration.minutesSeconds": "{{minutes}}m {{seconds}}s",
+  "ui.message.duration.hoursMinutes": "{{hours}}h {{minutes}}m",
   "ui.lineComment.contextPlaceholder": "Kontext zu dieser Änderung hinzufügen",
   "ui.promptInput.noMatchingItems": "Keine passenden Einträge",
   "ui.promptInput.commands": "Befehle",
