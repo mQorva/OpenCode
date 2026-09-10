@@ -102,16 +102,22 @@ function setLastActiveUrl(windowID: string, value: string) {
   } catch {}
 }
 
-// The OpenCode taskbar icon is white-and-blue, so the unread badge uses a warm coral disc
-// that stays legible on dark taskbars and against the blue icon. Windows squashes the overlay
-// into the small corner badge of the taskbar entry, so the disc covers the whole canvas and the
-// number fills it relative to the disc. Rendering at 2x keeps the downscale smooth instead of
-// blocky, and a fairly heavy font keeps short numbers readable at taskbar size.
-const TASKBAR_BADGE_SIZE = 128
-const TASKBAR_BADGE_CORAL = "#FF7A59"
+// The OpenCode taskbar icon is white-and-blue, so the unread badge uses a coral disc with a
+// white number, matching the app's icon palette and staying legible on busy taskbars.
+//
+// Sizing: Chromium (Electron's Windows `setOverlayIcon`) only ever reads the 1x representation
+// of the NativeImage (`overlay.AsBitmap()`) and hands Windows a fixed 16×16 overlay square.
+// We therefore draw exactly that square in its final size. The canvas' anti-aliasing rounds the
+// disc edge, and drawing the digit at the target size lets the font renderer hint it for the real
+// pixel grid.
+const TASKBAR_BADGE_BG = "#FF7A59"
+const TASKBAR_BADGE_FOREGROUND = "#FFFFFF"
+const TASKBAR_BADGE_SIZE = 16
 function taskbarBadgeImage(count: number) {
   if (count <= 0) return undefined
+  const label = count > 99 ? "99+" : String(count)
   const size = TASKBAR_BADGE_SIZE
+
   const canvas = document.createElement("canvas")
   canvas.width = size
   canvas.height = size
@@ -119,22 +125,25 @@ function taskbarBadgeImage(count: number) {
   if (!ctx) return undefined
 
   const center = size / 2
-  const radius = size / 2 - 2
   ctx.beginPath()
-  ctx.arc(center, center, radius, 0, Math.PI * 2)
-  ctx.fillStyle = TASKBAR_BADGE_CORAL
+  ctx.arc(center, center, size / 2 - 0.5, 0, Math.PI * 2)
+  ctx.fillStyle = TASKBAR_BADGE_BG
   ctx.fill()
-  // Thin white ring makes the disc pop against the blue icon and the taskbar.
-  ctx.strokeStyle = "rgba(255,255,255,0.95)"
-  ctx.lineWidth = Math.max(3, Math.round(size / 24))
-  ctx.stroke()
 
-  const label = count > 99 ? "99+" : String(count)
-  ctx.fillStyle = "#fff"
-  ctx.font = `700 ${label.length > 2 ? Math.round(size * 0.5) : Math.round(size * 0.66)}px system-ui, sans-serif`
+  ctx.fillStyle = TASKBAR_BADGE_FOREGROUND
+  ctx.font = `600 ${label.length > 2 ? 8 : 11}px system-ui, sans-serif`
   ctx.textAlign = "center"
-  ctx.textBaseline = "middle"
-  ctx.fillText(label, center, center + Math.round(size / 64))
+  // Ziffern visuell zentrieren: `textBaseline="middle"` zentriert die Em-Box (Ziffern sitzen
+  // im oberen Kappenhöhen-Bereich, wirken dadurch nach oben verschoben). Über die Font-Metrik
+  // wird die Grundlinie so gelegt, dass die Kappenhöhe exakt um den Mittelpunkt liegt.
+  const fontMetrics = (ctx as { getFontMetrics?: () => { capHeight: number; ascent: number } }).getFontMetrics?.()
+  if (fontMetrics) {
+    ctx.textBaseline = "alphabetic"
+    ctx.fillText(label, center, center + (fontMetrics.capHeight || fontMetrics.ascent) / 2)
+  } else {
+    ctx.textBaseline = "middle"
+    ctx.fillText(label, center, center)
+  }
 
   return canvas.toDataURL("image/png")
 }

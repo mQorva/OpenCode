@@ -1,5 +1,16 @@
 import { createStore, reconcile } from "solid-js/store"
-import { type Accessor, batch, createEffect, createMemo, createRoot, getOwner, onCleanup } from "solid-js"
+import {
+  type Accessor,
+  batch,
+  createEffect,
+  createMemo,
+  createRoot,
+  createSignal,
+  getOwner,
+  onCleanup,
+  onMount,
+} from "solid-js"
+import { makeEventListener } from "@solid-primitives/event-listener"
 import { useNavigate, useParams, useSearchParams } from "@solidjs/router"
 import { createSimpleContext } from "@opencode-ai/ui/context"
 import type { ServerSDK } from "./server-sdk"
@@ -18,6 +29,7 @@ import { ServerConnection, useServer } from "./server"
 import { type DraftTab, useTabs } from "./tabs"
 import { requireServerKey } from "@/utils/session-route"
 import type { ServerScope } from "@/utils/server-scope"
+import { isSessionNotFoundError } from "@/utils/server-errors"
 
 type NotificationBase = {
   directory?: string
@@ -205,6 +217,7 @@ export const { use: useNotification, provider: NotificationProvider } = createSi
     return {
       ready: () => selected().ready(),
       ensureServerState: ensure,
+      focused: () => selected().focused(),
       totalUnseen: () => selected().totalUnseen(),
       session: {
         all: (session: string) => selected().session.all(session),
@@ -246,6 +259,18 @@ function createServerNotificationState(input: {
 
   const empty: Notification[] = []
 
+  // Ob das Fenster gerade im Vordergrund ist. Eine abgeschlossene Session ist nur dann
+  // "gesehen" (und braucht keinen Badge-/Dock-Punkt), wenn der Nutzer sie gerade ansieht —
+  // ist das Fenster minimiert oder nicht fokussiert, bleibt der Eintrag ungelesen und das
+  // Badge zählt ihn, bis die Session geöffnet wird.
+  const [focused, setFocused] = createSignal(typeof document !== "undefined" && document.hasFocus())
+  onMount(() => {
+    const focus = () => setFocused(true)
+    const blur = () => setFocused(false)
+    makeEventListener(window, "focus", focus)
+    makeEventListener(window, "blur", blur)
+  })
+
   const currentDirectory = input.directory
   const currentSession = input.sessionID
 
@@ -257,24 +282,24 @@ function createServerNotificationState(input: {
   )
   const [index, setIndex] = createStore<NotificationIndex>(buildNotificationIndex(store.list))
 
-  // Rückfragen (Question/Permission), die der Nutzer noch beantworten muss. Diese zählen
-  // bewusst nicht in die abrufbare Verlaufs-Liste, sondern nur in den Aufmerksamkeitszähler
-  // für das Taskbar-/Dock-Badge. Aufgelöst werden sie über die replied/rejected-Events.
-  const [pendingAttention, setPendingAttention] = createStore<Record<string, number>>({})
-  const attentionKey = (directory: string, sessionID: string | undefined, kind: "permission" | "question") =>
-    `${directory}\0${sessionID ?? ""}\0${kind}`
-  const beginAttention = (directory: string, sessionID: string | undefined, kind: "permission" | "question") => {
-    const key = attentionKey(directory, sessionID, kind)
-    setPendingAttention(key, (pendingAttention[key] ?? 0) + 1)
-  }
-  const endAttention = (directory: string, sessionID: string | undefined, kind: "permission" | "question") => {
-    const key = attentionKey(directory, sessionID, kind)
-    const next = pendingAttention[key] ?? 0
-    if (next <= 1) setPendingAttention(key, 0)
-    else setPendingAttention(key, next - 1)
-  }
-  const attentionCount = () =>
-    Object.values(pendingAttention).reduce((sum, value) => sum + (value > 0 ? value : 0), 0)
+  // Offene Rückfragen (Question/Permission) zählen in den Aufmerksamkeitszähler des
+  // Taskbar-/Dock-Badges. Der Zähler wird NICHT über replizierte Events geführt — die
+  // verwaisten Einträge hängen sonst dauerhaft fest (z. B. wenn der Server eine Session ohne
+  // replied/rejected-Ereignis abbricht). Stattdessen wird er aus den echten Sync-Daten
+  // abgeleitet, die der Client ohnehin zuverlässig pflegt (asked fügt ein, replied/rejected
+  // und session.deleted entfernen): je Sitzung mit mindestens einer unbeantworteten Anfrage
+  // zählt das Badge eins.
+  const attentionCount = createMemo(() => {
+    const data = input.sync.session.data
+    const sessions = new Set<string>()
+    for (const [sessionID, list] of Object.entries(data.permission ?? {})) {
+      if (list && list.length > 0) sessions.add(sessionID)
+    }
+    for (const [sessionID, list] of Object.entries(data.question ?? {})) {
+      if (list && list.length > 0) sessions.add(sessionID)
+    }
+    return sessions.size
+  })
 
   const meta = { pruned: false, disposed: false }
 
@@ -338,6 +363,54 @@ function createServerNotificationState(input: {
     })
   })
 
+  // Ghost-Einträge beseitigen: Benachrichtigungen für Sessions, die der Server nicht mehr kennt
+  // (z. B. gelöscht, während die App offline war — das `session.deleted`-Ereignis ging verloren),
+  // ließen sonst eine dauerhafte Ziffer im Badge zurück. Statt die Liste gegen einen Index
+  // abzugleichen, fragen wir beim Start gezielt die wenigen ungelesenen Einträge beim Server ab:
+  // Existiert die Session nicht mehr, wird sie samt Eintrag entfernt. Protokoll-unabhängig
+  // (v1 wie v2) und ohne Annahmen über Query-Caches.
+  let reconciling = false
+  let reconciled = false
+  const reconcileGhosts = () => {
+    if (reconciling || reconciled || !ready()) return
+    const seen = new Set<string>()
+    for (const notification of store.list) {
+      if (notification.viewed || !notification.session || notification.session === "global") continue
+      seen.add(notification.session)
+    }
+    const ids = [...seen]
+    if (ids.length === 0) {
+      reconciled = true
+      return
+    }
+    reconciling = true
+    void Promise.allSettled(
+      ids.map((sessionID) =>
+        input.sdk.api.session
+          .get({ sessionID })
+          .then(() => undefined as string | undefined)
+          .catch((error) => (isSessionNotFoundError(error, sessionID) ? sessionID : undefined)),
+      ),
+    ).then((results) => {
+      if (meta.disposed) return
+      reconciling = false
+      // Mindestens eine Antwort war "definitiv" (Server erreichbar) → ab jetzt nicht wiederholen.
+      // Scheitern alle (Server beim Start noch nicht bereit), bleibt `reconciled` falsch und der
+      // Effekt versucht es beim nächsten Listen-Update erneut.
+      if (results.some((result) => result.status === "fulfilled")) reconciled = true
+      const stale = results.flatMap((result) =>
+        result.status === "fulfilled" && result.value ? [result.value] : [],
+      )
+      if (stale.length === 0) return
+      dropSessions(stale)
+    })
+  }
+
+  createEffect(() => {
+    if (!ready()) return
+    reconcileGhosts()
+  })
+
   const append = (notification: Notification) => {
     const list = pruneNotifications([...store.list, notification])
     const keep = new Set(list)
@@ -352,34 +425,25 @@ function createServerNotificationState(input: {
 
   // Gelöschte Sessions dürfen keine ungesehenen Einträge hinterlassen — sonst zählen sie
   // dauerhaft in `totalUnseen` (Badge) und der Punkt bleibt, obwohl nichts mehr existiert.
-  // Das gilt auch für `pendingAttention`: Das Entfernen einer Session (oder ihr Abbruch) wirft
-  // offene Fragen/Berechtigungen serverseitig ohne replied/rejected-Ereignis weg, der Zähler
-  // würde sonst für immer mitzählen. Gelöschte Kind-Sessions teilt der Server selbst als
-  // session.deleted mit, also genügt es, hier je gelöschter Session aufzuräumen.
-  const clearSessionAttention = (sessionID: string) => {
-    const suffixPermission = `\0${sessionID}\0permission`
-    const suffixQuestion = `\0${sessionID}\0question`
-    const next = Object.fromEntries(
-      Object.entries(pendingAttention).filter(([key]) => !key.endsWith(suffixPermission) && !key.endsWith(suffixQuestion)),
-    )
-    if (Object.keys(next).length === Object.keys(pendingAttention).length) return
-    setPendingAttention(next)
-  }
-
-  const removeSessionNotifications = (sessionID: string) => {
-    clearSessionAttention(sessionID)
-    const affected = store.list.filter((n) => n.session === sessionID)
+  // Offene Rückfragen der Session räumen sich über die Sync-Daten selbst (session.deleted
+  // entfernt dort permission/question), hier genügt die Benachrichtigungsliste.
+  const dropSessions = (sessionIDs: Iterable<string>) => {
+    const ids = new Set(sessionIDs)
+    if (!ids.size) return
+    const affected = store.list.filter((n) => !!n.session && ids.has(n.session))
     if (!affected.length) return
     const directories = [...new Set(affected.flatMap((n) => (n.directory ? [n.directory] : [])))]
     batch(() => {
-      setStore("list", store.list.filter((n) => n.session !== sessionID))
-      setIndex("session", "all", sessionID, (all) => all.filter((n) => n.session !== sessionID))
-      updateUnseen("session", sessionID, [])
-      directories.forEach((directory) => {
-        setIndex("project", "all", directory, (all) => all.filter((n) => n.session !== sessionID))
-        const unseen = (index.project.unseen[directory] ?? empty).filter((n) => n.session !== sessionID)
+      setStore("list", store.list.filter((n) => !n.session || !ids.has(n.session)))
+      for (const sessionID of ids) {
+        setIndex("session", "all", sessionID, (all) => all.filter((n) => !n.session || !ids.has(n.session)))
+        updateUnseen("session", sessionID, [])
+      }
+      for (const directory of directories) {
+        setIndex("project", "all", directory, (all) => all.filter((n) => !n.session || !ids.has(n.session)))
+        const unseen = (index.project.unseen[directory] ?? empty).filter((n) => !n.session || !ids.has(n.session))
         updateUnseen("project", directory, unseen)
-      })
+      }
     })
   }
 
@@ -396,6 +460,8 @@ function createServerNotificationState(input: {
 
   const viewedInCurrentSession = (directory: string, sessionID?: string) => {
     if (!input.active()) return false
+    // Nicht fokussiert (minimiert / Fenster im Hintergrund) → nichts wird als gesehen markiert.
+    if (!focused()) return false
     const activeDirectory = currentDirectory()
     const activeSession = currentSession()
     if (!activeSession) return false
@@ -479,25 +545,10 @@ function createServerNotificationState(input: {
       return
     }
 
-    const properties = event.properties as { sessionID?: string }
-    const sessionID = properties.sessionID
-
-    if (event.type === "permission.asked" || event.type === "question.asked") {
-      if (
-        event.type === "permission.asked" &&
-        input.permission.autoResponds(event.properties, directory)
-      )
-        return
-      beginAttention(directory, sessionID, event.type === "permission.asked" ? "permission" : "question")
-      return
-    }
     if (event.type === "session.deleted") {
       const deleted = event.properties.sessionID ?? event.properties.info?.id
-      if (deleted) removeSessionNotifications(deleted)
+      if (deleted) dropSessions([deleted])
       return
-    }
-    if (event.type === "permission.replied" || event.type === "question.replied" || event.type === "question.rejected") {
-      endAttention(directory, sessionID, event.type === "permission.replied" ? "permission" : "question")
     }
   })
   onCleanup(() => {
@@ -507,6 +558,7 @@ function createServerNotificationState(input: {
 
   return {
     ready,
+    focused,
     // Das Badge zählt, was der Nutzer noch sehen muss: jede fertige, ungelesene Sitzung
     // (je Sitzung einmal, egal wie viele Turns sie produziert hat — die Seitenleiste zeigt
     // denselben Stand als einen Punkt) plus jede offene Rückfrage (permission./question.-Dock).

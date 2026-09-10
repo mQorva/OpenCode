@@ -123,11 +123,12 @@ export function SessionItem(props: {
   const [renamePending, setRenamePending] = createSignal(false)
   let input: HTMLInputElement | undefined
 
+  // Setzt Fokus + Cursor-Endposition. Läuft im ref-Callback des <input> — bewusst ohne
+  // `editing()`-Guard, damit der Fokus auch dann landet, wenn das Feld bereits im DOM steht,
+  // während `editing` noch verzögert aktualisiert wird (z. B. wenn das Kontextmenü den Mount
+  // auslöst und die Solid-Re-Renders in verschiedenen Frames laufen).
   const focusRename = (el: HTMLInputElement) => {
     input = el
-    if (!editing()) return
-    // Park the caret at the end. Runs on mount and whenever the input is re-created,
-    // so external re-renders cannot silently leave the field unfocused.
     el.focus()
     const end = el.value.length
     el.setSelectionRange(end, end)
@@ -139,6 +140,18 @@ export function SessionItem(props: {
     // overwrite the draft or steal focus out of the input.
     setValue(title())
     setEditing(true)
+    // Fokus ein paar Frames lang kräftig ins Feld zwingen. Beim Öffnen über das Kontextmenü
+    // läuft hier der rechte Ablauf (Menü schließt → Mount → Fokus), und Code wie der globale
+    // Tastatur-Handler der Session-Seite (`session.tsx`) würde sonst den Fokus zurück ins
+    // Chat-Eingabefeld ziehen, sobald der Nutzer zu tippen beginnt. Das zweite `focus` in einem
+    // späteren Frame stellt sicher, dass der Fokus auch nach solchen Re-Renders im Feld bleibt.
+    requestAnimationFrame(() => input?.focus())
+    requestAnimationFrame(() => {
+      if (!input) return
+      input.focus()
+      const end = input.value.length
+      input.setSelectionRange(end, end)
+    })
   }
   const requestRename = () => setRenamePending(true)
   const cancelRename = () => {
@@ -182,26 +195,33 @@ export function SessionItem(props: {
           "pl-2": !props.indent,
           "pl-8": props.indent,
           "pr-1": true,
-          // Während des Umbenennens keine Hervorhebung der aktiven/ausgewählten Sitzung zeigen —
-          // sonst kollidiert der gefärbte Hintergrund mit dem Eingabefeld und wirkt unruhig.
+          // Während des Umbenennens keine Hervorhebung der Zeile zeigen — weder aktiv/ausgewählt
+          // noch hover/focus-within. Sonst wird der ganze Block (inkl. Eingabefeld) eingefärbt,
+          // sobald das Feld den Fokus hat oder die Maus über der Zeile liegt, und wirkt wie eine
+          // große Auswahl-Markierung.
           "bg-v2-background-bg-layer-02 text-text-strong": !editing() && props.selected,
-          "bg-v2-background-bg-layer-02 text-text-base hover:text-text-strong":
+          "bg-v2-background-bg-layer-02 text-text-base hover:bg-v2-background-bg-layer-02/60 hover:text-text-strong":
             !editing() && props.active && !props.selected,
+          "text-text-base": editing(),
           "text-text-base hover:bg-v2-background-bg-layer-02/60 hover:text-text-strong focus-within:bg-v2-background-bg-layer-02/60":
-            editing() || (!props.active && !props.selected),
+            !editing() && !props.active && !props.selected,
         }}
       >
         {/* Status column left, in the same leading column as the project folder icon. In the
             indent it sits under that folder; prose sessions get the same leading column inline.
-            It stays visible on hover, the row actions live on the right. */}
-        <Show when={!editing()}>
-          <div
-            classList={{
-              "flex w-4 items-center justify-center": true,
-              "absolute inset-y-0 left-2": props.indent,
-              "shrink-0 mr-2": !props.indent,
-            }}
-          >
+            It stays visible on hover, the row actions live on the right.
+            Beim Umbenennen bleibt die Spalte als unsichtbarer Platzhalter stehen, damit das
+            Eingabefeld exakt an derselben Stelle beginnt wie der sichtbare Titel zuvor —
+            ohne die Spalte würde der Text beim Wechsel in den Bearbeitungsmodus springen. */}
+        <div
+          classList={{
+            "flex w-4 items-center justify-center": true,
+            "absolute inset-y-0 left-2": props.indent,
+            "shrink-0 mr-2": !props.indent,
+            "invisible": editing(),
+          }}
+        >
+          <Show when={!editing()}>
             <Show when={props.attention()}>
                 {(attention) => (
                   <TooltipV2 value={language.t(attentionLabel(attention()))} placement="top">
@@ -240,8 +260,8 @@ export function SessionItem(props: {
                   <Spinner class="size-3.5" />
                 </Show>
               </Show>
-          </div>
-        </Show>
+          </Show>
+        </div>
 
         <Show
           when={editing()}

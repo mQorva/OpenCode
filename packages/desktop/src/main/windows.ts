@@ -53,7 +53,8 @@ let relaunchHandler = () => {
 const titlebarThemes = new WeakMap<BrowserWindow, Partial<TitlebarTheme>>()
 const pinchZoomEnabled = new WeakMap<BrowserWindow, boolean>()
 const windowIDs = new WeakMap<BrowserWindow, string>()
-const taskbarBadges = new WeakMap<BrowserWindow, { count: number; image?: string }>()
+type TaskbarBadge = { count: number; image?: string }
+const taskbarBadges = new WeakMap<BrowserWindow, TaskbarBadge>()
 const registry = createWindowRegistry<BrowserWindow>({
   read: () => getStore().get(WINDOW_IDS_KEY),
   write: (ids) => getStore().set(WINDOW_IDS_KEY, ids),
@@ -175,12 +176,12 @@ function updateTaskbarBadge(win: BrowserWindow) {
   const badge = taskbarBadges.get(win)
   const count = badge?.count ?? 0
   const shown = count > 0
-  const image = badge?.image
 
   if (win.webContents.isDestroyed()) return
 
   if (process.platform === "win32") {
-    if (shown && image) win.setOverlayIcon(nativeImage.createFromDataURL(image), badgeDescription(count))
+    const image = shown && badge?.image ? nativeImage.createFromDataURL(badge.image) : undefined
+    if (image && !image.isEmpty()) win.setOverlayIcon(image, badgeDescription(count))
     else win.setOverlayIcon(null, badgeDescription(count))
     return
   }

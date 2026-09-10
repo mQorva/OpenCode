@@ -344,6 +344,10 @@ function MarkSessionNotificationsViewed(props: { sessionID?: () => string | unde
   const notification = useNotification()
   createEffect(() => {
     const sessionID = props.sessionID?.()
+    // Nur als gesehen markieren, wenn das Fenster wirklich im Vordergrund ist: Ist es minimiert
+    // oder im Hintergrund, hat der Nutzer die Antwort nicht gesehen und Badge/Dock-Punkt bleiben
+    // stehen, bis er zurückkehrt und die Session öffnet.
+    if (!notification.focused()) return
     if (!notification.ready() || !sessionID) return
     if (notification.session.unseenCount(sessionID) === 0) return
     notification.session.markViewed(sessionID)
