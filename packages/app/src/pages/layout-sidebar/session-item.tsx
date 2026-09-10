@@ -116,6 +116,11 @@ export function SessionItem(props: {
   const [editing, setEditing] = createSignal(false)
   const [value, setValue] = createSignal("")
   const [saving, setSaving] = createSignal(false)
+  // Wird gesetzt, sobald der Nutzer „Umbenennen" im Kontextmenü wählt. Der eigentliche
+  // Wechsel in den Bearbeitungsmodus passiert erst im `onCloseAutoFocus` des Menüs: Das
+  // offene Menü hält einen Fokus-Trap, der jeden Fokus aus dem neu gemounteten Feld sofort
+  // wieder zurückzieht (der Cursor landet nie im Feld und jeder Klick springt heraus).
+  const [renamePending, setRenamePending] = createSignal(false)
   let input: HTMLInputElement | undefined
 
   const focusRename = (el: HTMLInputElement) => {
@@ -135,6 +140,7 @@ export function SessionItem(props: {
     setValue(title())
     setEditing(true)
   }
+  const requestRename = () => setRenamePending(true)
   const cancelRename = () => {
     setEditing(false)
     setValue(title())
@@ -176,10 +182,13 @@ export function SessionItem(props: {
           "pl-2": !props.indent,
           "pl-8": props.indent,
           "pr-1": true,
-          "bg-v2-background-bg-layer-02 text-text-strong": props.selected,
-          "bg-v2-background-bg-layer-02 text-text-base hover:text-text-strong": props.active && !props.selected,
+          // Während des Umbenennens keine Hervorhebung der aktiven/ausgewählten Sitzung zeigen —
+          // sonst kollidiert der gefärbte Hintergrund mit dem Eingabefeld und wirkt unruhig.
+          "bg-v2-background-bg-layer-02 text-text-strong": !editing() && props.selected,
+          "bg-v2-background-bg-layer-02 text-text-base hover:text-text-strong":
+            !editing() && props.active && !props.selected,
           "text-text-base hover:bg-v2-background-bg-layer-02/60 hover:text-text-strong focus-within:bg-v2-background-bg-layer-02/60":
-            !props.active && !props.selected,
+            editing() || (!props.active && !props.selected),
         }}
       >
         {/* Status column left, in the same leading column as the project folder icon. In the
@@ -321,12 +330,23 @@ export function SessionItem(props: {
         </Show>
       </MenuV2.Context.Trigger>
       <MenuV2.Context.Portal>
-        <MenuV2.Context.Content>
+        <MenuV2.Context.Content
+          onCloseAutoFocus={(event) => {
+            // Das Menü ist beim Schließen bereit, den Fokus auf den Auslöser zurückzusetzen.
+            // Beim Umbenennen übernimmt stattdessen das Eingabefeld: Den Restore verhindern
+            // und erst jetzt in den Bearbeitungsmodus wechseln — das Feld mountet damit in
+            // einen Baum ohne Fokus-Trap und behält den Fokus.
+            if (!renamePending()) return
+            event.preventDefault()
+            setRenamePending(false)
+            beginRename()
+          }}
+        >
           <SessionMenuItems
             multi={multi()}
             multiCount={props.selectionCount ?? 1}
             allPinned={props.selectionAllPinned ?? props.pinned}
-            onRename={beginRename}
+            onRename={requestRename}
             onMarkUnread={props.onMarkUnread}
             onTogglePin={props.onTogglePin}
             onDelete={props.onDelete}

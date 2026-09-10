@@ -146,6 +146,9 @@ const layer = Layer.effect(
     const sessions = yield* SessionStore.Service
     const saved = yield* PermissionSaved.Service
     const pending = new Map<ID, Pending>()
+    // "session" approvals, scoped to a session and kept in memory for the lifetime
+    // of the location instance (unlike "always", which persists to PermissionSaved).
+    const sessionApproved = new Map<SessionV2.ID, Permission.Rule[]>()
 
     yield* EffectRuntime.addFinalizer(() =>
       EffectRuntime.forEach(pending.values(), (item) => Deferred.fail(item.deferred, new DeclinedError()), {
@@ -173,7 +176,7 @@ const layer = Layer.effect(
       if (!session) return yield* new SessionV2.NotFoundError({ sessionID })
       const agent = yield* agents.resolve(agentID ?? session.agent)
       const rules = agent?.permissions ?? missingAgentPermissions
-      return [...rules, ...levelRules(session.permissionLevel, rules)]
+      return [...rules, ...levelRules(session.permissionLevel, rules), ...(sessionApproved.get(sessionID) ?? [])]
     })
 
     function denied(input: AssertInput, rules: Permission.Ruleset) {
@@ -208,9 +211,24 @@ const layer = Layer.effect(
     const create = (request: Request, agent?: AgentV2.ID) =>
       EffectRuntime.uninterruptible(
         EffectRuntime.gen(function* () {
+          if (pending.has(request.id))
+            return yield* EffectRuntime.die(`Duplicate pending permission ID: ${request.id}`)
+          // Deduplicate: concurrent identical requests in the same session (same
+          // action + resources) share one pending prompt. Responding to one
+          // resolves all waiters together.
+          for (const item of pending.values()) {
+            const other = item.request
+            if (
+              other.sessionID !== request.sessionID ||
+              other.action !== request.action ||
+              other.resources.length !== request.resources.length ||
+              !other.resources.every((resource, i) => resource === request.resources[i])
+            )
+              continue
+            return item
+          }
           const deferred = yield* Deferred.make<void, DeclinedError | CorrectedError>()
           const item = { request, agent, deferred }
-          if (pending.has(request.id)) return yield* EffectRuntime.die(`Duplicate pending permission ID: ${request.id}`)
           pending.set(request.id, item)
           yield* events
             .publish(Event.Asked, request)
@@ -288,6 +306,40 @@ const layer = Layer.effect(
           }
           yield* Deferred.succeed(existing.deferred, undefined)
           pending.delete(input.requestID)
+
+          if (input.reply === "session") {
+            const sessionID = existing.request.sessionID
+            const scoped = sessionApproved.get(sessionID) ?? []
+            for (const resource of existing.request.save ?? []) {
+              scoped.push({ action: existing.request.action, resource, effect: "allow" })
+            }
+            sessionApproved.set(sessionID, scoped)
+            if (!scoped.length) return
+
+            for (const [id, item] of pending) {
+              if (item.request.sessionID !== sessionID) continue
+              const rules = yield* configured(item.request.sessionID, item.agent).pipe(
+                EffectRuntime.catchTag("Session.NotFoundError", () => EffectRuntime.succeed(undefined)),
+              )
+              if (!rules) continue
+              if (denied({ ...item.request }, rules)) continue
+              if (
+                !item.request.resources.every(
+                  (resource) => evaluate(item.request.action, resource, rules).effect === "allow",
+                )
+              )
+                continue
+              yield* events.publish(Event.Replied, {
+                sessionID,
+                requestID: item.request.id,
+                reply: "session",
+              })
+              yield* Deferred.succeed(item.deferred, undefined)
+              pending.delete(id)
+            }
+            return
+          }
+
           if (input.reply !== "always" || !existing.request.save?.length) return
 
           const rememberedRules = yield* savedRules()

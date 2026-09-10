@@ -265,6 +265,92 @@ describe("PermissionV2", () => {
     }),
   )
 
+  it.effect("session reply approves only the current session without persisting", () =>
+    Effect.gen(function* () {
+      yield* setup()
+      const { db } = yield* Database.Service
+      yield* db
+        .insert(SessionTable)
+        .values({
+          id: SessionV2.ID.make("ses_other"),
+          project_id: Project.ID.global,
+          slug: "other",
+          directory: "/project",
+          title: "other",
+          version: "test",
+          agent: "test",
+        })
+        .onConflictDoNothing()
+        .run()
+        .pipe(Effect.orDie)
+
+      const service = yield* PermissionV2.Service
+      const events = yield* EventV2.Service
+      const asked = yield* Deferred.make<PermissionV2.Request>()
+      const unsubscribe = yield* events.listen((event) =>
+        event.type === PermissionV2.Event.Asked.type
+          ? Deferred.succeed(asked, event.data as PermissionV2.Request).pipe(Effect.asVoid)
+          : Effect.void,
+      )
+      yield* Effect.addFinalizer(() => unsubscribe)
+
+      const fiber = yield* service.assert(assertion({ save: ["*"] })).pipe(Effect.forkScoped)
+      const request = yield* Deferred.await(asked)
+      yield* service.reply({ requestID: request.id, reply: "session" })
+      yield* Fiber.join(fiber)
+
+      // Approved for this session: later asks produce no prompt.
+      expect(yield* service.ask(assertion())).toMatchObject({ effect: "allow" })
+      expect(yield* service.list()).toEqual([])
+
+      // Another session still asks.
+      expect(
+        yield* service.ask(assertion({ sessionID: SessionV2.ID.make("ses_other") })),
+      ).toMatchObject({ effect: "ask" })
+      expect(yield* service.list()).toHaveLength(1)
+
+      // The project-wide saved permissions stay untouched.
+      expect(
+        yield* db.select().from(PermissionTable).where(eq(PermissionTable.project_id, Project.ID.global)).all(),
+      ).toEqual([])
+    }),
+  )
+
+  it.live("deduplicates identical pending permission requests in a session", () =>
+    Effect.gen(function* () {
+      yield* setup()
+      const service = yield* PermissionV2.Service
+      const events = yield* EventV2.Service
+      const asked = yield* Deferred.make<PermissionV2.Request>()
+      let askedCount = 0
+      const unsubscribe = yield* events.listen((event) => {
+        if (event.type !== PermissionV2.Event.Asked.type) return Effect.void
+        askedCount++
+        if (askedCount === 1) return Deferred.succeed(asked, event.data as PermissionV2.Request).pipe(Effect.asVoid)
+        return Effect.void
+      })
+      yield* Effect.addFinalizer(() => unsubscribe)
+
+      const a = yield* service.assert(assertion()).pipe(Effect.forkScoped)
+      const request = yield* Deferred.await(asked)
+      const b = yield* service.assert(assertion({ id: PermissionV2.ID.create("per_next") })).pipe(Effect.forkScoped)
+
+      // Suspending gives the deduplicated fiber a chance to reach its awaited
+      // deferred; the pending row stays a's row throughout.
+      while ((yield* service.list()).length !== 1) {
+        yield* Effect.sleep("10 millis")
+      }
+      yield* Effect.sleep("10 millis")
+      expect(yield* service.list()).toHaveLength(1)
+      expect(askedCount).toBe(1)
+
+      yield* service.reply({ requestID: request.id, reply: "once" })
+      yield* Fiber.join(a)
+      yield* Fiber.join(b)
+      expect(yield* service.list()).toHaveLength(0)
+    }),
+  )
+
   it.effect("defects when an asked permission is declined", () =>
     Effect.gen(function* () {
       yield* setup()

@@ -9,7 +9,7 @@ export function SessionPermissionDock(props: {
   request: PermissionRequest
   responding: boolean
   persistent: boolean
-  onDecide: (response: "once" | "always" | "reject") => void
+  onDecide: (response: "once" | "session" | "always" | "reject") => void
 }) {
   const language = useLanguage()
 
@@ -42,9 +42,25 @@ export function SessionPermissionDock(props: {
           >
             {language.t("session.permission.deny")}
           </ButtonV2>
+          <ButtonV2
+            variant="neutral"
+            size="normal"
+            onClick={() => props.onDecide("once")}
+            disabled={props.responding}
+          >
+            {language.t("session.permission.allowOnce")}
+          </ButtonV2>
+          <ButtonV2
+            variant="neutral"
+            size="normal"
+            onClick={() => props.onDecide("session")}
+            disabled={props.responding}
+          >
+            {language.t("session.permission.allowSession")}
+          </ButtonV2>
           <Show when={props.persistent}>
             <ButtonV2
-              variant="neutral"
+              variant="contrast"
               size="normal"
               onClick={() => props.onDecide("always")}
               disabled={props.responding}
@@ -52,14 +68,6 @@ export function SessionPermissionDock(props: {
               {language.t("session.permission.allowProject")}
             </ButtonV2>
           </Show>
-          <ButtonV2
-            variant="contrast"
-            size="normal"
-            onClick={() => props.onDecide("once")}
-            disabled={props.responding}
-          >
-            {language.t("session.permission.allowOnce")}
-          </ButtonV2>
         </div>
       }
     >

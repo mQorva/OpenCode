@@ -141,6 +141,8 @@ import type {
   ProjectInitGitResponses,
   ProjectListErrors,
   ProjectListResponses,
+  ProjectRemoveErrors,
+  ProjectRemoveResponses,
   ProjectUpdateErrors,
   ProjectUpdateResponses,
   PromptInput,
@@ -382,6 +384,8 @@ import type {
   V2SessionSwitchAgentResponses,
   V2SessionSwitchModelErrors,
   V2SessionSwitchModelResponses,
+  V2SessionUpdateErrors,
+  V2SessionUpdateResponses,
   V2SessionWaitErrors,
   V2SessionWaitResponses,
   V2SkillListErrors,
@@ -2622,6 +2626,38 @@ export class Project extends HeyApiClient {
   }
 
   /**
+   * Remove a project
+   *
+   * Remove a project from OpenCode, deleting the project and all of its sessions, messages, workspaces and directory links. Files on disk are left untouched.
+   */
+  public remove<ThrowOnError extends boolean = false>(
+    parameters: {
+      projectID: string
+      directory?: string
+      workspace?: string
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "projectID" },
+            { in: "query", key: "directory" },
+            { in: "query", key: "workspace" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).delete<ProjectRemoveResponses, ProjectRemoveErrors, ThrowOnError>({
+      url: "/project/{projectID}",
+      ...options,
+      ...params,
+    })
+  }
+
+  /**
    * Update project
    *
    * Update project properties such as name, icon, and commands.
@@ -3126,7 +3162,7 @@ export class Permission extends HeyApiClient {
       requestID: string
       directory?: string
       workspace?: string
-      reply?: "once" | "always" | "reject"
+      reply?: "once" | "session" | "always" | "reject"
       message?: string
     },
     options?: Options<never, ThrowOnError>,
@@ -3170,7 +3206,7 @@ export class Permission extends HeyApiClient {
       permissionID: string
       directory?: string
       workspace?: string
-      response?: "once" | "always" | "reject"
+      response?: "once" | "session" | "always" | "reject"
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -5486,6 +5522,7 @@ export class Session3 extends HeyApiClient {
       agent?: string
       model?: ModelRef
       location?: LocationRef
+      permissionLevel?: PermissionLevel
     },
     options?: Options<never, ThrowOnError>,
   ) {
@@ -5498,6 +5535,7 @@ export class Session3 extends HeyApiClient {
             { in: "body", key: "agent" },
             { in: "body", key: "model" },
             { in: "body", key: "location" },
+            { in: "body", key: "permissionLevel" },
           ],
         },
       ],
@@ -5511,18 +5549,6 @@ export class Session3 extends HeyApiClient {
         ...options?.headers,
         ...params.headers,
       },
-    })
-  }
-
-  /**
-   * List active sessions
-   *
-   * Retrieve foreground Session drains currently owned by this OpenCode process. Sessions absent from the result are inactive.
-   */
-  public active<ThrowOnError extends boolean = false>(options?: Options<never, ThrowOnError>) {
-    return (options?.client ?? this.client).get<V2SessionActiveResponses, V2SessionActiveErrors, ThrowOnError>({
-      url: "/api/session/active",
-      ...options,
     })
   }
 
@@ -5542,6 +5568,55 @@ export class Session3 extends HeyApiClient {
       url: "/api/session/{sessionID}",
       ...options,
       ...params,
+    })
+  }
+
+  /**
+   * Update session
+   *
+   * Update session properties such as title or permission level.
+   */
+  public update<ThrowOnError extends boolean = false>(
+    parameters: {
+      sessionID: string
+      title?: string
+      permissionLevel?: PermissionLevel
+    },
+    options?: Options<never, ThrowOnError>,
+  ) {
+    const params = buildClientParams(
+      [parameters],
+      [
+        {
+          args: [
+            { in: "path", key: "sessionID" },
+            { in: "body", key: "title" },
+            { in: "body", key: "permissionLevel" },
+          ],
+        },
+      ],
+    )
+    return (options?.client ?? this.client).patch<V2SessionUpdateResponses, V2SessionUpdateErrors, ThrowOnError>({
+      url: "/api/session/{sessionID}",
+      ...options,
+      ...params,
+      headers: {
+        "Content-Type": "application/json",
+        ...options?.headers,
+        ...params.headers,
+      },
+    })
+  }
+
+  /**
+   * List active sessions
+   *
+   * Retrieve foreground Session drains currently owned by this OpenCode process. Sessions absent from the result are inactive.
+   */
+  public active<ThrowOnError extends boolean = false>(options?: Options<never, ThrowOnError>) {
+    return (options?.client ?? this.client).get<V2SessionActiveResponses, V2SessionActiveErrors, ThrowOnError>({
+      url: "/api/session/active",
+      ...options,
     })
   }
 

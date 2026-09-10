@@ -1195,7 +1195,7 @@ export function Sidebar(props: { data: SidebarData }) {
                         }
                         onCopySessionID={(entry) => copy(entry.session.id)}
                         onCopySessionProject={() => copy(displayName(group.project))}
-                        onDelete={confirmDelete}
+                        onDelete={(entry) => confirmDelete(entry, pathKey(group.project.worktree))}
                         canDrop={canDropSession}
                         projectWorktrees={projectWorktrees}
                       />

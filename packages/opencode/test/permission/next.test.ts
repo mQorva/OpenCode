@@ -956,6 +956,102 @@ it.instance(
 )
 
 it.instance(
+  "reply - session approval stays scoped to the session",
+  () =>
+    Effect.gen(function* () {
+      const a = yield* ask({
+        id: PermissionV1.ID.make("per_sess_a"),
+        sessionID: SessionID.make("session_sess"),
+        permission: "bash",
+        patterns: ["ls"],
+        metadata: {},
+        always: ["ls"],
+        ruleset: [],
+      }).pipe(Effect.forkScoped)
+
+      yield* waitForPending(1)
+      yield* reply({ requestID: PermissionV1.ID.make("per_sess_a"), reply: "session" })
+      yield* Fiber.join(a)
+      expect(yield* list()).toHaveLength(0)
+
+      // The same session no longer asks.
+      const same = yield* ask({
+        sessionID: SessionID.make("session_sess"),
+        permission: "bash",
+        patterns: ["ls"],
+        metadata: {},
+        always: [],
+        ruleset: [],
+      })
+      expect(same).toBeUndefined()
+
+      // Another session is not affected by the session approval.
+      const other = yield* ask({
+        sessionID: SessionID.make("session_other"),
+        permission: "bash",
+        patterns: ["ls"],
+        metadata: {},
+        always: [],
+        ruleset: [],
+      }).pipe(Effect.forkScoped)
+
+      const pending = yield* waitForPending(1)
+      expect(pending[0].sessionID).toBe(SessionID.make("session_other"))
+      yield* rejectAll()
+      yield* Fiber.await(other)
+    }),
+  { git: true },
+)
+
+it.instance(
+  "reply - session approval resolves matching pending requests in same session only",
+  () =>
+    Effect.gen(function* () {
+      const a = yield* ask({
+        id: PermissionV1.ID.make("per_sess7a"),
+        sessionID: SessionID.make("session_sess"),
+        permission: "bash",
+        patterns: ["ls"],
+        metadata: {},
+        always: ["*"],
+        ruleset: [],
+      }).pipe(Effect.forkScoped)
+
+      const b = yield* ask({
+        id: PermissionV1.ID.make("per_sess7b"),
+        sessionID: SessionID.make("session_sess"),
+        permission: "bash",
+        patterns: ["rm"],
+        metadata: {},
+        always: [],
+        ruleset: [],
+      }).pipe(Effect.forkScoped)
+
+      const c = yield* ask({
+        id: PermissionV1.ID.make("per_sess7c"),
+        sessionID: SessionID.make("session_other"),
+        permission: "bash",
+        patterns: ["rm"],
+        metadata: {},
+        always: [],
+        ruleset: [],
+      }).pipe(Effect.forkScoped)
+
+      yield* waitForPending(3)
+      yield* reply({ requestID: PermissionV1.ID.make("per_sess7a"), reply: "session" })
+
+      yield* Fiber.join(a)
+      yield* Fiber.join(b)
+      // The other session's pending request is untouched.
+      const pending = yield* waitForPending(1)
+      expect(pending[0].id).toBe(PermissionV1.ID.make("per_sess7c"))
+      yield* rejectAll()
+      yield* Fiber.await(c)
+    }),
+  { git: true },
+)
+
+it.instance(
   "reply - always keeps other session pending",
   () =>
     Effect.gen(function* () {

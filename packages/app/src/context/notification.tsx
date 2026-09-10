@@ -350,6 +350,39 @@ function createServerNotificationState(input: {
     })
   }
 
+  // Gelöschte Sessions dürfen keine ungesehenen Einträge hinterlassen — sonst zählen sie
+  // dauerhaft in `totalUnseen` (Badge) und der Punkt bleibt, obwohl nichts mehr existiert.
+  // Das gilt auch für `pendingAttention`: Das Entfernen einer Session (oder ihr Abbruch) wirft
+  // offene Fragen/Berechtigungen serverseitig ohne replied/rejected-Ereignis weg, der Zähler
+  // würde sonst für immer mitzählen. Gelöschte Kind-Sessions teilt der Server selbst als
+  // session.deleted mit, also genügt es, hier je gelöschter Session aufzuräumen.
+  const clearSessionAttention = (sessionID: string) => {
+    const suffixPermission = `\0${sessionID}\0permission`
+    const suffixQuestion = `\0${sessionID}\0question`
+    const next = Object.fromEntries(
+      Object.entries(pendingAttention).filter(([key]) => !key.endsWith(suffixPermission) && !key.endsWith(suffixQuestion)),
+    )
+    if (Object.keys(next).length === Object.keys(pendingAttention).length) return
+    setPendingAttention(next)
+  }
+
+  const removeSessionNotifications = (sessionID: string) => {
+    clearSessionAttention(sessionID)
+    const affected = store.list.filter((n) => n.session === sessionID)
+    if (!affected.length) return
+    const directories = [...new Set(affected.flatMap((n) => (n.directory ? [n.directory] : [])))]
+    batch(() => {
+      setStore("list", store.list.filter((n) => n.session !== sessionID))
+      setIndex("session", "all", sessionID, (all) => all.filter((n) => n.session !== sessionID))
+      updateUnseen("session", sessionID, [])
+      directories.forEach((directory) => {
+        setIndex("project", "all", directory, (all) => all.filter((n) => n.session !== sessionID))
+        const unseen = (index.project.unseen[directory] ?? empty).filter((n) => n.session !== sessionID)
+        updateUnseen("project", directory, unseen)
+      })
+    })
+  }
+
   const lookup = async (directory: string, sessionID?: string) => {
     if (!sessionID) return undefined
     const sync = serverSync().ensureDirSyncContext(directory)
@@ -458,6 +491,11 @@ function createServerNotificationState(input: {
       beginAttention(directory, sessionID, event.type === "permission.asked" ? "permission" : "question")
       return
     }
+    if (event.type === "session.deleted") {
+      const deleted = event.properties.sessionID ?? event.properties.info?.id
+      if (deleted) removeSessionNotifications(deleted)
+      return
+    }
     if (event.type === "permission.replied" || event.type === "question.replied" || event.type === "question.rejected") {
       endAttention(directory, sessionID, event.type === "permission.replied" ? "permission" : "question")
     }
@@ -469,8 +507,12 @@ function createServerNotificationState(input: {
 
   return {
     ready,
+    // Das Badge zählt, was der Nutzer noch sehen muss: jede fertige, ungelesene Sitzung
+    // (je Sitzung einmal, egal wie viele Turns sie produziert hat — die Seitenleiste zeigt
+    // denselben Stand als einen Punkt) plus jede offene Rückfrage (permission./question.-Dock).
     totalUnseen() {
-      return Object.values(index.session.unseenCount).reduce((sum, count) => sum + count, 0) + attentionCount()
+      const unreadSessions = Object.values(index.session.unseenCount).filter((count) => count > 0).length
+      return unreadSessions + attentionCount()
     },
     session: {
       all(session: string) {

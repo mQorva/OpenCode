@@ -28,6 +28,9 @@ interface PendingEntry {
 interface State {
   pending: Map<PermissionV1.ID, PendingEntry>
   approved: PermissionV1.Rule[]
+  // "session" approvals, scoped to a session and kept in memory for the lifetime
+  // of the instance (unlike "always", which is project-wide).
+  sessionApproved: Map<PermissionV1.Request["sessionID"], PermissionV1.Rule[]>
 }
 
 export class Service extends Context.Service<Service, Interface>()("@opencode/Permission") {}
@@ -42,6 +45,7 @@ const layer = Layer.effect(
         const state = {
           pending: new Map<PermissionV1.ID, PendingEntry>(),
           approved: [],
+          sessionApproved: new Map<PermissionV1.Request["sessionID"], PermissionV1.Rule[]>(),
         }
 
         yield* Effect.addFinalizer(() =>
@@ -58,12 +62,13 @@ const layer = Layer.effect(
     )
 
     const ask = Effect.fn("Permission.ask")(function* (input: PermissionV1.AskInput) {
-      const { approved, pending } = yield* InstanceState.get(state)
+      const { approved, pending, sessionApproved } = yield* InstanceState.get(state)
       const { ruleset, ...request } = input
       let needsAsk = false
+      const sessionRules = sessionApproved.get(request.sessionID) ?? []
 
       for (const pattern of request.patterns) {
-        const rule = evaluate(request.permission, pattern, ruleset, approved)
+        const rule = evaluate(request.permission, pattern, ruleset, approved, sessionRules)
         yield* Effect.logInfo("evaluated", { permission: request.permission, pattern, action: rule })
         if (rule.action === "deny") {
           return yield* new PermissionV1.DeniedError({
@@ -115,7 +120,7 @@ const layer = Layer.effect(
     })
 
     const reply = Effect.fn("Permission.reply")(function* (input: PermissionV1.ReplyInput) {
-      const { approved, pending } = yield* InstanceState.get(state)
+      const { approved, pending, sessionApproved } = yield* InstanceState.get(state)
       const existing = pending.get(input.requestID)
       if (!existing) return yield* new PermissionV1.NotFoundError({ requestID: input.requestID })
 
@@ -149,6 +154,36 @@ const layer = Layer.effect(
 
       yield* Deferred.succeed(existing.deferred, undefined)
       if (input.reply === "once") return
+
+      if (input.reply === "session") {
+        // Remember the approval scoped to this session only; other sessions keep
+        // asking until they get their own approval (or a project-wide "always").
+        const scoped = sessionApproved.get(existing.info.sessionID) ?? []
+        for (const pattern of existing.info.always) {
+          scoped.push({
+            permission: existing.info.permission,
+            pattern,
+            action: "allow",
+          })
+        }
+        sessionApproved.set(existing.info.sessionID, scoped)
+
+        for (const [id, item] of pending.entries()) {
+          if (item.info.sessionID !== existing.info.sessionID) continue
+          const ok = item.info.patterns.every(
+            (pattern) => evaluate(item.info.permission, pattern, scoped).action === "allow",
+          )
+          if (!ok) continue
+          pending.delete(id)
+          yield* events.publish(Event.Replied, {
+            sessionID: item.info.sessionID,
+            requestID: item.info.id,
+            reply: "session",
+          })
+          yield* Deferred.succeed(item.deferred, undefined)
+        }
+        return
+      }
 
       for (const pattern of existing.info.always) {
         approved.push({

@@ -80,7 +80,7 @@ export function createSessionComposerController(options?: { closeMs?: number | (
     return !!perm?.always.length
   })
 
-  const decide = (response: "once" | "always" | "reject") => {
+  const decide = (response: "once" | "session" | "always" | "reject") => {
     const perm = permissionRequest()
     if (!perm) return
     if (store.responding === perm.id) return

@@ -638,8 +638,9 @@ export const dict = {
 
   "notification.permission.title": "Permission required",
   "session.permission.deny": "Deny",
-  "session.permission.allowProject": "Always allow for this project",
   "session.permission.allowOnce": "Allow once",
+  "session.permission.allowSession": "For this session",
+  "session.permission.allowProject": "For this project",
   "settings.permissions.saved.title": "Saved project permissions",
   "settings.permissions.saved.description": "Manage permanent approvals for actions and resources in this project.",
   "settings.permissions.saved.manage": "Manage",

@@ -1402,7 +1402,7 @@ export type GlobalEvent = {
         properties: {
           sessionID: string
           requestID: string
-          reply: "once" | "always" | "reject"
+          reply: "once" | "session" | "always" | "reject"
         }
       }
     | {
@@ -2704,14 +2704,14 @@ export type InvalidCursorError = {
   message: string
 }
 
-export type SessionActive = {
-  type: "running"
-}
-
 export type SessionNotFoundError = {
   _tag: "SessionNotFoundError"
   sessionID: string
   message: string
+}
+
+export type SessionActive = {
+  type: "running"
 }
 
 export type PromptInput = {
@@ -3134,7 +3134,7 @@ export type PermissionV2Source = {
   callID: string
 }
 
-export type PermissionV2Reply = "once" | "always" | "reject"
+export type PermissionV2Reply = "once" | "session" | "always" | "reject"
 
 export type QuestionV2Option = {
   /**
@@ -3938,6 +3938,7 @@ export type SessionV2Info = {
   location: LocationRef
   subpath?: string
   revert?: RevertState
+  permissionLevel?: PermissionLevel
 }
 
 export type PromptInputFileAttachment = {
@@ -5749,7 +5750,7 @@ export type PermissionReplied = {
   data: {
     sessionID: string
     requestID: string
-    reply: "once" | "always" | "reject"
+    reply: "once" | "session" | "always" | "reject"
   }
 }
 
@@ -6896,7 +6897,7 @@ export type EventPermissionReplied = {
   properties: {
     sessionID: string
     requestID: string
-    reply: "once" | "always" | "reject"
+    reply: "once" | "session" | "always" | "reject"
   }
 }
 
@@ -8802,6 +8803,40 @@ export type ProjectInitGitResponses = {
 
 export type ProjectInitGitResponse = ProjectInitGitResponses[keyof ProjectInitGitResponses]
 
+export type ProjectRemoveData = {
+  body?: never
+  path: {
+    projectID: string
+  }
+  query?: {
+    directory?: string
+    workspace?: string
+  }
+  url: "/project/{projectID}"
+}
+
+export type ProjectRemoveErrors = {
+  /**
+   * BadRequest | InvalidRequestError
+   */
+  400: EffectHttpApiErrorBadRequest | InvalidRequestError
+  /**
+   * ProjectNotFoundError
+   */
+  404: ProjectNotFoundError
+}
+
+export type ProjectRemoveError = ProjectRemoveErrors[keyof ProjectRemoveErrors]
+
+export type ProjectRemoveResponses = {
+  /**
+   * Removed project information
+   */
+  200: Project
+}
+
+export type ProjectRemoveResponse = ProjectRemoveResponses[keyof ProjectRemoveResponses]
+
 export type ProjectUpdateData = {
   body?: {
     name?: string
@@ -9279,7 +9314,7 @@ export type PermissionListResponse = PermissionListResponses[keyof PermissionLis
 
 export type PermissionReplyData = {
   body?: {
-    reply: "once" | "always" | "reject"
+    reply: "once" | "session" | "always" | "reject"
     message?: string
   }
   path: {
@@ -10388,7 +10423,7 @@ export type SessionUnrevertResponse = SessionUnrevertResponses[keyof SessionUnre
 
 export type PermissionRespondData = {
   body?: {
-    response: "once" | "always" | "reject"
+    response: "once" | "session" | "always" | "reject"
   }
   path: {
     sessionID: string
@@ -11395,6 +11430,7 @@ export type V2SessionCreateData = {
     agent?: string
     model?: ModelRef
     location?: LocationRef
+    permissionLevel?: PermissionLevel
   }
   path?: never
   query?: never
@@ -11424,39 +11460,6 @@ export type V2SessionCreateResponses = {
 }
 
 export type V2SessionCreateResponse = V2SessionCreateResponses[keyof V2SessionCreateResponses]
-
-export type V2SessionActiveData = {
-  body?: never
-  path?: never
-  query?: never
-  url: "/api/session/active"
-}
-
-export type V2SessionActiveErrors = {
-  /**
-   * InvalidRequestError
-   */
-  400: InvalidRequestError
-  /**
-   * UnauthorizedError
-   */
-  401: UnauthorizedError
-}
-
-export type V2SessionActiveError = V2SessionActiveErrors[keyof V2SessionActiveErrors]
-
-export type V2SessionActiveResponses = {
-  /**
-   * Success
-   */
-  200: {
-    data: {
-      [key: string]: unknown | SessionActive
-    }
-  }
-}
-
-export type V2SessionActiveResponse = V2SessionActiveResponses[keyof V2SessionActiveResponses]
 
 export type V2SessionGetData = {
   body?: never
@@ -11494,6 +11497,79 @@ export type V2SessionGetResponses = {
 }
 
 export type V2SessionGetResponse = V2SessionGetResponses[keyof V2SessionGetResponses]
+
+export type V2SessionUpdateData = {
+  body: {
+    title?: string
+    permissionLevel?: PermissionLevel
+  }
+  path: {
+    sessionID: string
+  }
+  query?: never
+  url: "/api/session/{sessionID}"
+}
+
+export type V2SessionUpdateErrors = {
+  /**
+   * InvalidRequestError
+   */
+  400: InvalidRequestError
+  /**
+   * UnauthorizedError
+   */
+  401: UnauthorizedError
+  /**
+   * SessionNotFoundError
+   */
+  404: SessionNotFoundError
+}
+
+export type V2SessionUpdateError = V2SessionUpdateErrors[keyof V2SessionUpdateErrors]
+
+export type V2SessionUpdateResponses = {
+  /**
+   * Success
+   */
+  200: {
+    data: SessionV2Info
+  }
+}
+
+export type V2SessionUpdateResponse = V2SessionUpdateResponses[keyof V2SessionUpdateResponses]
+
+export type V2SessionActiveData = {
+  body?: never
+  path?: never
+  query?: never
+  url: "/api/session/active"
+}
+
+export type V2SessionActiveErrors = {
+  /**
+   * InvalidRequestError
+   */
+  400: InvalidRequestError
+  /**
+   * UnauthorizedError
+   */
+  401: UnauthorizedError
+}
+
+export type V2SessionActiveError = V2SessionActiveErrors[keyof V2SessionActiveErrors]
+
+export type V2SessionActiveResponses = {
+  /**
+   * Success
+   */
+  200: {
+    data: {
+      [key: string]: unknown | SessionActive
+    }
+  }
+}
+
+export type V2SessionActiveResponse = V2SessionActiveResponses[keyof V2SessionActiveResponses]
 
 export type V2SessionSwitchAgentData = {
   body: {

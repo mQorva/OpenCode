@@ -103,34 +103,38 @@ function setLastActiveUrl(windowID: string, value: string) {
 }
 
 // The OpenCode taskbar icon is white-and-blue, so the unread badge uses a warm coral disc
-// that stays legible on dark taskbars and against the blue icon. The disc hangs off the
-// bottom-right corner of the icon (partly outside it), which is where the OS places it.
-const TASKBAR_BADGE_SIZE = 64
+// that stays legible on dark taskbars and against the blue icon. Windows squashes the overlay
+// into the small corner badge of the taskbar entry, so the disc covers the whole canvas and the
+// number fills it relative to the disc. Rendering at 2x keeps the downscale smooth instead of
+// blocky, and a fairly heavy font keeps short numbers readable at taskbar size.
+const TASKBAR_BADGE_SIZE = 128
 const TASKBAR_BADGE_CORAL = "#FF7A59"
 function taskbarBadgeImage(count: number) {
   if (count <= 0) return undefined
+  const size = TASKBAR_BADGE_SIZE
   const canvas = document.createElement("canvas")
-  canvas.width = TASKBAR_BADGE_SIZE
-  canvas.height = TASKBAR_BADGE_SIZE
+  canvas.width = size
+  canvas.height = size
   const ctx = canvas.getContext("2d")
   if (!ctx) return undefined
 
-  const center = TASKBAR_BADGE_SIZE - 17
-  const radius = 17
+  const center = size / 2
+  const radius = size / 2 - 2
   ctx.beginPath()
   ctx.arc(center, center, radius, 0, Math.PI * 2)
   ctx.fillStyle = TASKBAR_BADGE_CORAL
   ctx.fill()
-  ctx.strokeStyle = "rgba(255,255,255,0.92)"
-  ctx.lineWidth = 3
+  // Thin white ring makes the disc pop against the blue icon and the taskbar.
+  ctx.strokeStyle = "rgba(255,255,255,0.95)"
+  ctx.lineWidth = Math.max(3, Math.round(size / 24))
   ctx.stroke()
 
   const label = count > 99 ? "99+" : String(count)
   ctx.fillStyle = "#fff"
-  ctx.font = `700 ${count > 9 ? 20 : 24}px system-ui, sans-serif`
+  ctx.font = `700 ${label.length > 2 ? Math.round(size * 0.5) : Math.round(size * 0.66)}px system-ui, sans-serif`
   ctx.textAlign = "center"
   ctx.textBaseline = "middle"
-  ctx.fillText(label, center, center + 1)
+  ctx.fillText(label, center, center + Math.round(size / 64))
 
   return canvas.toDataURL("image/png")
 }

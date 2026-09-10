@@ -322,6 +322,17 @@ export const SessionQuestionDock: Component<{ request: QuestionRequest; onSubmit
     focus(store.focus + step)
   }
 
+  // Plain Enter bestätigt die primäre Aktion — außer der Fokus liegt auf einem Kopf-/Fuß-Button
+  // (Fortschrittssegmente, Minimieren, zurück/verwerfen/absenden), dessen eigener Enter-Klick
+  // bereits die passende Aktion auslöst. Antwortoptionen sind bewusst eingeschlossen: dort soll
+  // Enter nicht nur auswählen, sondern bestätigen.
+  const confirmFromFocus = (event: KeyboardEvent) => {
+    const target = event.target
+    if (!(target instanceof HTMLElement)) return true
+    if (target.closest('[data-slot="question-options"], [data-slot="question-text"]')) return true
+    return !target.closest("button")
+  }
+
   const nav = (event: KeyboardEvent) => {
     if (event.defaultPrevented) return
 
@@ -335,6 +346,27 @@ export const SessionQuestionDock: Component<{ request: QuestionRequest; onSubmit
     if (mod && event.key === "Enter") {
       if (event.repeat) return
       event.preventDefault()
+      next()
+      return
+    }
+
+    if (event.key === "Enter" && !event.altKey && !event.ctrlKey && !event.metaKey && confirmFromFocus(event)) {
+      if (event.repeat) return
+      event.preventDefault()
+      if (event.shiftKey) {
+        back()
+        return
+      }
+      // Single-Select: die fokussierte, noch ungewählte Option übernimmt Enter in die Antwort,
+      // bevor bestätigt wird — so kann ein blinder Enter-Submit keine leere Antwort schicken.
+      // Multi-Select wählt weiterhin per Leertaste (bzw. Klick), Enter bestätigt nur.
+      const option =
+        event.target instanceof HTMLElement ? event.target.closest('[data-slot="question-option"]') : undefined
+      if (option instanceof HTMLElement && !multi() && !store.customOn[store.tab]) {
+        const index = optsRef.findIndex((el) => el === option)
+        const label = index >= 0 ? options()[index]?.label : undefined
+        if (label && !picked(label)) pick(label)
+      }
       next()
       return
     }
@@ -500,7 +532,13 @@ export const SessionQuestionDock: Component<{ request: QuestionRequest; onSubmit
             </ButtonV2>
             <div data-slot="question-footer-actions">
               <Show when={store.tab > 0}>
-                <ButtonV2 variant="neutral" size="large" disabled={sending()} onClick={back}>
+                <ButtonV2
+                  variant="neutral"
+                  size="large"
+                  disabled={sending()}
+                  onClick={back}
+                  aria-keyshortcuts="Shift+Enter"
+                >
                   {language.t("ui.common.back")}
                 </ButtonV2>
               </Show>
@@ -509,7 +547,7 @@ export const SessionQuestionDock: Component<{ request: QuestionRequest; onSubmit
                 size="large"
                 disabled={sending()}
                 onClick={next}
-                aria-keyshortcuts="Meta+Enter Control+Enter"
+                aria-keyshortcuts="Enter"
               >
                 {last() ? language.t("ui.common.submit") : language.t("ui.common.next")}
               </ButtonV2>
