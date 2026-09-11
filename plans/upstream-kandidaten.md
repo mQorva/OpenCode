@@ -27,11 +27,11 @@ sondern automatisch geschlossen, weil ein vorheriges Issue und die vollständig 
 PR-Vorlage fehlten. Die alten lokalen und `origin`-Branches wurden nach Sicherung ihrer Spitzen als
 lokale Archiv-Tags entfernt und werden nicht unverändert wiederverwendet:
 
-| Kandidat | Alter PR | Zustand | Nächster Schritt |
-|---|---:|---|---|
-| #1 | `anomalyco/opencode#45557` | geschlossen, nicht gemergt; Branch entfernt, Tag `archive/upstream-pr-45557` | Duplikate prüfen, Issue anlegen, frisch von aktuellem `upstream/dev` extrahieren und erneut testen |
-| #2 | `anomalyco/opencode#45607` (alt) / `anomalyco/opencode#46125` (neu) | alt: geschlossen, nicht gemergt; Branch entfernt, Tag `archive/upstream-pr-45607`. neu: PR offen gegen `upstream/dev` `10765ff2a9`, Branch `async-session-idle` HEAD `763d4ca96d`, Issue #45610; `tsgo --noEmit` exit 0 | auf Maintainer-Feedback warten |
-| #3 | `anomalyco/opencode#45609` | geschlossen, nicht gemergt; Branch entfernt, Tag `archive/upstream-pr-45609` | Root-Fall testen, danach Issue und neuer kurzer Branch |
+| Kandidat | Alter PR | Zustand | Aktueller Stand |
+|---|---|---|---|
+| #1 | `#45557` (geschlossen) | geschlossen, nicht gemergt | als PR #46023 (`auth-json-safety-pilot`) neu veröffentlicht |
+| #2 | `#45607` (geschlossen) / `#46125` (neu) | alt geschlossen; neu PR offen (HEAD `763d4ca96d`, Issue #45610) | auf Maintainer-Feedback warten |
+| #3 | `#45609` (geschlossen) | geschlossen, nicht gemergt | als PR #46148 (`filesystem-root-watch`) neu veröffentlicht |
 
 `v2-compat.ts` und die zwischenzeitlichen Azure-Anpassungen sind keine neuen Fork-Kandidaten:
 Upstream enthält inzwischen die V2-Konfigurationskompatibilität und die aktuelle Azure-
@@ -270,194 +270,16 @@ die querschnittlichen Pflichten, die unabhängig vom konkreten Paket gelten:
 | 33 | **C nach Vertragsprüfung** — dauerhafte Permission-Antwort anbieten, sobald die Anfrage `always`-Muster liefert | `packages/app/src/pages/session/composer/session-composer-state.ts` | eigenständiger Fix `persistent-permission-choice`; nicht an `protocol() === "v2"` koppeln, aber zuerst bestätigen, dass der V1-Request die `always`-Semantik tatsächlich unterstützt; beide Protokollpfade testen |
 | 34 | **C mit Windows-Nachweis** — unverpackten Electron-Entwicklungsstart von der installierten Dev-App-ID trennen | `packages/desktop/src/main/index.ts`; neutraler Identitätsvertrag/Test nahe der Desktop-Konfiguration | veröffentlicht als PR #46474 mit Issue #46473 auf Branch `desktop-dev-identity`; der neutrale Test hält installierte IDs stabil und erzwingt eine eigene unverpackte AppUserModelID. Reproduktion im Fork: richtige und verwaiste Startmenü-Verknüpfung teilten eine AppUserModelID, die verwaiste Verknüpfung zeigte auf eine fehlende `electron.exe`, Taskleiste zeigte generisches Dokument-Icon. |
 
-| 35 | **C, vorbereitet 07.09.2026** — Providerkatalog nur auf Anfrage ausliefern | siehe Bauanweisung unten | PR #47678 offen gegen `upstream/dev` `ea2d59d7ca`, Branch `provider-connected-list`, HEAD `4ee5418517`, Issue #47677. Der Katalog-Cache wurde herausgenommen (besetzt durch fremden PR #44132). Anker ist **nicht** #47328 (das ist Flock/models.dev-Startup), sondern ein eigenes Issue; verwandt: #35897 und #44180 |
-| 36 | **C, klein** — Bootstrap-Abfragen nicht mehrfach ausführen | siehe Bauanweisung unten | PR #47682 offen gegen `upstream/dev` `ea2d59d7ca`, Branch `bootstrap-query-keys`, HEAD `24aadc002a`, Issue #47681 |
-| 37 | **C mit neuem Issue** — Verweise auf eine gelöschte Sitzung überleben ihr Ziel | siehe Bauanweisung unten | PR #47684 offen gegen `upstream/dev` `ea2d59d7ca`, Branch `stale-session-references`, HEAD `3df3a64408`, Issue #47683 |
-| 38 | **D, vorher mit Upstream klären** — eine beim Start wiederhergestellte Route auf eine fehlende Sitzung still verwerfen | `packages/app/src/utils/initial-route.ts` (neu), ein Hunk in `context/layout.tsx`, ein Hunk in `pages/session.tsx` | Der Desktop-Renderer stellt `last-active-url` ungeprüft wieder her (`packages/desktop/src/renderer/index.tsx:107`, der einzige Setter der Startroute); zeigt sie auf eine gelöschte Sitzung, meldet die App einen Fehler für etwas, das der Nutzer nie gewählt hat. Die Unterscheidung „vom Nutzer geöffnet" gegen „beim Start wiederhergestellt" ist eine Vertragsänderung an `SessionErrorFallback`, kein Bugfix — erst abstimmen. Hängt an #37 (gleiche Datei, andere Hunks) |
-| 39 | **C, aber nur zu einem Drittel eigenständig** — erschöpftes Anbieterbudget an strukturellen Signalen erkennen statt am Wartezeit-Text | `packages/opencode/src/session/retry.ts`, `packages/opencode/test/session/retry.test.ts` | siehe Bauanweisung unten. Zwei der drei Teile sind durch fremde offene PRs (#47339, #47641) bereits besetzt; gesendet wurde nur der strukturelle Teil C als PR #47686 gegen `upstream/dev` `ea2d59d7ca`, Branch `retry-terminal-signals`, HEAD `5dad82a48a`, Issue #47685 |
-| 40 | **C, vorbereitet 08.09.2026** — Snapshot-Revert nicht mehr über fremde Worktree-Änderungen laufen lassen (Patch-Scoping, Ownership-Sperre, Lösch-Deckel, diffFull-Budget) | `packages/opencode/src/snapshot/index.ts`, `packages/opencode/src/session/processor.ts`, `packages/opencode/src/session/revert.ts`, `packages/opencode/test/snapshot/snapshot.test.ts`, `packages/opencode/test/session/revert-compact.test.ts` | siehe Bauanweisung unten. Schließt die offenen Issues #40736, #33940, #46783. Restore-Scope-Anteil aus #45141 bewusst nicht dupliziert. Verifiziert mit `bun typecheck`, Snapshot 57/57 + 4 neue, revert-compact 8/8 auf `upstream/dev` `ecbc6ccac8` |
+| 35 | `provider-connected-list` | #35 | PR #47678 offen (`provider-connected-list`, HEAD `4ee5418517`, Issue #47677, `BLOCKED`); Basis `upstream/dev` `ea2d59d7ca`; `tsgo --noEmit` exit 0; `bootstrap.test.ts` 11 pass; `httpapi-provider.test.ts` 6 pass/1 skip | auf Maintainer-Feedback warten |
+| 36 | `bootstrap-query-keys` | #36 | PR #47682 offen (`bootstrap-query-keys`, HEAD `24aadc002a`, Issue #47681, `BLOCKED`); Basis `upstream/dev` `ea2d59d7ca`; `bootstrap.test.ts` grün (Windows-PathKey-Abbildung) | auf Maintainer-Feedback warten |
+| 37 | `stale-session-references` | #37 | PR #47684 offen (`stale-session-references`, HEAD `3df3a64408`, Issue #47683, `BLOCKED`); Basis `upstream/dev` `ea2d59d7ca`; `tabs.test.ts` grün (End-Of-Key-Prüfung, nicht Trennung) | auf Maintainer-Feedback warten |
+| 38 | `initial-route-stale-session` | #38 | **vorgemerkt** (09.09.): `packages/app/src/utils/initial-route.ts` (neu), `layout.tsx` + `session.tsx` (2 Hunks); kontrahiert mit #37 (gleiche Datei, andere Hunks); Design-Gespräch nötig (Vertrag `SessionErrorFallback`) | noch kein PR; gegen `v2` neu bewerten |
+| 39 | `retry-terminal-signals` | #39 | PR #47686 offen (`retry-terminal-signals`, HEAD `5dad82a48a`, Issue #47685, `BLOCKED`); Teil C (402, `PerDay`-Quota, strukturierte Codes) isoliert gesendet; Teile A/B bleiben PR #47339 und #47641 überlassen; `retry.test.ts` 65 pass | auf Maintainer-Feedback warten |
+| 40 | `snapshot-revert-guard` | #40 | PR #47861 offen (`snapshot-revert-guard`, HEAD `73c91de821`, `MERGEABLE`); Basis `upstream/dev` `ecbc6ccac8`; Issues #40736, #33940, #46783; Snapshot 57/57 + 4 neue, revert-compact 8/8; `git diff --check` sauber; kein Sidebar-Marker | auf CI / Maintainer-Feedback warten |
 
-### Bauanweisung #40 `snapshot-revert-guard`
+### Bauanweisungen (Referenz)
 
-**Gesendet 08.09.2026 als PR #47861.** Branch `snapshot-revert-guard`, HEADs `73c91de821`
-(Fix), `12c00f0355` (Tests), Basis `upstream/dev` `ecbc6ccac8`, PR-Status OPEN /
-mergeable MERGEABLE. Issues: Closes #40736, #33940, #46783 (alle offen, keine Duplikate).
-Prüfungen: `tsgo --noEmit` exit 0 in `packages/opencode`; `bun test test/snapshot/snapshot.test.ts`
-57 pass / 3 skip / 0 fail (inkl. 4 neue); `bun test test/session/revert-compact.test.ts`
-8 pass / 0 fail; `git diff --check` sauber; kein mQorva/sidebar-Marker. PR-Body:
-`plans/upstream/pr-body-snapshot-revert-guard.md`. Ausstehend: CI-Ergebnis und
-Maintainer-Feedback.
-
-**Ausgangslage:** Isoliertes Paket auf `upstream/dev` `ecbc6ccac8`, Worktree
-`.worktrees/snapshot-revert-guard`. Es adressiert drei offene Issues mit derselben Wurzel:
-Die Patch-Liste kam aus `git diff --cached --name-only <hash>` über den gesamten gestageten
-Worktree-Delta; fremde Änderungen landeten in der Liste (Cross-Session-Attribution, #40736),
-`revert()` wurde darüber gegen fremde Snapshots gerollt und löschte bei fehlendem Tree-Eintrag
-bedingungslos mit `fs.remove` (Datenverlust, #46783, #33940).
-
-| Datei | Hunks | Inhalt |
-|---|---|---|
-| `opencode/src/snapshot/index.ts` | ~9 | `Interface`: `track(owner?)`, `patch(hash, files?)`, `revert(patches, owner?)`. Ownership-Ledger `owner-log.json` im gitdir, `assertOwnership` weigert bei fremdem Owner nach Ziel-Snapshot. `patchPaths`-Helper; `patch` schränkt den `--name-only`-Diff per Pathspec auf gemeldete Tool-Pfade ein. `revert`: Löschbudget `maxDeletions = 100` mit Abbruch statt Bulk-`remove`. `diffFull`: `diffContext = 3`, `patchBudget = 2 MiB` (nutzt `limit`), `yield* Effect.yieldNow` pro Batch |
-| `opencode/src/session/processor.ts` | ~6 | `recordMutatedFiles` sammelt pro Turn die gemeldeten Pfade (`metadata.filepath`/`metadata.files`/`input.filePath`); `track(input.sessionID)`, `patch(ctx.snapshot, ctx.mutatedFiles)` |
-| `opencode/src/session/revert.ts` | 1 | übergibt `input.sessionID` als Owner an `track()`/`revert()` |
-| `opencode/test/snapshot/snapshot.test.ts` | neu | 4 Regressionstests: Patch-Einschränkung, leere Tool-Liste, Ownership-Refus, Löschbudget |
-| `opencode/test/session/revert-compact.test.ts` | 1 | Test-Turns übergeben `sessionID` als Owner (spiegelt Produktion) |
-
-**Erwartete Grenze:** Der zweite eingebaute Teil von PR #45141 (Restore-Scope,
-`checkout-index -a`→gelistete Pfade) bleibt hier aus; #45141 ist offen und belegt diesen Teil
-bereits. `#45141` bleibt damit der Referenz-PR für Restore.
-
-**Verifikation (08.09.2026, Paketstand):** `tsgo --noEmit` in `packages/opencode` exit 0;
-`bun test test/snapshot/snapshot.test.ts` 57 pass / 3 skip / 0 fail (inkl. 4 neue);
-`bun test test/session/revert-compact.test.ts` 8 pass / 0 fail; `git diff --check` sauber;
-kein mQorva/sidebar-Marker im Diff (nur `packages/opencode`). PR-Body: `plans/upstream/pr-body-snapshot-revert-guard.md`.
-
-### Bauanweisung #39 `retry-terminal-signals`
-
-**Stand 06.09.2026.** Der Fork-Arbeitsbaum enthält eine dreiteilige Änderung an `retry.ts`. Die
-Datei ist gegen `upstream/dev` `ea2d59d7ca` ansonsten unverändert — der gesamte Diff ist diese
-Arbeit. Anker war zunächst das offene Issue #39790; die Duplikatprüfung ergibt jedoch, dass zwei
-fremde PRs auf genau dieses Issue offen sind und zwei der drei Teile bereits abdecken:
-
-| Teil | Inhalt im Fork | Upstream-Lage |
-|---|---|---|
-| A | `terminal: true` an `free_tier_limit` und `account_rate_limit`, Abbruch in `policy` | **besetzt** durch PR #47339 (`KaranDhillon05`, offen seit 04.09.) — gleicher Abbruch über `isTerminalQuota(retry.action)` |
-| B | `RETRY_MAX_WAIT`, Abbruch wenn `delay()` länger als das Fenster fordert | **besetzt** durch PR #47641 (`ApexMene`, offen seit 06.09.) — gleicher Konstantenname, gleicher `Cause.done`-Pfad, Schwelle 5 min statt unserer 2 min |
-| C | Strukturelle Terminalsignale: HTTP 402, `insufficient_quota` / `billing_hard_limit_reached` / `billing_not_active` / `account_deactivated`, Google `QuotaFailure` mit `…PerDay`-Quota-ID | **frei** — kein offener oder geschlossener PR, kein offenes Issue. Der geschlossene PR #39791 (`vinlee19`, ohne Merge geschlossen 31.08.) klassifizierte über Meldungstext, nicht über strukturierte Codes |
-
-Teil C ist auch ein anderes Problem als A und B: Ein Anbieter kann ein erschöpftes Budget melden,
-ohne eine lange Wartezeit anzufordern und ohne ein zen-Markermuster im Body. Dann greifen weder
-#47339 noch #47641, und die Sitzung läuft die vollen fünf Versuche.
-
-**Vor einem PR zu erledigen:**
-
-1. Teil C aus dem Arbeitsbaum isolieren — ohne `RETRY_MAX_WAIT` und ohne die `terminal`-Flags an
-   den beiden zen-Pfaden. Das `terminal`-Feld am `Retryable`-Typ bleibt nötig, kollidiert aber
-   textuell mit #47339; Konfliktlage vor dem Senden gegen den dann aktuellen Stand neu bewerten.
-2. Eigenes Issue anlegen: 402 und dokumentierte Billing-Codes werden als vorübergehend behandelt.
-   Präzedenz für die Reproduktion ist das geschlossene Issue #27593 („Error: 402 Insufficient
-   Balance — opencode-go"). Nicht an #39790 hängen — dieses Issue ist durch A und B besetzt.
-3. Die vier Tests zu Teil C behalten (402, strukturierte Quota-Codes, `PerDay`-Verletzung terminal;
-   `PerMinute` und einfaches Rate-Limit weiterhin retrybar), die zu A und B entfallen.
-
-**Verifikation des Gesamtstands im Arbeitsbaum (noch nicht des reduzierten Teils C):**
-`bun test test/session/retry.test.ts` → 68 pass / 0 fail; `tsgo --noEmit` in `packages/opencode` →
-exit 0. Beide am 06.09.2026 gelaufen.
-
-**Gesendet 07.09.2026 als Teil C.** PR #47686 auf Branch `retry-terminal-signals`, HEAD
-`5dad82a48a`, Basis `upstream/dev` `ea2d59d7ca`, Issue #47685. Teile A und B blieben draußen und
-sind den fremden PRs #47339 und #47641 überlassen; der PR-Body grenzt sich gegen beide ab.
-Prüfungen: `bun test test/session/retry.test.ts` 65 pass / 0 fail, `tsgo --noEmit` exit 0,
-`prettier --check` sauber, `oxlint` 2 Warnungen wie auf `upstream/dev`. Gegenprobe: die drei
-Terminal-Fälle schlagen ohne die Änderung fehl.
-
-### Bauanweisung #35 `provider-connected-list`
-
-Vollständig gegen `upstream/dev` `bbd72fb8b0` hunkweise geprüft; alle benutzten Bausteine
-(`WorkspaceRoutingQueryFields`, `QueryBoolean`, `QueryBooleanOpenApi`, `mapValues`) existieren dort
-bereits. Kein Fork-Anteil in den vier Dateien.
-
-| Datei | Hunks | Inhalt |
-|---|---|---|
-| `opencode/src/server/routes/instance/httpapi/groups/provider.ts` | 2 | `ProviderListQuery` = `WorkspaceRoutingQueryFields` + optionales `connected`; Endpunkt nutzt es statt `WorkspaceRoutingQuery` |
-| `.../httpapi/handlers/provider.ts` | 1 (zusammenhängend) | `connected=true` überspringt Katalog und Config vollständig; sonst Katalog-Cache über `source`-Identität und Filter-Signatur, verbundene Provider bleiben ungecacht |
-| `.../httpapi/public.ts` | 1 | `"GET /provider connected": QueryBooleanOpenApi` |
-| `app/src/context/global-sync/bootstrap.ts` | 4 | `fetchProviders` herausgelöst, `connectedOnly = true` als Vorgabe, `staleTime: Infinity` auf der Provider-Query, `loadProvidersProgressively` und dessen zwei Aufrufstellen |
-
-Commit-Schnitt: erst der additive API-Vertrag (Server, 3 Dateien), dann dessen Nutzung (Client).
-
-**Zuschnitt-Entscheidung 07.09.2026:** Der Katalog-Cache über die `source`-Identität ist aus dem
-Paket entfernt. Der offene fremde PR #44132 (`camalolo`, seit 22.08.) memoisiert denselben
-`/provider`-Payload über die Identität seiner vier Eingaben und geht dabei weiter als unsere
-Variante — er cacht die kodierten Bytes und zusätzlich die Kompression. Beides zusammen in einem
-PR wäre ein Duplikat in genau der Datei, die #44132 anfasst. Übrig bleibt der `connected`-Vertrag,
-der zu #44132 orthogonal ist und mit ihm komponiert. Entsprechend entfällt auch der zweite
-Fork-Test („serves the same catalog on repeated calls"), und in `bootstrap.ts` bleiben
-`directoryKeyPart` und `BOOTSTRAP_STALE_TIME` draußen — das ist #36.
-
-**Anker-Korrektur:** #47328 beschreibt den blockierenden models.dev-Fetch unter globalem `Flock`
-beim Start, nicht die Nutzlast des Providerkatalogs; dieses Paket löst es nicht. Ein eigenes Issue
-liegt als `plans/upstream/issue-provider-connected-list.md` bereit, der PR-Body als
-`plans/upstream/pr-body-provider-connected-list.md`.
-
-**Eigene Messung auf dem vorbereiteten Branch** (HTTP-API-Testrahmen, dieselbe Instanz, nicht der
-gepackte Desktop-Build): `GET /provider` 4.168.456 Bytes / 1507 ms gegen
-`GET /provider?connected=true` 4.468 Bytes / 19 ms. Die im Fork notierten Desktop-Zahlen
-(39,8 s → 12,3 s, ~156 MB → ~8,7 MB) gehören zur Fork-Variante **mit** Katalog-Cache und dürfen für
-diesen PR nicht behauptet werden.
-
-**Prüfungen auf `provider-connected-list` (07.09.2026):** `bun test test/server/httpapi-provider.test.ts`
-in `packages/opencode` 6 pass / 1 skip / 0 fail; `bun test --conditions=solid --preload ./happydom.ts
-src/context/global-sync/bootstrap.test.ts` in `packages/app` 11 pass / 0 fail; `tsgo --noEmit`
-(opencode) und `tsgo -b` (app) exit 0; `prettier --check` sauber; `oxlint` 5 Warnungen, identisch
-mit der `upstream/dev`-Grundlinie. Gegenprobe: mit deaktiviertem Frühausstieg liefern Katalog und
-verbundene Sicht beide 159 Anbieter, der Test schlägt fehl. SDK-/OpenAPI-Änderungen stammen aus
-`bun ./script/generate.ts`; die reinen Zeilenende-Änderungen des Generats wurden nicht übernommen.
-
-**Was in die PR-Beschreibung gehört:** `connected=true` liefert `default` nur aus den verbundenen
-Providern — bewusst, weil der Aufrufer den Katalog getrennt nachlädt. Der Katalog-Cache lebt pro
-Handler-Instanz und wird über die Objektidentität des models.dev-Snapshots invalidiert, nicht über
-eine Zeitspanne.
-
-**Messung (gepackter Desktop-Build, Windows):** letzter `/provider` 39,8 s → 12,3 s; 27 → 11
-Aufrufe; Vollkatalog 27 × → 1 ×; übertragen ~156 MB → ~8,7 MB.
-
-**Tests (grün):** `opencode/test/server/httpapi-provider.test.ts` — zwei additive Fälle: die
-verbundene Sicht enthält genau die verbundenen Anbieter und ist eine echte Teilmenge des Katalogs;
-zwei aufeinanderfolgende Vollabrufe liefern dieselbe Menge, und Katalogzeilen behalten ihre
-models.dev-Nutzlast über den gecachten Aufruf. `app/src/context/global-sync/bootstrap.test.ts` —
-die Provider-Query fragt ohne ausdrückliche Anforderung nur die verbundenen Anbieter ab.
-
-### Bauanweisung #36 `bootstrap-query-keys`
-
-Eine Datei, vier unabhängige Hunks in `app/src/context/global-sync/bootstrap.ts`:
-`BOOTSTRAP_STALE_TIME` und dessen Anwendung auf `config`, `project`, `agents`, `path`,
-`references`; `directoryKeyPart` über das bereits vorhandene `@/utils/path-key`.
-
-Getrennt von #35 zu führen: anderes Problem (Cache-Treffer statt Nutzlastgröße), wirkt auch ohne
-#35, und #35 wäre sonst kein fokussierter PR mehr. Reihenfolge ist frei; beide berühren dieselbe
-Datei, aber verschiedene Stellen. Wird #35 zuerst gemergt, muss #36 neu von `upstream/dev`
-extrahiert werden.
-
-**Begründung für die Query-Keys:** Verbraucher erreichen die Queries über `PathKey`
-(Backslashes zu Slashes normalisiert), der Bootstrap übergibt rohe Verzeichnisse — unter Windows
-landet dasselbe Verzeichnis dadurch unter zwei Cache-Einträgen.
-
-**Test (grün):** `bootstrap.test.ts` bildet `C:
-epopp` und `C:/repo/app` für `path`,
-`providers`, `agents` und `references` auf denselben Schlüssel ab. Die Testdatei ist gegenüber
-`upstream/dev` rein additiv — keine bestehende Erwartung wurde angefasst.
-
-### Bauanweisung #37 `stale-session-references`
-
-Zwei Fehler mit derselben Ursache — ein Verweis überlebt sein Ziel —, deshalb ein Paket:
-
-| Datei | Hunks | Inhalt |
-|---|---|---|
-| `app/src/context/tabs.tsx` | 2 | `params.dir` aus der `currentHref`-Bedingung in `removeSessions` (Zeile 311 upstream; existiert dort unverändert). Der `recent`-Zeiger wird auch dann gelöscht, wenn die Sitzung keinen offenen Tab mehr hatte |
-| `app/src/context/layout.tsx` | 2 | Import und Listener auf `SESSION_TABS_REMOVED_EVENT`; verwirft den persistierten `handoff`, wenn er auf eine gelöschte Sitzung zeigt |
-| `app/src/app.tsx` | 2 | `catchError` im Import und um den Effekt in `LegacyTargetSessionRedirect` |
-| `app/src/pages/session.tsx` | 2 | `catchError` im Import und um den Effekt in `ResolvedTargetSessionRoute` |
-
-`components/titlebar-session-events.ts` existiert upstream — keine neue Datei nötig.
-
-**Nicht mitnehmen:** die `unassigned`-Ergänzung und die `tab-key.ts`-Auslagerung in `tabs.tsx`
-(Fork, Vertrag #28), die Sidebar-Breite und der `panels`-Block in `layout.tsx` (Fork),
-`trackRouteNavigation` (gehört zu #38).
-
-**Reproduktion für das Issue:** Sitzung löschen, während sie auf `/server/:key/session/:id`
-geöffnet ist — sie bleibt in der Adresszeile stehen, und der persistierte Handoff stellt sie beim
-nächsten Start wieder her. Das `catchError` um die beiden Effekte ist Absicherung desselben
-Vertrags: Solids `ErrorBoundary` fängt nur Render-Fehler, ein Wurf aus einem Effekt läuft an ihr
-vorbei zur globalen Boundary.
-
-**Test (grün):** `app/src/context/tabs.test.ts`. Dafür ist die Zeiger-Prüfung als reine Funktion
-`recentKeyPointsAtSession` aus `removeSessions` herausgelöst — sie ist ohne Router und Kontext
-prüfbar, was der Inline-Fassung nicht möglich war. Der Test deckte dabei einen Fehler auf: die
-erste Fassung teilte den Schlüssel am Trennzeichen und griff auf das zweite Feld zu, doch der
-Server-Key enthält dieses Zeichen selbst — der Zeiger wurde nie erkannt. Jetzt wird das Ende des
-Schlüssels geprüft, ohne zu teilen. Abgedeckt sind außerdem Draft-Schlüssel, leere Eingaben und
-Sitzungs-IDs, die auf dieselbe Zeichenfolge enden.
+Die detaillierten Bauanweisungen für #35 (`provider-connected-list`), #36 (`bootstrap-query-keys`), #37 (`stale-session-references`), #39 (`retry-terminal-signals`) und #40 (`snapshot-revert-guard`) bleiben als eigene Dateien unter `plans/upstream/` erhalten (`pr-body-*.md`, `issue-body-*.md`). Der aktuelle Stand ist in der Abarbeitungsliste oben kompakt erfasst. Neue Pakete werden bei Veröffentlichung als kompakte Zeile ergänzt; lange Bauanweisungen bleiben nur als Referenz-Dateien bestehen.
 
 ### Nicht upstream-fähig aus der Startzeit-/Sitzungsarbeit (05.09.2026)
 
@@ -595,4 +417,33 @@ ihre Überschneidungen mit `v2` aber vor der Extraktion ausdrücklich abgrenzen.
 
 Vor jedem konkreten PR gilt der aktuelle Diff `upstream/dev..dev` als Quelle der Wahrheit. Für
 App-Änderungen kommt der Vergleich mit dem dann aktuellen `upstream/v2` als Architektur-Gate hinzu.
+**Stichtag 11.09.2026 (Bestandsaufnahme entschlackt + Pakete ergänzt):** `upstream/dev` `193de13a88`, Fork `dev` `fbf38b0022`. Datei `plans/upstream-kandidaten.md` entschlackt: alte geschlossene PR-Details gekürzt, lange Bauanweisungen (#35–#40) als kompakte Statuszeilen in Abarbeitungsliste und als Referenz-Dateien (`plans/upstream/`) erhalten. Nicht veröffentlichte Pakete als Tabelle ergänzt: `permission-dock-layout` (#7, reaktivierbar), `v2-1` bis `v2-7` (blockiert), `app-v1` (blockiert), `session-title-generation` (ohne Branch), `followup-queue-controls` (entfällt), neue Kandidaten #41–#47 (A-Best / B-Wertvoll / B / Vorgemerkt / Vorgemerkt). Keine neuen Upstream-Kandidaten aus dem aktuellen Diff; `upstream/v2` weiterhin `4772b6a3e8`.
+
 Ein Eintrag in dieser Liste ist eine Prüfspur, keine Freigabe zum ungeprüften Übernehmen oder Senden.
+
+---
+
+## Nicht veröffentlichte / vorgemerkte Pakete (Status 11.09.2026)
+
+Die folgenden Pakete sind noch nicht als PR veröffentlicht oder als `vorgemerkt` im Inventar erfasst. Sie wurden aus dem aktuellen `dev`-Diff (`fbf38b0022`) gegen `upstream/dev` (`193de13a88`) identifiziert und als kompakte Einträge ergänzt. Details bleiben in `plans/upstream/` oder als Worktree lokal.
+
+| Paket | Kandidat(en) | Dateien (Haupt) | Status | Nächster Schritt |
+|---|---|---|---|---|
+| `permission-dock-layout` | #32 | `session-ui/src/components/dock-prompt.tsx`, `session-permission-dock.tsx`, `message-part.css` | **reaktivierbar** (06.09.): Fork-Hunks weiterhin vorhanden; Upstream hat `dock-prompt.tsx` geschmälert (nur `DockTray`), `footerInside` nicht eingeführt; PR-Vorbereitung offen (Story `footerInside: true`, UI-Nachweis: schmale Breite, Umbruch, Fokuswege) | PR erstellen, wenn UI-Nachweis erbracht |
+| `sidebar-workspace-ui` | #28 (+ Teile #31) | `app/src/pages/layout-sidebar/*`, `context/settings.tsx`, `context/layout.tsx`, `pages/new-session.tsx` | **v2-blockiert**: gegen `upstream/v2` (`4772b6a3e8`) re-evaluieren; nicht identisch mit vertikalen Tabs (`#38308`/`#45210`) | Architektur-Gate `v2` abwarten |
+| `session-navigation-ui` | #18, #19, #25, #29 | `pages/session/timeline/message-rail.tsx/.css`, `message-rail-text.ts` (+ Hunks `message-timeline.tsx`) | **v2-blockiert**: eigenständiges layoutneutrales Feature; gegen `v2` neu bewerten; an `#38484` anknüpfen | Architektur-Gate `v2` abwarten |
+| `session-workspace-layout` | #31 (layoutneutrale Teile) | `pages/session.tsx`, `file-tabs.tsx`, `session-side-panel.tsx`, `session-header.tsx`, `prompt-input-v2.tsx` | **v2-blockiert**: nach `v2`-Übernahme als eigenes Layout-Feature neu bewerten; nicht Teil von Sidebar-PR | Architektur-Gate `v2` abwarten |
+| `markdown-file-preview` | #30 | `session-ui/src/components/markdown.tsx`, `context/open-file.tsx`, `pages/session/markdown-preview.ts` | **v2-blockiert**: Design-Issue offen; Vorgänger `#13705`/`#13704` geschlossen | Design-Issue klären, gegen `v2` neu bewerten |
+| `workspace-readiness-ui` | #27 | `app/src/app.tsx`, `components/app-startup-overlay.*`, `workspace-skeleton.*` | **v2-blockiert**; `WorkspaceSkeleton` bleibt als eigenständiger Kandidat; Overlay entfällt (`#27` als `hinfällig` markiert 05.09.) | Architektur-Gate `v2` abwarten |
+| `provider-catalog-sync` | #11 | `provider-connection.ts`, `dialog-connect-provider.tsx`, `settings-v2/providers.tsx`, `context/server-sync.tsx` | **v2-blockiert**; zusammenhängender Funktionsvertrag (~9 Dateien); Splitting: Infrastruktur zuerst, dann Vertrag + 4 UI-Stellen | Architektur-Gate `v2` abwarten |
+| `native-model-routing` | #5 | `core/src/session/runner/model.ts` | **v2-blockiert**; Design-Issue und Routingmatrix offen | Design-Issue klären |
+| `session-title-generation` | #4, #24 | `core/src/session/info.ts`, `core/src/session/runner/llm.ts`, `core/src/session/runner/model.ts` | **ohne Branch** (Architekturentscheidung offen); widersprüchliche Richtungen in Fork; `v2`-Level (`Session.Info.permissionLevel`) kollidiert | Architektur klären (V1 vs. V2-Titelkonvention) |
+| `app-v1` | #12, #13, #14, #15, #16, #17, #23 | `context/global-sync/`, `components/prompt-input/`, `pages/session/` (diverse) | **v2-blockiert**: alter App-Pfad (`v1`) fehlt in `v2`; erst nach `v2`-Übernahme neu reproduzieren und extrahieren | Architektur-Gate `v2` abwarten |
+| `followup-queue-controls` | #22, #26 | `context/settings.tsx`, `components/settings-v2/general.tsx`, `prompt-input/submit.ts` | **entfällt**: `v2` enthält echte Queue-Auswahl, Queue-Panel, E2E-Tests; nur noch Restunterschiede (Ctrl+Enter-Inversion, Pausieren) als kleine Folge-Fixes prüfen | Nach `v2`-Übernahme nur Restunterschiede vergleichen |
+| `thinking-heading-truncate` | #41 | `session-ui/src/components/session-turn.css`, `session-turn.tsx`, `pages/session/timeline/message-timeline.tsx` | **A-Best** (neu 08.09.): `truncate` + `overflow/ellipsis`; 3 isolierte Hunks; `text-reveal.*` existiert upstream bereits | Issue anlegen (`Thinking-Heading`), Branch `thinking-heading-truncate` von `upstream/dev` extrahieren |
+| `composer-permission-controls` | #42 (+ #44) | `session-ui/src/v2/components/prompt-input/index.tsx` + `.css`, `app/src/components/prompt-input-v2.tsx`, `ui/src/i18n/de.ts` | **B-Wertvoll** (Bundle mit #44): Modellwahl (`max-w-full`), Permission-Farbindikator (`data-permission`), Nutzungsanzeige, Container-Query-Kollaps; zusammen mit Skill-Lese (#44) prüfen | Design-Issue (Kollaps-Breiten, Farbsemantik) vorab |
+| `remove-project` (Server) | #43 | `opencode/src/project/project.ts`, `groups/project.ts`, `handlers/project.ts` | **B**: `Project.remove` + `DELETE /project/:projectID`; kollidiert mit `time_archived`-Archivmodell → Design-Gespräch nötig; Frontend bleibt D | Design-Gespräch (Archiv vs. Löschen) |
+| `skill-read-tool` | #44 | `opencode/src/permission/level.ts` | **B nach Grundentscheidung** (im Bundle mit #42): Skill als Lese-Tool (`PermissionV1.Level`); übergeordnete Frage „Session-Level als upstream-Vertrag?" | Mit #42 bündeln, Grundfrage klären |
+| `message-rail-navigation` | #45 | `pages/session/timeline/message-rail.tsx/.css`, `message-rail-text.ts`, `message-timeline.tsx` (Hunks) | **B-Wertvoll**: komplettes Railbar-Feature (`session-navigation-ui`); gegen `v2` blockiert; Screenshots/Scroll-Sync/Responsive ergänzen | Architektur-Gate `v2` abwarten |
+| `live-duration-tdz` | #46 | `packages/session-ui/src/components/message-part.tsx` | **B, fork-only — vorgemerkt (09.09.)**: `ReferenceError: Cannot access 'liveMs' before initialization`; im aktuellen Code entfernt (`duration` nutzt `-1`-Fallback); falls Live-Dauer neu eingebaut: `streaming`/`streamTick`/`liveMs` explizit vor `duration`-Memo setzen | Kein PR nötig, solange Feature nicht neu eingebaut |
+| `directory-open-file-manager` | #47 | `packages/app/src/pages/session.tsx` (`openChatFilePath`) | **B, fork-only — vorgemerkt (09.09.)**: Verzeichnis als Datei geöffnet → 500-Fehler; Lösung: `file.list` des Eltern (Baum-Cache) → OS-Dateimanager (`platform.openPath`) statt Fehler-Tab; `tsgo -b` grün; manuelle Gegenprobe (Desktop) offen | Als kleiner Folge-Fix prüfen, wenn `session-not-found` (#37) abgeschlossen |

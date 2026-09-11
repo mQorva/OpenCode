@@ -105,11 +105,14 @@ function setLastActiveUrl(windowID: string, value: string) {
 // The OpenCode taskbar icon is white-and-blue, so the unread badge uses a coral disc with a
 // white number, matching the app's icon palette and staying legible on busy taskbars.
 //
-// Sizing: Chromium (Electron's Windows `setOverlayIcon`) only ever reads the 1x representation
-// of the NativeImage (`overlay.AsBitmap()`) and hands Windows a fixed 16×16 overlay square.
-// We therefore draw exactly that square in its final size. The canvas' anti-aliasing rounds the
-// disc edge, and drawing the digit at the target size lets the font renderer hint it for the real
-// pixel grid.
+// Sizing: Electron's Windows `setOverlayIcon` (TaskbarHost) only ever reads the 1x representation
+// of the NativeImage (`overlay.AsBitmap()`), resamples it to a fixed 16×16 square and clips that
+// square to an anti-aliased circle before handing the HICON to Windows. We therefore fill the
+// whole 16×16 canvas with the badge color instead of drawing our own disc: a smaller disc leaves
+// a transparent seam inside Electron's circle clip that reads as a light rim on the taskbar,
+// while the filled square lets Electron's clip produce the badge's single, clean edge. Whatever
+// softness remains comes from Windows upscaling the fixed 16×16 overlay to the DPI-scaled
+// taskbar slot, which cannot be sharpened from our side.
 const TASKBAR_BADGE_BG = "#FF7A59"
 const TASKBAR_BADGE_FOREGROUND = "#FFFFFF"
 const TASKBAR_BADGE_SIZE = 16
@@ -125,25 +128,18 @@ function taskbarBadgeImage(count: number) {
   if (!ctx) return undefined
 
   const center = size / 2
-  ctx.beginPath()
-  ctx.arc(center, center, size / 2 - 0.5, 0, Math.PI * 2)
   ctx.fillStyle = TASKBAR_BADGE_BG
-  ctx.fill()
+  ctx.fillRect(0, 0, size, size)
 
   ctx.fillStyle = TASKBAR_BADGE_FOREGROUND
   ctx.font = `600 ${label.length > 2 ? 8 : 11}px system-ui, sans-serif`
   ctx.textAlign = "center"
-  // Ziffern visuell zentrieren: `textBaseline="middle"` zentriert die Em-Box (Ziffern sitzen
-  // im oberen Kappenhöhen-Bereich, wirken dadurch nach oben verschoben). Über die Font-Metrik
-  // wird die Grundlinie so gelegt, dass die Kappenhöhe exakt um den Mittelpunkt liegt.
-  const fontMetrics = (ctx as { getFontMetrics?: () => { capHeight: number; ascent: number } }).getFontMetrics?.()
-  if (fontMetrics) {
-    ctx.textBaseline = "alphabetic"
-    ctx.fillText(label, center, center + (fontMetrics.capHeight || fontMetrics.ascent) / 2)
-  } else {
-    ctx.textBaseline = "middle"
-    ctx.fillText(label, center, center)
-  }
+  // Ziffern visuell zentrieren: `textBaseline="middle"` zentriert die Em-Box, und Ziffern ohne
+  // Unterlängen sitzen dadurch sichtbar zu hoch. `measureText()` liefert die tatsächliche
+  // Glyphen-Box; über die Baseline-Position wird deren Mitte exakt aufs Badge-Zentrum gelegt.
+  ctx.textBaseline = "alphabetic"
+  const metrics = ctx.measureText(label)
+  ctx.fillText(label, center, center + (metrics.actualBoundingBoxAscent - metrics.actualBoundingBoxDescent) / 2)
 
   return canvas.toDataURL("image/png")
 }
