@@ -133,7 +133,7 @@ export function SessionComposerRegion(props: {
               }}
             >
               <Show when={controller.followup()?.items.length}>
-                <div data-slot="session-followup-stack" style={{ "margin-bottom": "-0.875rem" }}>
+                <div data-slot="session-followup-stack" class="mb-2">
                   <SessionFollowupDock
                     items={controller.followup()!.items}
                     sending={controller.followup()!.sending}

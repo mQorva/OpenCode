@@ -4,7 +4,7 @@ import type { DesktopTheme } from "@opencode-ai/ui/theme/types"
 import oc2ThemeJson from "../../../ui/src/theme/themes/oc-2.json"
 import { randomUUID } from "node:crypto"
 import { rmSync } from "node:fs"
-import { app, BrowserWindow, dialog, net, nativeImage, nativeTheme, protocol, shell } from "electron"
+import { app, BrowserWindow, dialog, net, nativeImage, nativeTheme, protocol, screen, shell } from "electron"
 import { dirname, isAbsolute, join, relative, resolve } from "node:path"
 import { fileURLToPath, pathToFileURL } from "node:url"
 import type { TitlebarTheme } from "../preload/types"
@@ -16,6 +16,7 @@ import { nativeT } from "./native-translations"
 import { createWindowRegistry } from "./window-registry"
 import { safeWindowURL } from "./window-state"
 import { resolveExternalURL, resolveLocalFilePath } from "./external-url"
+import { setTaskbarOverlayIcon } from "./taskbar-overlay"
 
 const root = dirname(fileURLToPath(import.meta.url))
 const rendererRoot = join(root, "../renderer")
@@ -169,6 +170,16 @@ export function setDockIcon() {
 
 const badgeDescription = (count: number) => nativeT("desktop.taskbar.badge", { count })
 
+// The Windows taskbar overlay slot is 16x16 logical pixels at 96 DPI, scaled by the
+// display's scale factor (Microsoft docs for ITaskbarList3::SetOverlayIcon).
+export const TASKBAR_OVERLAY_LOGICAL_SIZE = 16
+
+// Physical pixel size of the taskbar overlay slot for the display the window is on.
+export function taskbarOverlaySize(win: BrowserWindow) {
+  const scale = screen.getDisplayMatching(win.getBounds()).scaleFactor
+  return Math.max(TASKBAR_OVERLAY_LOGICAL_SIZE, Math.round(TASKBAR_OVERLAY_LOGICAL_SIZE * Math.min(scale, 4)))
+}
+
 // The badge shows whenever there is an unread count, regardless of whether the
 // window is focused or minimized — simpler and more predictable than gating on visibility.
 function updateTaskbarBadge(win: BrowserWindow) {
@@ -180,9 +191,22 @@ function updateTaskbarBadge(win: BrowserWindow) {
   if (win.webContents.isDestroyed()) return
 
   if (process.platform === "win32") {
+    const description = badgeDescription(count)
     const image = shown && badge?.image ? nativeImage.createFromDataURL(badge.image) : undefined
-    if (image && !image.isEmpty()) win.setOverlayIcon(image, badgeDescription(count))
-    else win.setOverlayIcon(null, badgeDescription(count))
+    if (image && !image.isEmpty()) {
+      const size = image.getSize()
+      // The renderer draws the badge at the physical slot size; after a DPI change
+      // (moved to another display, display settings) request a re-render and keep
+      // showing the stale image until the fresh one arrives.
+      if (size.width !== taskbarOverlaySize(win)) win.webContents.send("taskbar-badge-refresh")
+      // High-DPI path: hand Windows an HICON in the physical slot size via direct
+      // ITaskbarList3::SetOverlayIcon; Electron's setOverlayIcon would crush the
+      // image to a fixed 16x16 HICON that Windows must upscale.
+      if (setTaskbarOverlayIcon(win.getNativeWindowHandle(), image.toBitmap(), size.width, size.height, description)) return
+      win.setOverlayIcon(image, description)
+      return
+    }
+    win.setOverlayIcon(null, description)
     return
   }
   if (process.platform === "darwin") {
@@ -203,6 +227,9 @@ function wireTaskbarBadge(win: BrowserWindow) {
   win.on("restore", refresh)
   win.on("show", refresh)
   win.on("hide", refresh)
+  win.on("moved", refresh)
+  screen.on("display-metrics-changed", refresh)
+  win.once("closed", () => screen.off("display-metrics-changed", refresh))
 }
 
 export function createMainWindow(id: string = randomUUID()) {

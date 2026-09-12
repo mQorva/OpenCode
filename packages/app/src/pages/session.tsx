@@ -481,13 +481,24 @@ export default function Page() {
     void openChatPath(path)
   }
 
-  const chatPathKind = async (path: string) => {
+  const chatPathKind = async (path: string): Promise<"file" | "directory" | "missing" | "unknown"> => {
     const clean = path.replace(/\/+$/, "")
     const slash = clean.lastIndexOf("/")
     const parent = slash >= 0 ? clean.slice(0, slash) : ""
     if (!file.tree.state(parent)?.loaded) await file.tree.list(parent)
+
+    const directory = file.tree.state(parent)
+    // Ein fehlendes oder unlesbares Elternverzeichnis kann keine Datei enthalten. Ohne diese
+    // Prüfung öffnet der Klick einen leeren Tab: der Server liefert für fehlende Dateien
+    // HTTP 200 mit leerem Inhalt, und die Markdown-Vorschau zeigt dann dauerhaft „wird formatiert“.
+    if (directory?.error) return "missing"
+    if (!directory?.loaded) return "unknown"
+
     const target = pathKey(path)
-    return file.tree.children(parent).find((node) => pathKey(node.path) === target)?.type
+    const node = file.tree.children(parent).find((entry) => pathKey(entry.path) === target)
+    if (node?.type === "directory") return "directory"
+    if (node?.type === "file") return "file"
+    return "missing"
   }
 
   const revealChatDirectory = (path: string) => {
@@ -529,6 +540,14 @@ export default function Page() {
     const kind = await chatPathKind(path)
     if (kind === "directory") {
       openChatDirectory(path)
+      return
+    }
+    if (kind === "missing") {
+      showToast({
+        variant: "error",
+        title: language.t("session.file.notFound"),
+        description: language.t("session.file.notFound.description", { path }),
+      })
       return
     }
     openPaletteFile(path)

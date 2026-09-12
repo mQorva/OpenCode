@@ -105,21 +105,19 @@ function setLastActiveUrl(windowID: string, value: string) {
 // The OpenCode taskbar icon is white-and-blue, so the unread badge uses a coral disc with a
 // white number, matching the app's icon palette and staying legible on busy taskbars.
 //
-// Sizing: Electron's Windows `setOverlayIcon` (TaskbarHost) only ever reads the 1x representation
-// of the NativeImage (`overlay.AsBitmap()`), resamples it to a fixed 16×16 square and clips that
-// square to an anti-aliased circle before handing the HICON to Windows. We therefore fill the
-// whole 16×16 canvas with the badge color instead of drawing our own disc: a smaller disc leaves
-// a transparent seam inside Electron's circle clip that reads as a light rim on the taskbar,
-// while the filled square lets Electron's clip produce the badge's single, clean edge. Whatever
-// softness remains comes from Windows upscaling the fixed 16×16 overlay to the DPI-scaled
-// taskbar slot, which cannot be sharpened from our side.
+// Sizing: the Windows taskbar overlay slot is 16x16 logical pixels at 96 DPI, scaled by the
+// display's scale factor (24x24 at 150%, 32x32 at 200%). The main process sets the badge through
+// a native ITaskbarList3::SetOverlayIcon bridge (src/main/taskbar-overlay.ts) that hands Windows
+// an HICON in exactly that physical size, so the badge composites 1:1 without scaling. The disc
+// is drawn at the full slot radius because both paths share that edge: the native bridge shows
+// the bitmap as-is, while Electron's setOverlayIcon fallback clips to the same circle — a
+// smaller disc would leave a transparent seam that reads as a light rim on the taskbar.
 const TASKBAR_BADGE_BG = "#FF7A59"
 const TASKBAR_BADGE_FOREGROUND = "#FFFFFF"
-const TASKBAR_BADGE_SIZE = 16
-function taskbarBadgeImage(count: number) {
+const TASKBAR_BADGE_LOGICAL_SIZE = 16
+function taskbarBadgeImage(count: number, size: number) {
   if (count <= 0) return undefined
   const label = count > 99 ? "99+" : String(count)
-  const size = TASKBAR_BADGE_SIZE
 
   const canvas = document.createElement("canvas")
   canvas.width = size
@@ -129,10 +127,13 @@ function taskbarBadgeImage(count: number) {
 
   const center = size / 2
   ctx.fillStyle = TASKBAR_BADGE_BG
-  ctx.fillRect(0, 0, size, size)
+  ctx.beginPath()
+  ctx.arc(center, center, center, 0, Math.PI * 2)
+  ctx.fill()
 
   ctx.fillStyle = TASKBAR_BADGE_FOREGROUND
-  ctx.font = `600 ${label.length > 2 ? 8 : 11}px system-ui, sans-serif`
+  const fontPx = (label.length > 2 ? 8 : 11) * (size / TASKBAR_BADGE_LOGICAL_SIZE)
+  ctx.font = `600 ${fontPx}px system-ui, sans-serif`
   ctx.textAlign = "center"
   // Ziffern visuell zentrieren: `textBaseline="middle"` zentriert die Em-Box, und Ziffern ohne
   // Unterlängen sitzen dadurch sichtbar zu hoch. `measureText()` liefert die tatsächliche
@@ -207,6 +208,22 @@ const createPlatform = (windowState: DesktopWindowState): Platform => {
 
   const wslServersApi = os === "windows" ? window.api.wslServers : undefined
 
+  let lastBadgeCount = 0
+  const renderTaskbarBadge = async (count: number) => {
+    if (count <= 0) return undefined
+    // Physische Overlay-Slot-Größe (16 logische px × Display-Skalierung) vom Main holen —
+    // `devicePixelRatio` wäre hier falsch, weil ihn auch der App-Zoom beeinflusst.
+    const size = await window.api.getTaskbarBadgeSize().catch(() => TASKBAR_BADGE_LOGICAL_SIZE)
+    return taskbarBadgeImage(count, size)
+  }
+  const sendTaskbarBadge = async (count: number) => {
+    const image = os === "windows" ? await renderTaskbarBadge(count) : undefined
+    void window.api.setTaskbarBadge(image ? { count, image } : { count })
+  }
+  // Nach einem DPI- oder Monitorwechsel fordert der Main-Prozess ein Neuzeichnen an, weil
+  // das gecachte Badge-Bild dann in der falschen Größe vorliegt.
+  window.api.onTaskbarBadgeRefresh(() => void sendTaskbarBadge(lastBadgeCount))
+
   return {
     platform: "desktop",
     os,
@@ -278,8 +295,8 @@ const createPlatform = (windowState: DesktopWindowState): Platform => {
     },
 
     setTaskbarBadge: (count) => {
-      const image = taskbarBadgeImage(count)
-      void window.api.setTaskbarBadge(image ? { count, image } : { count })
+      lastBadgeCount = count
+      void sendTaskbarBadge(count)
     },
 
     storage,

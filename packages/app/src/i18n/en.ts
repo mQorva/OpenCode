@@ -702,6 +702,8 @@ export const dict = {
 
   "session.file.markdownPreview": "Toggle Markdown preview",
   "session.file.markdownFormatting": "Formatting",
+  "session.file.notFound": "File not found",
+  "session.file.notFound.description": "{{path}} does not exist in this workspace.",
   "contextMenu.copy": "Copy",
   "contextMenu.selectAll": "Select all",
   "contextMenu.copyPath": "Copy path",
@@ -731,6 +733,9 @@ export const dict = {
   "session.followupDock.drag": "Drag to reorder",
   "session.followupDock.item.pause": "Hold this message",
   "session.followupDock.item.resume": "Release this message",
+  "session.followupDock.title": "Queue",
+  "session.followupDock.collapse": "Collapse queued messages",
+  "session.followupDock.expand": "Expand queued messages",
   "session.revertDock.summary.one": "{{count}} rolled back message",
   "session.revertDock.summary.other": "{{count}} rolled back messages",
   "session.revertDock.collapse": "Collapse rolled back messages",

@@ -19,6 +19,8 @@ import {
   setPinchZoomEnabled,
   setTaskbarBadge,
   setTitlebar,
+  TASKBAR_OVERLAY_LOGICAL_SIZE,
+  taskbarOverlaySize,
   updateTitlebar,
 } from "./windows"
 import type { UpdaterController } from "./updater-controller"
@@ -303,6 +305,11 @@ export function registerIpcHandlers(deps: Deps) {
     const win = BrowserWindow.fromWebContents(event.sender)
     if (!win) return
     setTaskbarBadge(win, badge)
+  })
+  ipcMain.handle("get-taskbar-badge-size", (event: IpcMainInvokeEvent) => {
+    const win = BrowserWindow.fromWebContents(event.sender)
+    if (!win || win.isDestroyed()) return TASKBAR_OVERLAY_LOGICAL_SIZE
+    return taskbarOverlaySize(win)
   })
 }
 

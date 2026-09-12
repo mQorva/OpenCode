@@ -114,6 +114,8 @@ export type ElectronAPI = {
   setTitlebar: (theme: TitlebarTheme) => Promise<void>
   runDesktopMenuAction: (action: DesktopMenuAction) => Promise<void>
   setTaskbarBadge: (payload: TaskbarBadgePayload) => Promise<void>
+  getTaskbarBadgeSize: () => Promise<number>
+  onTaskbarBadgeRefresh: (cb: () => void) => () => void
   setBackgroundColor: (color: string) => Promise<void>
   exportDebugLogs: () => Promise<string>
   setForceFocus: (enabled: boolean) => Promise<void>

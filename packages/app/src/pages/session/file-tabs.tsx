@@ -37,15 +37,25 @@ type SessionFileViewProps = {
 // man sieht sofort etwas —, sieht bei großen Dateien aber nach kaputter Darstellung aus.
 // Ein Hinweis erscheint deshalb erst, wenn das Formatieren spürbar dauert.
 const FORMATTING_HINT_DELAY = 400
+// Sicherheitsnetz: Der Hinweis darf nie dauerhaft stehen bleiben. Antwortet der Worker nicht,
+// ist der Rohtext ohnehin lesbar; ein endloser Spinner suggeriert einen hängenden Ladevorgang.
+const FORMATTING_HINT_MAX = 8000
 
 function createMarkdownFormattingHint() {
   const [visible, setVisible] = createSignal(false)
   let timer: number | undefined
+  let maxTimer: number | undefined
+  let gaveUp = false
 
   const clear = () => {
-    if (timer === undefined) return
-    window.clearTimeout(timer)
-    timer = undefined
+    if (timer !== undefined) {
+      window.clearTimeout(timer)
+      timer = undefined
+    }
+    if (maxTimer !== undefined) {
+      window.clearTimeout(maxTimer)
+      maxTimer = undefined
+    }
   }
 
   onCleanup(clear)
@@ -54,15 +64,21 @@ function createMarkdownFormattingHint() {
     visible,
     onRendered(rendered: boolean) {
       if (rendered) {
+        gaveUp = false
         clear()
         setVisible(false)
         return
       }
-      if (timer !== undefined) return
+      if (gaveUp || timer !== undefined) return
       timer = window.setTimeout(() => {
         timer = undefined
         setVisible(true)
       }, FORMATTING_HINT_DELAY)
+      maxTimer = window.setTimeout(() => {
+        gaveUp = true
+        clear()
+        setVisible(false)
+      }, FORMATTING_HINT_MAX)
     },
   }
 }
@@ -491,7 +507,7 @@ function SessionFileViewV1(props: { tab: string }) {
   const renderFile = (source: string) =>
     markdownView() ? (
       <TextContextMenu class="mqorva-markdown-file-view relative overflow-hidden px-6 pt-2 pb-40">
-        <Show when={formattingHint.visible()}>
+        <Show when={source.length > 0 && formattingHint.visible()}>
           <div class="absolute right-6 top-3 z-10 flex items-center gap-1.5 rounded-md border border-border-weaker-base bg-background-stronger px-2 py-1 text-12-regular text-text-weak">
             <Spinner class="size-3 shrink-0" />
             {language.t("session.file.markdownFormatting")}
@@ -792,7 +808,7 @@ function SessionFileViewV2(props: { tab: string }) {
   const renderFile = (source: string) =>
     markdownView() ? (
       <TextContextMenu class="mqorva-markdown-file-view relative overflow-hidden px-6 pt-2 pb-40">
-        <Show when={formattingHint.visible()}>
+        <Show when={source.length > 0 && formattingHint.visible()}>
           <div class="absolute right-6 top-3 z-10 flex items-center gap-1.5 rounded-md border border-border-weaker-base bg-background-stronger px-2 py-1 text-12-regular text-text-weak">
             <LoaderV2 width={12} height={12} class="shrink-0" />
             {language.t("session.file.markdownFormatting")}
