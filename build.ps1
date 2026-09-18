@@ -1,9 +1,10 @@
 <#
 .SYNOPSIS
-Builds the OpenCode Web UI, Backend/CLI, and Electron Desktop Application.
+Builds the OpenCode Web UI, Backend/CLI, and Electron Desktop Application, then creates the Windows installer.
 
 .DESCRIPTION
 Runs the build commands across packages/app, packages/opencode, and packages/desktop.
+After the desktop build, electron-builder packages the Windows NSIS installer unless SkipPackage is set.
 
 .PARAMETER SkipApp
 Skips the Web UI build.
@@ -13,6 +14,9 @@ Skips the OpenCode CLI/Server build.
 
 .PARAMETER SkipDesktop
 Skips the Electron desktop build.
+
+.PARAMETER SkipPackage
+Skips the Windows installer packaging step.
 
 .PARAMETER SkipInstall
 Skips the dependency sync that runs before the builds.
@@ -30,6 +34,9 @@ param(
 
     [Parameter()]
     [switch]$SkipDesktop,
+
+    [Parameter()]
+    [switch]$SkipPackage,
 
     [Parameter()]
     [switch]$SkipInstall
@@ -126,6 +133,20 @@ try {
         Invoke-BunScript -PackageDirectory $packageDirectories.Desktop -Arguments @("run", "build")
     } else {
         Write-Host "[build] Desktop-Build übersprungen."
+    }
+
+    if (-not $SkipPackage -and -not $SkipDesktop) {
+        Invoke-BunScript -PackageDirectory $packageDirectories.Desktop -Arguments @("run", "package:win")
+
+        $distDir = Join-Path $packageDirectories.Desktop "dist"
+        Get-ChildItem -LiteralPath $distDir -File -Filter "opencode-mqorva-*.exe" -ErrorAction SilentlyContinue |
+            Sort-Object LastWriteTime -Descending |
+            Select-Object -First 1 |
+            ForEach-Object { Write-Host ("[build] Installer: {0}" -f $_.FullName) }
+    } elseif ($SkipPackage) {
+        Write-Host "[build] Paketierung übersprungen."
+    } else {
+        Write-Host "[build] Paketierung übersprungen (Desktop-Build übersprungen)."
     }
 
     Write-Host "[build] Erfolgreich abgeschlossen!"

@@ -38,20 +38,20 @@ try {
     $buildScript = Join-Path $repoRoot "build.ps1"
 
     if (-not $SkipBuild) {
-        Write-Host "[package] Erzeuge einen frischen vollständigen Build ..."
+        Write-Host "[package] Erzeuge einen frischen vollständigen Build inklusive Installer ..."
         & $buildScript
         if ($LASTEXITCODE -ne 0) {
             throw "Der vorbereitende Build ist fehlgeschlagen."
         }
+        Write-Host "[package] Build und Paketierung über build.ps1 abgeschlossen."
+        exit 0
     }
 
     if (-not (Test-Path -LiteralPath $desktopBuildSentinel)) {
         throw "Desktop-Build fehlt: $desktopBuildSentinel"
     }
 
-    if ($SkipBuild) {
-        Write-Host "[package] WARNUNG: Vorhandener Build wird ohne Aktualitätsprüfung paketiert." -ForegroundColor Yellow
-    }
+    Write-Host "[package] WARNUNG: Vorhandener Build wird ohne Aktualitätsprüfung paketiert." -ForegroundColor Yellow
 
     Write-Host "[package] Starte Windows-Paketierung in $desktopDirectory ..."
     Push-Location -LiteralPath $desktopDirectory

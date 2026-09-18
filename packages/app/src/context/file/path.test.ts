@@ -13,6 +13,30 @@ describe("file path helpers", () => {
     expect(path.pathFromTab("other://src/app.ts")).toBeUndefined()
   })
 
+  test("resolves relative inputs against the workspace root", () => {
+    const path = createPathHelpers(() => "/repo")
+    expect(path.resolve("plans/x.md")).toBe("/repo/plans/x.md")
+    expect(path.resolve("plans\\x.md")).toBe("/repo/plans/x.md")
+    expect(path.resolve("  plans/x.md  ")).toBe("/repo/plans/x.md")
+    expect(path.resolve("/repo/plans/x.md")).toBe("/repo/plans/x.md")
+    expect(path.resolve("/other/plans/x.md")).toBe("/other/plans/x.md")
+    expect(path.resolve("")).toBeUndefined()
+  })
+
+  test("resolves relative inputs for Windows workspace roots", () => {
+    const path = createPathHelpers(() => "D:\\Coding\\OpenCode")
+    expect(path.resolve("plans/x.md")).toBe("D:/Coding/OpenCode/plans/x.md")
+    expect(path.resolve("D:/other/x.md")).toBe("D:/other/x.md")
+    expect(path.resolve("c:\\other\\x.md")).toBe("c:/other/x.md")
+  })
+
+  test("resolved paths normalize back to their workspace-relative form", () => {
+    const path = createPathHelpers(() => "D:\\Coding\\OpenCode")
+    expect(path.normalize(path.resolve("plans/2026-09-18-stop-and-go-von-x-bis-y.md")!)).toBe(
+      "plans/2026-09-18-stop-and-go-von-x-bis-y.md",
+    )
+  })
+
   test("normalizes Windows absolute paths with mixed separators", () => {
     const path = createPathHelpers(() => "C:\\repo")
     expect(path.normalize("C:\\repo\\src\\app.ts")).toBe("src\\app.ts")

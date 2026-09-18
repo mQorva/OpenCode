@@ -475,8 +475,11 @@ export default function Page() {
   // laden — der Server liest keine Verzeichnisse und antwortet mit einem generischen
   // 500er, dessen Fehler-Tab beim Chat-Wechsel immer wieder neu lädt. Stattdessen den
   // Ordner im Datei-Manager des Systems öffnen bzw. im Datei-Browser rechts aufklappen.
+  //
+  // Ein vom LLM gelieferter Pfad kann relativ sein. `file.resolve` löst ihn gegen das
+  // Arbeitsverzeichnis der Sitzung auf, sodass nur absolute Pfade weitergegeben werden.
   const openChatFilePath = (input: string) => {
-    const path = file.normalize(input.replace(/\\/g, "/"))
+    const path = file.resolve(input)
     if (!path) return
     void openChatPath(path)
   }
@@ -495,7 +498,7 @@ export default function Page() {
     if (!directory?.loaded) return "unknown"
 
     const target = pathKey(path)
-    const node = file.tree.children(parent).find((entry) => pathKey(entry.path) === target)
+    const node = file.tree.children(parent).find((entry) => pathKey(entry.absolute) === target)
     if (node?.type === "directory") return "directory"
     if (node?.type === "file") return "file"
     return "missing"
@@ -511,13 +514,14 @@ export default function Page() {
 
   const openChatDirectory = (path: string) => {
     // Einen versehentlich angelegten Datei-Tab für dieses Verzeichnis wieder schließen.
-    const stuck = tabs().all().find((tab) => file.pathFromTab(tab) === path)
+    const relative = file.normalize(path).replace(/\/+$/, "")
+    const stuck = relative ? tabs().all().find((tab) => file.pathFromTab(tab) === relative) : undefined
     if (stuck) tabs().close(stuck)
 
     const clean = path.replace(/\/+$/, "")
     const slash = clean.lastIndexOf("/")
     const parent = slash >= 0 ? clean.slice(0, slash) : ""
-    const node = file.tree.children(parent).find((entry) => pathKey(entry.path) === pathKey(path))
+    const node = file.tree.children(parent).find((entry) => pathKey(entry.absolute) === pathKey(path))
     const absolute = node?.absolute
 
     if (absolute && platform.openPath) {

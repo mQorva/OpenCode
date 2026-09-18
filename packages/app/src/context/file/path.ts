@@ -135,6 +135,16 @@ export function createPathHelpers(scope: () => string) {
     return `file://${encodeFilePath(path)}`
   }
 
+  // Relative Eingaben (etwa Pfade aus LLM-Antworten) gegen den Arbeitsbereich auflösen,
+  // damit Aufrufer ausschließlich absolute Pfade mit Forward-Slashes erhalten.
+  const resolve = (input: string) => {
+    const value = input.replace(/\\/g, "/").trim()
+    if (!value) return
+    if (/^[A-Za-z]:\//.test(value) || value.startsWith("/")) return value
+    const root = scope().replace(/\\/g, "/").replace(/\/+$/, "")
+    return `${root}/${value}`
+  }
+
   const pathFromTab = (tabValue: string) => {
     if (!tabValue.startsWith("file://")) return
     return normalize(tabValue)
@@ -149,6 +159,7 @@ export function createPathHelpers(scope: () => string) {
 
   return {
     normalize,
+    resolve,
     tab,
     pathFromTab,
     normalizeDir,
