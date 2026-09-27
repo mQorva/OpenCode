@@ -9,7 +9,7 @@ import { parseDesktopNativeBundle, type DesktopNativeBundle } from "@opencode-ai
 import type { FatalRendererError, ServerReadyData, TitlebarTheme } from "../preload/types"
 import { runDesktopMenuAction } from "./desktop-menu-actions"
 import { setForceFocus } from "./debug"
-import { assertAttachmentBudget, createPickedFileAuthorizations } from "./attachment-picker"
+import { assertAttachmentBudget, createPickedFileAuthorizations, readAttachment } from "./attachment-picker"
 import { getStore, removeStoreFileIfEmpty } from "./store"
 import {
   getPinchZoomEnabled,
@@ -236,6 +236,19 @@ export function registerIpcHandlers(deps: Deps) {
     if (!exists) return false
     shell.showItemInFolder(path)
     return true
+  })
+
+  // Dateien außerhalb des Session-Workspace erreichen den Server nicht. Für den Klick
+  // im Chat liest der Desktop sie deshalb direkt aus dem Dateisystem.
+  ipcMain.handle("stat-local-path", async (_event: IpcMainInvokeEvent, path: string) => {
+    const info = await stat(path).catch(() => null)
+    if (!info) return null
+    if (!info.isFile() && !info.isDirectory()) return null
+    return { type: info.isDirectory() ? ("directory" as const) : ("file" as const), size: info.size }
+  })
+
+  ipcMain.handle("read-local-file", async (_event: IpcMainInvokeEvent, path: string) => {
+    return readAttachment(path).catch(() => null)
   })
 
   ipcMain.handle("read-clipboard-image", () => {

@@ -30,11 +30,40 @@ describe("file path helpers", () => {
     expect(path.resolve("c:\\other\\x.md")).toBe("c:/other/x.md")
   })
 
+  test("converts file URLs to filesystem paths", () => {
+    const windows = createPathHelpers(() => "D:\\Coding\\OpenCode")
+    expect(windows.resolve("file:///D:/Coding/OpenCode/plans/x.md")).toBe("D:/Coding/OpenCode/plans/x.md")
+    expect(windows.resolve("file:///D:/other/x.md")).toBe("D:/other/x.md")
+    expect(windows.resolve("file:///D:/Coding/OpenCode/im%20Ordner/x.md")).toBe(
+      "D:/Coding/OpenCode/im Ordner/x.md",
+    )
+
+    const posix = createPathHelpers(() => "/repo")
+    expect(posix.resolve("file:///repo/plans/x.md")).toBe("/repo/plans/x.md")
+    expect(posix.resolve("file:///other/x.md")).toBe("/other/x.md")
+  })
+
   test("resolved paths normalize back to their workspace-relative form", () => {
     const path = createPathHelpers(() => "D:\\Coding\\OpenCode")
     expect(path.normalize(path.resolve("plans/2026-09-18-stop-and-go-von-x-bis-y.md")!)).toBe(
       "plans/2026-09-18-stop-and-go-von-x-bis-y.md",
     )
+  })
+
+  test("detects paths outside the workspace", () => {
+    const path = createPathHelpers(() => "D:\\Coding\\OpenCode")
+    expect(path.isExternal("D:/Coding/OpenCode/plans/x.md")).toBe(false)
+    expect(path.isExternal("plans/x.md")).toBe(false)
+    expect(path.isExternal("D:\\Coding\\OpenCode\\plans\\x.md")).toBe(false)
+    expect(path.isExternal("D:/Coding/mQorva/.tmp/image.png")).toBe(true)
+    expect(path.isExternal("C:\\other\\image.png")).toBe(true)
+  })
+
+  test("detects paths outside a POSIX workspace", () => {
+    const path = createPathHelpers(() => "/repo")
+    expect(path.isExternal("/repo/plans/x.md")).toBe(false)
+    expect(path.isExternal("plans/x.md")).toBe(false)
+    expect(path.isExternal("/other/plans/x.md")).toBe(true)
   })
 
   test("normalizes Windows absolute paths with mixed separators", () => {

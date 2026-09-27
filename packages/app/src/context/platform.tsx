@@ -54,6 +54,12 @@ type PlatformBase = {
   /** Reveal a local path in the system file manager; false when the path does not exist (desktop only) */
   revealPath?(path: string): Promise<boolean>
 
+  /** Inspect a path outside the session workspace (desktop only) */
+  statLocalPath?(path: string): Promise<{ type: "file" | "directory"; size: number } | null>
+
+  /** Read a file outside the session workspace (desktop only) */
+  readLocalFile?(path: string): Promise<ArrayBuffer | null>
+
   /** Restart the app  */
   restart(): Promise<void>
 

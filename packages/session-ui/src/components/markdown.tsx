@@ -292,6 +292,15 @@ function setupFileLinks(root: HTMLDivElement, open: OpenFilePath) {
   const handleClick = (event: MouseEvent) => {
     const target = event.target
     if (!(target instanceof Element)) return
+
+    // Lokale Datei-URLs als Pfad weiterreichen; der Host entscheidet, wie er sie öffnet.
+    const anchor = target.closest('a.external-link[href^="file:"]')
+    if (anchor instanceof HTMLAnchorElement) {
+      event.preventDefault()
+      open(anchor.href)
+      return
+    }
+
     const code = target.closest("code[data-file-link]")
     if (!(code instanceof HTMLElement)) return
     event.preventDefault()

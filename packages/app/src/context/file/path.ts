@@ -137,9 +137,13 @@ export function createPathHelpers(scope: () => string) {
 
   // Relative Eingaben (etwa Pfade aus LLM-Antworten) gegen den Arbeitsbereich auflösen,
   // damit Aufrufer ausschließlich absolute Pfade mit Forward-Slashes erhalten.
-  const resolve = (input: string) => {
-    const value = input.replace(/\\/g, "/").trim()
-    if (!value) return
+  // Relative Eingaben (etwa Pfade aus LLM-Antworten) gegen den Arbeitsbereich auflösen,
+  // damit Aufrufer ausschließlich absolute Pfade mit Forward-Slashes erhalten. `file://`-
+  // URLs werden vorher in einen Dateisystempfad zurückverwandelt.
+  const resolve = (input: string): string | undefined => {
+    const value = decodeFilePath(stripFileProtocol(input.replace(/\\/g, "/"))).trim()
+    if (!value) return undefined
+    if (/^\/[A-Za-z]:/.test(value)) return value.slice(1)
     if (/^[A-Za-z]:\//.test(value) || value.startsWith("/")) return value
     const root = scope().replace(/\\/g, "/").replace(/\/+$/, "")
     return `${root}/${value}`
@@ -148,6 +152,22 @@ export function createPathHelpers(scope: () => string) {
   const pathFromTab = (tabValue: string) => {
     if (!tabValue.startsWith("file://")) return
     return normalize(tabValue)
+  }
+
+  // Liegt der (absolute) Pfad außerhalb des Arbeitsbereichs? Relative Eingaben gelten
+  // immer als intern. Wird gebraucht, weil der Server nur Dateien im Workspace liest.
+  const isExternal = (input: string) => {
+    const root = scope()
+    const windows = /^[A-Za-z]:/.test(root) || root.startsWith("\\\\")
+    const value = unquoteGitPath(decodeFilePath(stripQueryAndHash(stripFileProtocol(input))))
+    const absolute = windows
+      ? /^[A-Za-z]:[\\/]/.test(value) || value.startsWith("\\")
+      : value.startsWith("/")
+    if (!absolute) return false
+    if (root === "/" || root === "\\") return false
+    const canonRoot = (windows ? root.replace(/\\/g, "/").toLowerCase() : root.replace(/\\/g, "/")).replace(/\/+$/, "")
+    const canonPath = windows ? value.replace(/\\/g, "/").toLowerCase() : value.replace(/\\/g, "/")
+    return !(canonPath === canonRoot || canonPath.startsWith(canonRoot + "/"))
   }
 
   const normalizeDir = (input: string) => {
@@ -160,6 +180,7 @@ export function createPathHelpers(scope: () => string) {
   return {
     normalize,
     resolve,
+    isExternal,
     tab,
     pathFromTab,
     normalizeDir,

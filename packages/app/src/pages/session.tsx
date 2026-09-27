@@ -83,8 +83,10 @@ import {
   shouldShowFileTree,
 } from "@/pages/session/helpers"
 import { createCommandPaletteFileOpener } from "@/components/command-palette"
+import { fileContentFromBytes } from "@/context/file/external"
 import { SESSION_OPEN_FILE_TAB } from "@/context/layout-tabs"
 import { OpenFileProvider } from "@opencode-ai/session-ui/context/open-file"
+import { mediaKindFromPath } from "@opencode-ai/session-ui/pierre/media"
 import { MessageTimeline } from "@/pages/session/timeline/message-timeline"
 import { createTimelineModel } from "@/pages/session/timeline/model"
 import { type DiffStyle, SessionReviewTab, type SessionReviewTabProps } from "@/pages/session/review-tab"
@@ -512,7 +514,22 @@ export default function Page() {
     tabs().setActive(SESSION_OPEN_FILE_TAB)
   }
 
+  const showChatPathNotFound = (path: string) =>
+    showToast({
+      variant: "error",
+      title: language.t("session.file.notFound"),
+      description: language.t("session.file.notFound.description", { path }),
+    })
+
   const openChatDirectory = (path: string) => {
+    // Außerhalb des Arbeitsbereichs gibt es keinen Baum-Eintrag. Verzeichnisse öffnet
+    // der Desktop dann direkt im System statt sie im Datei-Browser aufzuklappen.
+    if (file.isExternal(path)) {
+      if (platform.openPath) void platform.openPath(path).catch(() => undefined)
+      else if (platform.revealPath) void platform.revealPath(path).catch(() => undefined)
+      return
+    }
+
     // Einen versehentlich angelegten Datei-Tab für dieses Verzeichnis wieder schließen.
     const relative = file.normalize(path).replace(/\/+$/, "")
     const stuck = relative ? tabs().all().find((tab) => file.pathFromTab(tab) === relative) : undefined
@@ -541,17 +558,47 @@ export default function Page() {
   }
 
   const openChatPath = async (path: string) => {
+    if (file.isExternal(path)) {
+      const info = await platform.statLocalPath?.(path)
+      if (!info) {
+        showChatPathNotFound(path)
+        return
+      }
+      if (info.type === "directory") {
+        openChatDirectory(path)
+        return
+      }
+
+      const buffer = await platform.readLocalFile?.(path)
+      if (!buffer) {
+        if (platform.openPath) await platform.openPath(path).catch(() => showChatPathNotFound(path))
+        else showChatPathNotFound(path)
+        return
+      }
+
+      // Panel-taugliche Inhalte (Text, Bild, Audio, SVG) dort anzeigen, alles andere
+      // (PDF, Archive, …) im Standardprogramm des Systems öffnen.
+      const content = fileContentFromBytes(path, new Uint8Array(buffer))
+      if (content.type === "text" || mediaKindFromPath(path)) {
+        file.setExternal(path, content)
+        openPaletteFile(path)
+        return
+      }
+      if (platform.openPath) {
+        await platform.openPath(path).catch(() => showChatPathNotFound(path))
+        return
+      }
+      showChatPathNotFound(path)
+      return
+    }
+
     const kind = await chatPathKind(path)
     if (kind === "directory") {
       openChatDirectory(path)
       return
     }
     if (kind === "missing") {
-      showToast({
-        variant: "error",
-        title: language.t("session.file.notFound"),
-        description: language.t("session.file.notFound.description", { path }),
-      })
+      showChatPathNotFound(path)
       return
     }
     openPaletteFile(path)

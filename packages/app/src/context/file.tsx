@@ -23,6 +23,8 @@ import {
 } from "./file/content-cache"
 import { createFileViewCache } from "./file/view-cache"
 import { useServerSDK } from "./server-sdk"
+import { usePlatform } from "./platform"
+import { fileContentFromBytes } from "./file/external"
 import { SessionRouteKey, SessionStateKey } from "@/utils/server-scope"
 import { createFileTreeStore } from "./file/tree-store"
 import { invalidateFromWatcher } from "./file/watcher"
@@ -62,6 +64,7 @@ export const { use: useFile, provider: FileProvider } = createSimpleContext({
     const serverSDK = useServerSDK()
     const language = useLanguage()
     const layout = useLayout()
+    const platform = usePlatform()
 
     const scope = createMemo(() => sdk().directory)
     const path = createPathHelpers(scope)
@@ -164,6 +167,32 @@ export const { use: useFile, provider: FileProvider } = createSimpleContext({
       })
     }
 
+    // Außerhalb des Arbeitsbereichs erreicht der Server die Datei nicht. Der Desktop
+    // liest die Bytes dann selbst; ohne Desktop-Unterstützung bleibt es beim Fehler.
+    const loadExternal = (file: string, directory: string) => {
+      if (!platform.readLocalFile) {
+        setLoadError(file, language.t("session.file.notFound.description", { path: file }))
+        return Promise.resolve()
+      }
+      return platform
+        .readLocalFile(file)
+        .then((buffer) => {
+          if (scope() !== directory) return
+          if (!buffer) {
+            setLoadError(file, language.t("session.file.notFound.description", { path: file }))
+            return
+          }
+          const content = fileContentFromBytes(file, new Uint8Array(buffer))
+          setLoaded(file, content)
+          touchFileContent(file, approxBytes(content))
+          evictContent(new Set([file]))
+        })
+        .catch((e) => {
+          if (scope() !== directory) return
+          setLoadError(file, errorMessage(e, language.t("error.chain.unknown")))
+        })
+    }
+
     const load = (input: string, options?: { force?: boolean }) => {
       const file = path.normalize(input)
       if (!file) return Promise.resolve()
@@ -180,27 +209,41 @@ export const { use: useFile, provider: FileProvider } = createSimpleContext({
 
       setLoading(file)
 
-      const promise = sdk()
-        .client.file.read({ path: file })
-        .then((x) => {
-          if (scope() !== directory) return
-          const content = x.data
-          setLoaded(file, content)
+      const promise = (
+        path.isExternal(file)
+          ? loadExternal(file, directory)
+          : sdk()
+              .client.file.read({ path: file })
+              .then((x) => {
+                if (scope() !== directory) return
+                const content = x.data
+                setLoaded(file, content)
 
-          if (!content) return
-          touchFileContent(file, approxBytes(content))
-          evictContent(new Set([file]))
-        })
-        .catch((e) => {
-          if (scope() !== directory) return
-          setLoadError(file, errorMessage(e, language.t("error.chain.unknown")))
-        })
-        .finally(() => {
-          inflight.delete(key)
-        })
+                if (!content) return
+                touchFileContent(file, approxBytes(content))
+                evictContent(new Set([file]))
+              })
+              .catch((e) => {
+                if (scope() !== directory) return
+                setLoadError(file, errorMessage(e, language.t("error.chain.unknown")))
+              })
+      ).finally(() => {
+        inflight.delete(key)
+      })
 
       inflight.set(key, promise)
       return promise
+    }
+
+    // Externe Inhalte, die der Chat-Klick bereits gelesen hat, direkt in den Store legen,
+    // damit das Panel sie nicht ein zweites Mal laden muss.
+    const setExternal = (input: string, content: NonNullable<FileState["content"]>) => {
+      const file = path.normalize(input)
+      if (!file) return
+      ensure(file)
+      setLoaded(file, content)
+      touchFileContent(file, approxBytes(content))
+      evictContent(new Set([file]))
     }
 
     const search = (query: string, dirs: "true" | "false", options?: { limit?: number; signal?: AbortSignal }) =>
@@ -271,6 +314,8 @@ export const { use: useFile, provider: FileProvider } = createSimpleContext({
       ready: () => view().ready(),
       normalize: path.normalize,
       resolve: path.resolve,
+      isExternal: path.isExternal,
+      setExternal,
       tab: path.tab,
       pathFromTab: path.pathFromTab,
       tree: {

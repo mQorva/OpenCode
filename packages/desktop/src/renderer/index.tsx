@@ -293,6 +293,12 @@ const createPlatform = (windowState: DesktopWindowState): Platform => {
     async revealPath(path: string) {
       return window.api.revealPath(path)
     },
+    async statLocalPath(path: string) {
+      return window.api.statLocalPath(path)
+    },
+    async readLocalFile(path: string) {
+      return window.api.readLocalFile(path)
+    },
 
     setTaskbarBadge: (count) => {
       lastBadgeCount = count
