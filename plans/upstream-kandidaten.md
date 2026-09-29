@@ -1,5 +1,7 @@
 # Upstream-Klassifizierung des Fork-Diffs (`upstream/dev..dev`)
 
+**Gezielter Sync-Audit 29.09.2026:** Merge-Basis für diesen Stand: `upstream/dev` `f66b86ceec`, geprüfter Fork-Code `dev` `ad166bff00`. Seit dem zuletzt vollständig erfassten Upstream-Stand `ef2792511d` änderten 289 Dateien; 11 Pfade überschneiden sich mit dem Fork-Diff. Drei davon sind die absichtlich im Fork entfernten `.opencode`-Agent-/Command-Dateien. Die übrigen Überschneidungen sind `bun.lock`, Paketversionen, generierte SDK-Verträge, die deutsche Console-Übersetzung und `packages/app/src/components/dialog-connect-provider.tsx`. Dort ergänzt Upstream die Desktop-OAuth-`client_id`; die Fork-Änderungen für Provider-Verbindungsbestätigung, Fehlerbehandlung und lokales Verzeichnis bleiben zusätzlich erforderlich. Kandidat #11 bleibt daher als eigener Vertrag v2-blockiert; bei einer späteren Extraktion muss der OAuth-Hunk aus `f66b86ceec` erhalten bleiben. Dieser gezielte Pfadvergleich aktualisiert nicht den vollständigen Status der offenen GitHub-PRs.
+
 Bestandsaufnahme aller Fork-Änderungen gegenüber `anomalyco/opencode`: Was ist eigen, was ist Naht,
 was kann zurück ans Original? Grundlage für künftige Upstream-PRs und für die Pflege von
 `plans/upstream-patches.md`. Zuletzt vollständig gegen `upstream/dev` auf `ef2792511d`
