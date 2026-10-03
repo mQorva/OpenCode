@@ -1,6 +1,6 @@
 # Upstream-Klassifizierung des Fork-Diffs (`upstream/dev..dev`)
 
-**Gezielter Sync-Audit 29.09.2026:** Merge-Basis für diesen Stand: `upstream/dev` `f66b86ceec`, geprüfter Fork-Code `dev` `ad166bff00`. Seit dem zuletzt vollständig erfassten Upstream-Stand `ef2792511d` änderten 289 Dateien; 11 Pfade überschneiden sich mit dem Fork-Diff. Drei davon sind die absichtlich im Fork entfernten `.opencode`-Agent-/Command-Dateien. Die übrigen Überschneidungen sind `bun.lock`, Paketversionen, generierte SDK-Verträge, die deutsche Console-Übersetzung und `packages/app/src/components/dialog-connect-provider.tsx`. Dort ergänzt Upstream die Desktop-OAuth-`client_id`; die Fork-Änderungen für Provider-Verbindungsbestätigung, Fehlerbehandlung und lokales Verzeichnis bleiben zusätzlich erforderlich. Kandidat #11 bleibt daher als eigener Vertrag v2-blockiert; bei einer späteren Extraktion muss der OAuth-Hunk aus `f66b86ceec` erhalten bleiben. Dieser gezielte Pfadvergleich aktualisiert nicht den vollständigen Status der offenen GitHub-PRs.
+**Gezielter Sync-Audit 29.09.2026:** Merge-Basis für diesen Stand: `upstream/dev` `f66b86ceec`, geprüfter Fork-Code `dev` `ad166bff00`. Seit dem zuletzt vollständig erfassten Upstream-Stand `ef2792511d` änderten 289 Dateien; 11 Pfade überschneiden sich mit dem Fork-Diff. Drei davon sind die absichtlich im Fork entfernten `.opencode`-Agent-/Command-Dateien. Die übrigen Überschneidungen sind `bun.lock`, Paketversionen, generierte SDK-Verträge, die deutsche Console-Übersetzung und `packages/app/src/components/dialog-connect-provider.tsx`. Dort ergänzt Upstream die Desktop-OAuth-`client_id`; die Fork-Änderungen für Provider-Verbindungsbestätigung, Fehlerbehandlung und lokales Verzeichnis bleiben zusätzlich erforderlich. Kandidat #11 bleibt daher als eigener Vertrag v2-blockiert; bei einer späteren Extraktion muss der OAuth-Hunk aus `f66b86ceec` erhalten bleiben. Der aktuelle GitHub-Status folgt am Ende dieser Datei.
 
 Bestandsaufnahme aller Fork-Änderungen gegenüber `anomalyco/opencode`: Was ist eigen, was ist Naht,
 was kann zurück ans Original? Grundlage für künftige Upstream-PRs und für die Pflege von
@@ -31,7 +31,7 @@ lokale Archiv-Tags entfernt und werden nicht unverändert wiederverwendet:
 
 | Kandidat | Alter PR | Zustand | Aktueller Stand |
 |---|---|---|---|
-| #1 | `#45557` (geschlossen) | geschlossen, nicht gemergt | als PR #46023 (`auth-json-safety-pilot`) neu veröffentlicht |
+| #1 | `#45557` / `#45949` (geschlossen) | beide geschlossen, nicht gemergt | PR #46023 war bis 28.09. offen und wurde dann durch die automatische PR-Bereinigung geschlossen; kein technisches Review. Issue #46020 ist ebenfalls geschlossen. |
 | #2 | `#45607` (geschlossen) / `#46125` (neu) | alt geschlossen; neu PR offen (HEAD `763d4ca96d`, Issue #45610) | auf Maintainer-Feedback warten |
 | #3 | `#45609` (geschlossen) | geschlossen, nicht gemergt | als PR #46148 (`filesystem-root-watch`) neu veröffentlicht |
 
@@ -117,8 +117,8 @@ vor und werden erst nach dem v2-Architektur-Gate angegangen. Permission-Verträg
 
 | Reihenfolge | PR-Paket (Branch) | Kandidaten | Status | Inhalt / Voraussetzung |
 |---:|---|---|---|---|
-| 0 | `auth-json-safety-pilot` | #1 | PR #46023 offen gegen `upstream/dev` `10765ff2a9`, HEAD `5b9bb8411c`, Issue #46020; +34/-12 in `auth/index.ts`; `tsgo --noEmit` exit 0; am 30.08. re-rebased von `dc4449df0d` auf `10765ff2a9` | auf Maintainer-Feedback warten |
-| 1 | `async-session-idle` | #2 | PR #46125 offen gegen `upstream/dev` `10765ff2a9`, HEAD `763d4ca96d`, Issue #45610; `tsgo --noEmit` exit 0 | auf Maintainer-Feedback warten |
+| 0 | `auth-json-safety-pilot` | #1 | PR #46023 am 28.09. automatisch geschlossen (kein technisches Review); HEAD `5b9bb8411c`, Issue #46020 geschlossen; der aktuelle Upstream-Code enthält weiterhin weder den vorgeschlagenen Auth-Lock noch atomisches Ersetzen der Datei | bei weiterem Interesse Issue wieder öffnen lassen oder neues issue-first PR-Paket vom aktuellen `upstream/dev` erstellen; Konkurrenz-/Doppelprüfung wiederholen |
+| 1 | `async-session-idle` | #2 | PR #46125 offen, Ziel `dev`, HEAD `763d4ca96d`, Issue #45610; keine formale Review, letzter PR-Eintrag 30.08.; früherer Prüfstand `tsgo --noEmit` exit 0 | auf Maintainer-Feedback warten; vor Update auf aktuellem Upstream neu basieren |
 | 2 | `init-safety` (Bündel) | #6 + #7 | PR #46162 offen gegen `upstream/dev` `10765ff2a9`, Branch-HEADs `a856022bf7` (Tip) / `85a2b3bdb2` (#6) / `edd743a009` (#7); Issues #42002 und #46161; +4/-1 in `config.ts` und +11/-5 in `plugin/index.ts`; `tsgo --noEmit` exit 0. **Konkurrenz:** PR #42003 fixt dasselbe Issue #42002 über `InstallationChannel === "latest"` (statt `InstallationVersion.startsWith("0.0.0-dev")`) und berührt `config.ts` + `tui.ts`. Maintainer entscheidet, welche Heuristik gemergt wird; PR #46162 wird nicht zurückgezogen, sondern läuft parallel | auf Maintainer-Entscheidung warten |
 | 3 | `filesystem-root-watch` | #3 | PR #46148 offen gegen `upstream/dev` `10765ff2a9`, HEAD `46bcd01c49`, Issue #45611; +7/-2 in `watcher.ts`; `tsgo --noEmit` exit 0 | auf Maintainer-Feedback warten |
 | 4 | `bootstrap-init-timeout` | #8 | PR #46167 offen gegen `upstream/dev` `10765ff2a9`, HEAD `cc3fe65b0c`, Issue #46166; +16/-2 in `bootstrap.ts`; `tsgo --noEmit` exit 0 | auf Maintainer-Feedback warten |
@@ -452,3 +452,44 @@ Die folgenden Pakete sind entweder als PR veröffentlicht oder als `vorgemerkt` 
 | `message-rail-navigation` | #45 | `pages/session/timeline/message-rail.tsx/.css`, `message-rail-text.ts`, `message-timeline.tsx` (Hunks) | **B-Wertvoll**: komplettes Railbar-Feature (`session-navigation-ui`); gegen `v2` blockiert; Screenshots/Scroll-Sync/Responsive ergänzen | Architektur-Gate `v2` abwarten |
 | `live-duration-tdz` | #46 | `packages/session-ui/src/components/message-part.tsx` | **B, fork-only — vorgemerkt (09.09.)**: `ReferenceError: Cannot access 'liveMs' before initialization`; im aktuellen Code entfernt (`duration` nutzt `-1`-Fallback); falls Live-Dauer neu eingebaut: `streaming`/`streamTick`/`liveMs` explizit vor `duration`-Memo setzen | Kein PR nötig, solange Feature nicht neu eingebaut |
 | `directory-open-file-manager` | #47 | `packages/app/src/pages/session.tsx` (`openChatFilePath`) | **B, fork-only — vorgemerkt (09.09.)**: Verzeichnis als Datei geöffnet → 500-Fehler; Lösung: `file.list` des Eltern (Baum-Cache) → OS-Dateimanager (`platform.openPath`) statt Fehler-Tab; `tsgo -b` grün; manuelle Gegenprobe (Desktop) offen | Als kleiner Folge-Fix prüfen, wenn `session-not-found` (#37) abgeschlossen |
+
+## Aktueller GitHub-Status und Vorschläge (29.09.2026)
+
+Abgleich mit dem angemeldeten Upstream-Konto `CannonRS` am 29.09.2026. Verwendete Stände: `upstream/dev` `f66b86ceec`, `upstream/v2` `4deda18037`, Fork `dev` `617d9d7de9`. Die GitHub-Suche ergab 21 offene und keine gemergten PRs. Alle unten aufgeführten PRs zielen auf `dev`. Die angezeigten Repository-Botprüfungen (`check-standards`, `check-compliance`, wo vorhanden `check-duplicates`) stehen auf Erfolg; in den PRs gibt es keine formalen Maintainer-Reviews. Das belegt weder Code-CI noch eine fachliche Freigabe. Bei #46162, #46196, #46305, #46474 und #47678 meldet GitHub außerdem `mergeStateStatus=BLOCKED`, ohne dass der Statusabruf dafür einen Grund liefert.
+
+| PR | Kandidat / Stand | Letzte Aktivität | aktueller Head | GitHub-Status |
+|---|---|---:|---|---|
+| [#48533](https://github.com/anomalyco/opencode/pull/48533) | `prompt-submit-fixes` | 11.09. | `5db847ac` | offen; keine Reviews |
+| [#48534](https://github.com/anomalyco/opencode/pull/48534) | `session-error-sync` | 11.09. | `77b2e0ed` | offen; keine Reviews |
+| [#48535](https://github.com/anomalyco/opencode/pull/48535) | `workspace-terminals` | 11.09. | `b3a7fcd9` | offen; keine Reviews |
+| [#48536](https://github.com/anomalyco/opencode/pull/48536) | `permission-dock-layout` | 11.09. | `80091a9e` | offen; keine Reviews; Screenshot zur UI-Abnahme fehlt weiterhin |
+| [#48015](https://github.com/anomalyco/opencode/pull/48015) | `event-reconnect-backoff` | 11.09. | `d6b3a50e` | offen; Issue #48014 ebenfalls offen und `kitlangton` zugewiesen; ein fachlicher Kommentar von `holny`, kein formales Review |
+| [#48013](https://github.com/anomalyco/opencode/pull/48013) | `detect-session-errors` | 08.09. | `19f4e004` | offen; keine Reviews |
+| [#48008](https://github.com/anomalyco/opencode/pull/48008) | `thinking-heading-truncate` | 08.09. | `04ba017e` | offen; keine Reviews |
+| [#47951](https://github.com/anomalyco/opencode/pull/47951) | `expand-windows-paths` | 08.09. | `415e9d24` | offen; keine Reviews |
+| [#47861](https://github.com/anomalyco/opencode/pull/47861) | `snapshot-revert-guard` | 07.09. | `12c00f03` | offen; keine Reviews |
+| [#47686](https://github.com/anomalyco/opencode/pull/47686) | `retry-terminal-signals` | 06.09. | `5dad82a4` | offen; keine Reviews; Bot nennt #47339 und #47641 als ergänzende Fälle |
+| [#47684](https://github.com/anomalyco/opencode/pull/47684) | `stale-session-references` | 06.09. | `3df3a644` | offen; keine Reviews |
+| [#47682](https://github.com/anomalyco/opencode/pull/47682) | `bootstrap-query-keys` | 06.09. | `24aadc00` | offen; keine Reviews |
+| [#47678](https://github.com/anomalyco/opencode/pull/47678) | `provider-connected-list` | 08.09. | `4ee54185` | offen; keine Reviews; Bot nennt #44132, das laut PR-Beschreibung Payload-Kompression/Memoisierung statt Connected-only-Filter behandelt |
+| [#46474](https://github.com/anomalyco/opencode/pull/46474) | `desktop-dev-identity` | 31.08. | `47e49d1f` | offen; keine Reviews |
+| [#46305](https://github.com/anomalyco/opencode/pull/46305) | `windows-zorder-reset` | 02.09. | `13bed544` | offen; positiver Nutzerkommentar, kein formales Review |
+| [#46302](https://github.com/anomalyco/opencode/pull/46302) | `persistent-permission-choice` | 30.08. | `a2beb0b9` | offen; keine Reviews |
+| [#46196](https://github.com/anomalyco/opencode/pull/46196) | `build-and-dev-flags` | 30.08. | `d93bd149` | offen; keine Reviews |
+| [#46167](https://github.com/anomalyco/opencode/pull/46167) | `bootstrap-init-timeout` | 30.08. | `cc3fe65b` | offen; keine Reviews |
+| [#46162](https://github.com/anomalyco/opencode/pull/46162) | `init-safety` | 30.08. | `a856022b` | offen; keine Reviews; Konkurrenz #42003 bleibt laut bisherigem Eintrag relevant |
+| [#46148](https://github.com/anomalyco/opencode/pull/46148) | `filesystem-root-watch` | 30.08. | `46bcd01c` | offen; keine Reviews |
+| [#46125](https://github.com/anomalyco/opencode/pull/46125) | `async-session-idle` | 30.08. | `763d4ca9` | offen; keine Reviews |
+
+Fünf ältere Versuche sind geschlossen und nicht gemergt: #45557, #45607, #45609, #45949 und #46023. #45607 wurde durch #46125 und #45609 durch #46148 ersetzt. #46023 wurde am 28.09. durch die automatische PR-Bereinigung geschlossen, weil die PR älter als einen Monat war und weniger als zwei positive Reaktionen hatte. Der Bot nennt ausdrücklich die Möglichkeit, bei fortbestehendem Interesse um Wiedereröffnung zu bitten; das ist kein technisches Review. Das verknüpfte Issue #46020 ist ebenfalls geschlossen.
+
+### Konkrete nächste Schritte
+
+- **#48015 zuerst überarbeiten:** `holny` beschreibt einen echten Fehlerfall: Ein Stream, der kurz ein Ereignis liefert und gleich wieder abbricht, setzt den Fehlerzähler sofort zurück und bleibt dauerhaft beim 250-ms-Intervall. Den Zähler erst nach einer stabilen Laufzeit oder mehreren gesunden Ereignissen zurücksetzen. Den Exponenten-Deckel entfernen oder so begründen, dass er vor dem 5-s-Cap tatsächlich greift. Regressionstests sollten sowohl wiederholtes kurzes Flappen als auch eine stabile Verbindung mit anschließender Rückkehr zum schnellen Intervall abdecken.
+- **#46023 nicht unverändert neu senden:** Im aktuellen `upstream/dev` ist der Auth-Lock mit atomarem Dateiersatz weiterhin nicht vorhanden. Wenn der Fix noch gewünscht ist, zuerst beim Maintainer um Wiedereröffnung von PR und Issue bitten; andernfalls ein neues, aktuelles Issue samt compliant PR vom `f66b86ceec`-Stand erstellen. Dabei Parallelität von `set`/`remove`, Aufräumen der Temp-Datei bei Schreibfehlern und die Konkurrenz zwischen Prozessen testen.
+- **#47678 gezielt abgrenzen:** Den Connected-only-Query als Vermeidung des vollen Katalogs und nicht als allgemeine Payload-Optimierung beschreiben. Der im Botkommentar genannte PR #44132 löst laut den vorliegenden PR-Beschreibungen ein anderes Problem; eine Maintainer-Entscheidung dazu steht noch aus.
+- **#47686 beibehalten, Fälle koordinieren:** Die Botmeldung ordnet #47339 (Zen-Kontingentmarker) und #47641 (sehr lange Retry-Wartezeit) als ergänzend ein. Im PR klar auf die getrennten Erkennungspfade und Tests für HTTP 402, Provider-Codes und Google-Quota-Signale verweisen.
+- **#48536 abnahmefähig machen:** Den noch fehlenden Screenshot der Story/UI ergänzen, falls der Maintainer Mediennachweise verlangt; der Quellcode-Typecheck allein belegt das Dock-Layout nicht.
+- **Übrige offene PRs:** Es gibt seit den aufgeführten Daten keine neuen Maintainer-Reviews. Vor Änderungen erst die aktuelle Upstream-Implementierung und Branch-Diffs erneut vergleichen; danach jeweils eine kurze, sachliche Review-Anfrage statt vorsorglicher Umbauten.
+
+Ein Quellcode-Abgleich der betroffenen Upstream-`dev`-Pfade bestätigt für die zuletzt eingereichten Kandidaten #47678, #47682, #47684, #47686, #47861, #47951, #48013, #48015 und #48533–#48536 keine späteren Commits in den jeweils betroffenen Dateien seit ihren PR-Zeiträumen. Die sichtbaren Kernpfade für Connected-only-Provider, Bootstrap-Stale-Time, Quota-Klassifikation, Reconnect-Backoff, flexible Session-Not-Found-Formen, `session.error`-Global-Sync, `TerminalRegistryProvider` und `footerInside` fehlen weiterhin in `upstream/dev`. Das ist eine Pfadprüfung, keine erneute vollständige Funktions- oder PR-Diff-Abnahme.
